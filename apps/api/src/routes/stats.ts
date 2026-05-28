@@ -213,7 +213,7 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
           from concert_attendees ca
           join concerts c on c.id = ca.concert_id
           left join venues v on v.id = c.venue_id
-          left join event_series es on es.id = c.series_id
+          left join event_series es on es.id = c.event_series_id
           where ca.user_id = ${userId}
             and extract(month from c.date) = extract(month from cast(${localDate} as date))
             and extract(day   from c.date) = extract(day   from cast(${localDate} as date))
@@ -261,7 +261,7 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
               row_number() over (order by c.date asc, c.id asc) as rn
             from concert_attendees ca
             join concerts c on c.id = ca.concert_id
-            left join event_series es on es.id = c.series_id
+            left join event_series es on es.id = c.event_series_id
             where ca.user_id = ${userId}
               and ca.status  = 'attended'
           )

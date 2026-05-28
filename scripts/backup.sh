@@ -3,12 +3,7 @@
 # Run on the Mac mini via cron. See README for setup instructions.
 set -euo pipefail
 
-# ─── CONFIG (edit these) ────────────────────────────────────────────────────────
-# Destination directory. Set this to your external drive, e.g.:
-#   /Volumes/SamsungT7/tagg-backups
-#   /Volumes/BackupDrive/tagg-backups
-BACKUP_DIR="${TAGG_BACKUP_DIR:-/Volumes/D4-320 Disk 1/Backups/tinnitus-a-go-go}"
-
+# ─── CONFIG ─────────────────────────────────────────────────────────────────────
 # Rolling window — how many of each backup to keep
 MAX_BACKUPS=3
 
@@ -21,6 +16,13 @@ LOG_PREFIX="[$(date '+%Y-%m-%d %H:%M:%S')]"
 
 # ── helper: read a value from .env without sourcing the whole file ──────────────
 env_val() { grep -E "^$1=" "$COMPOSE_DIR/.env" | head -1 | cut -d= -f2- | tr -d '"'"'"; }
+
+# ── Backup destination — required; set TAGG_BACKUP_DIR in .env ──────────────────
+BACKUP_DIR=$(env_val TAGG_BACKUP_DIR)
+if [[ -z "$BACKUP_DIR" ]]; then
+  echo "$LOG_PREFIX ERROR: TAGG_BACKUP_DIR is not set in $COMPOSE_DIR/.env" >&2
+  exit 1
+fi
 
 POSTGRES_USER=$(env_val POSTGRES_USER)
 POSTGRES_DB=$(env_val POSTGRES_DB)

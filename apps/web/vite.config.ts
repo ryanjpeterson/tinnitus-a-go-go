@@ -12,8 +12,13 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5173,
-    // Allow requests from any host (Tailscale domain, Funnel HTTPS, LAN IP, etc.)
-    allowedHosts: "all",
+    allowedHosts: [
+      "macmini",
+      "macmini.local",
+      "100.123.243.36",
+      "stingray-octatonic",
+      ".ts.net", // all Tailscale Funnel / MagicDNS subdomains
+    ],
     proxy: {
       "/api": {
         target: process.env.VITE_API_URL ?? "http://api:3000",

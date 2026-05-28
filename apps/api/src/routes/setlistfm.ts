@@ -56,11 +56,23 @@ interface SetlistFmVenue {
   city?: SetlistFmCity;
 }
 
+interface SetlistFmSong {
+  name: string;
+  tape?: boolean;
+}
+
+interface SetlistFmSet {
+  name?: string;
+  encore?: number;
+  song?: SetlistFmSong[];
+}
+
 interface SetlistFmSetlist {
   id: string;
   eventDate: string;
   artist: SetlistFmArtist;
   venue?: SetlistFmVenue;
+  sets?: { set?: SetlistFmSet[] };
 }
 
 interface SetlistFmResponse {
@@ -83,17 +95,25 @@ function err(
 }
 
 function mapSetlists(setlists: SetlistFmSetlist[]) {
-  return setlists.map((s) => ({
-    id: s.id,
-    artist: s.artist.name,
-    artistMbid: s.artist.mbid ?? null,
-    venue: s.venue?.name ?? "",
-    city: s.venue?.city
-      ? [s.venue.city.name, s.venue.city.state].filter(Boolean).join(", ")
-      : "",
-    country: s.venue?.city?.country?.code ?? "",
-    date: fromSetlistDate(s.eventDate),
-  }));
+  return setlists.map((s) => {
+    const sets = (s.sets?.set ?? []).map((set) => ({
+      name: set.name ?? null,
+      encore: set.encore ?? null,
+      songs: (set.song ?? []).filter((song) => !song.tape).map((song) => song.name),
+    }));
+    return {
+      id: s.id,
+      artist: s.artist.name,
+      artistMbid: s.artist.mbid ?? null,
+      venue: s.venue?.name ?? "",
+      city: s.venue?.city
+        ? [s.venue.city.name, s.venue.city.state].filter(Boolean).join(", ")
+        : "",
+      country: s.venue?.city?.country?.code ?? "",
+      date: fromSetlistDate(s.eventDate),
+      sets,
+    };
+  });
 }
 
 export async function setlistfmRoutes(app: FastifyInstance): Promise<void> {

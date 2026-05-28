@@ -674,6 +674,12 @@ export interface SeriesDetailResponse {
 
 // ─── Setlist.fm types ─────────────────────────────────────────────────────────
 
+export interface SetlistfmSet {
+  name: string | null;
+  encore: number | null;
+  songs: string[];
+}
+
 export interface SetlistfmResult {
   id: string;
   artist: string;
@@ -682,6 +688,7 @@ export interface SetlistfmResult {
   city: string;
   country: string;
   date: string; // ISO YYYY-MM-DD
+  sets: SetlistfmSet[];
 }
 
 export type SetlistfmError =

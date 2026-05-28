@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { api, type ConcertDetail, type ArtistListItem, type VenueListItem, type ConcertArtist } from "@/lib/api";
+import { api, type ConcertDetail, type ArtistListItem, type VenueListItem, type ConcertArtist, type SetlistfmResult } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
 import { VenueMap } from "@/components/VenueMap";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
@@ -2205,6 +2205,134 @@ function LineupEditor({ concert }: { concert: ConcertDetail }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Setlist section (attended shows only)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SetlistSection({ concert }: { concert: ConcertDetail }) {
+  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<SetlistfmResult | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sortedArtists = [...concert.artists].sort(
+    (a, b) => (ROLE_ORDER[a.role] ?? 99) - (ROLE_ORDER[b.role] ?? 99),
+  );
+  const artistName = sortedArtists[0]?.name ?? null;
+
+  if (!artistName) return null;
+
+  const handleLoad = async (): Promise<void> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.searchSetlistfm({ artist: artistName, date: concert.date });
+      if (!res.available) {
+        setUnavailable(true);
+        setLoaded(true);
+        return;
+      }
+      if (res.error) {
+        setError(
+          res.error === "rate_limited"
+            ? "Setlist.fm rate limited — try again in a moment."
+            : "Could not load setlist from setlist.fm.",
+        );
+        setLoaded(true);
+        return;
+      }
+      setResult(res.results[0] ?? null);
+      setLoaded(true);
+    } catch {
+      setError("Could not reach setlist.fm.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setlistUrl = result
+    ? `https://www.setlist.fm/setlist/x/${result.id}.html`
+    : null;
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted">Setlist</h2>
+        {!loaded ? (
+          <button
+            onClick={() => void handleLoad()}
+            disabled={loading}
+            className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors disabled:opacity-50"
+          >
+            {loading ? "Loading…" : "Load from setlist.fm"}
+          </button>
+        ) : result && setlistUrl ? (
+          <a
+            href={setlistUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+          >
+            setlist.fm ↗
+          </a>
+        ) : null}
+      </div>
+
+      {!loaded && !loading && (
+        <p className="text-xs text-text-subtle font-mono">
+          Search setlist.fm for <span className="text-text-muted">{artistName}</span> on {fmtDateLong(concert.date)}.
+        </p>
+      )}
+
+      {loaded && unavailable && (
+        <p className="text-xs text-text-subtle font-mono italic">Setlist.fm not configured on this server.</p>
+      )}
+
+      {loaded && error && (
+        <p className="text-xs text-accent-pink font-mono">{error}</p>
+      )}
+
+      {loaded && !error && !unavailable && !result && (
+        <p className="text-xs text-text-subtle font-mono italic">No setlist found for this show on setlist.fm.</p>
+      )}
+
+      {result && (
+        <div>
+          <p className="text-xs text-text-subtle font-mono mb-3">
+            {[result.venue, result.city, result.country].filter(Boolean).join(" · ")}
+          </p>
+          {result.sets.length === 0 ? (
+            <p className="text-xs text-text-subtle font-mono italic">Setlist not recorded yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {result.sets.map((set, i) => (
+                <div key={i}>
+                  {(set.name ?? set.encore) && (
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-1.5">
+                      {set.encore ? `Encore${(set.encore ?? 1) > 1 ? ` ${set.encore}` : ""}` : set.name}
+                    </p>
+                  )}
+                  <ol className="space-y-1">
+                    {set.songs.map((song, j) => (
+                      <li key={j} className="flex items-baseline gap-2.5">
+                        <span className="text-[10px] font-mono text-text-subtle w-5 text-right tabular-nums shrink-0 leading-5">
+                          {j + 1}
+                        </span>
+                        <span className="text-sm text-text-base leading-5">{song}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2315,6 +2443,11 @@ export function ConcertDetailPage() {
 
           {/* Attendance */}
           <AttendanceEditor concertId={concert.id} attendance={concert.attendance} />
+
+          {/* Setlist — attended shows only */}
+          {concert.attendance?.status === "attended" && (
+            <SetlistSection concert={concert} />
+          )}
 
           {/* Photo gallery */}
           <div className="rounded-lg border border-border bg-surface p-4">

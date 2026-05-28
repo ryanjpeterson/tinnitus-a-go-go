@@ -7,6 +7,7 @@ import { Wordmark } from "@/components/Wordmark";
 import { api } from "@/lib/api";
 import { ConcertsPage } from "./ConcertsPage";
 import { ConcertDetailPage } from "./ConcertDetailPage";
+import { AddConcertModal } from "./AddConcertModal";
 import { AccountPage } from "./AccountPage";
 import { ArtistsPage } from "./ArtistsPage";
 import { ArtistPage } from "./ArtistPage";
@@ -248,6 +249,22 @@ export function AppShell() {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [globalAddOpen, setGlobalAddOpen] = useState(false);
+
+  // "n" anywhere outside an input opens the Add Show modal
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if ((e.target as HTMLElement).isContentEditable) return;
+      if (e.key === "n" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setGlobalAddOpen(true);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   // Close mobile menu on route change
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
@@ -279,6 +296,9 @@ export function AppShell() {
 
   return (
     <div className="min-h-full">
+      {/* Global "Add show" modal — triggered by N shortcut from any page */}
+      {globalAddOpen && <AddConcertModal onClose={() => setGlobalAddOpen(false)} />}
+
       {/* Daily follow-up prompt — floats over all pages, shown once per day */}
       <FollowUpPrompt />
 

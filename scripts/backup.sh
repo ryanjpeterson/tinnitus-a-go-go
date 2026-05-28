@@ -7,7 +7,7 @@ set -euo pipefail
 # Destination directory. Set this to your external drive, e.g.:
 #   /Volumes/SamsungT7/tagg-backups
 #   /Volumes/BackupDrive/tagg-backups
-BACKUP_DIR="${TAGG_BACKUP_DIR:-$HOME/tagg-backups}"
+BACKUP_DIR="${TAGG_BACKUP_DIR:-/Volumes/D4-320 Disk 1/Backups/tinnitus-a-go-go}"
 
 # Rolling window — how many of each backup to keep
 MAX_BACKUPS=3

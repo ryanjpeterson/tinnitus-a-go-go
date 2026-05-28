@@ -59,6 +59,8 @@ export const api = {
   login: (body: { identifier: string; password: string }) =>
     request<{ user: UserPublic }>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
   logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
+  changePassword: (body: { currentPassword: string; newPassword: string }) =>
+    request<{ ok: true }>("/auth/password", { method: "PATCH", body: JSON.stringify(body) }),
   me: () => request<{ user: UserPublic }>("/auth/me"),
   checkInvite: (code: string) =>
     request<{ valid: boolean }>(`/invites/check?code=${encodeURIComponent(code)}`),

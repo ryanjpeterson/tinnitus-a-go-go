@@ -7,6 +7,7 @@ import { Wordmark } from "@/components/Wordmark";
 import { api } from "@/lib/api";
 import { ConcertsPage } from "./ConcertsPage";
 import { ConcertDetailPage } from "./ConcertDetailPage";
+import { AccountPage } from "./AccountPage";
 import { ArtistsPage } from "./ArtistsPage";
 import { ArtistPage } from "./ArtistPage";
 import { VenuesPage } from "./VenuesPage";
@@ -222,11 +223,15 @@ function MobileMenu({
         ))}
       </nav>
 
-      {/* Footer — username + sign out */}
-      <div className="px-5 py-5 border-t border-border flex items-center justify-between">
-        <span className="text-sm text-text-muted font-mono">
-          @<span className="text-text-base">{username}</span>
-        </span>
+      {/* Footer — username + account + sign out */}
+      <div className="px-5 py-5 border-t border-border flex items-center justify-between gap-3">
+        <Link
+          to="/app/account"
+          onClick={onClose}
+          className="text-sm text-text-muted hover:text-accent-lime transition-colors font-mono"
+        >
+          @<span>{username}</span>
+        </Link>
         <Button variant="secondary" size="sm" onClick={() => { onSignOut(); onClose(); }}>
           Sign out
         </Button>
@@ -319,9 +324,9 @@ export function AppShell() {
 
         {/* Desktop right side */}
         <div className="hidden sm:flex items-center gap-3 text-sm">
-          <span className="text-text-muted">
-            @<span className="text-text-base">{user?.username}</span>
-          </span>
+          <Link to="/app/account" className="text-text-muted hover:text-accent-lime transition-colors">
+            @<span>{user?.username}</span>
+          </Link>
           <Button variant="secondary" size="sm" onClick={signOut}>
             Sign out
           </Button>
@@ -357,6 +362,7 @@ export function AppShell() {
           <Route path="festivals" element={<FestivalsPage />} />
           <Route path="festivals/:slug" element={<SeriesPage />} />
           <Route path="stats" element={<StatsPage />} />
+          <Route path="account" element={<AccountPage />} />
           <Route
             path="*"
             element={

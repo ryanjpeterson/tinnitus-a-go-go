@@ -235,6 +235,45 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       return reply.send({ ok: true });
     },
   );
+
+  // ----- Change password -----
+  app.patch(
+    "/auth/password",
+    { preHandler: requireUser },
+    async (req, reply) => {
+      const parsed = z.object({
+        currentPassword: z.string().min(1),
+        newPassword: z.string().min(1),
+      }).safeParse(req.body);
+      if (!parsed.success) return reply.code(400).send({ error: "Invalid body." });
+
+      const user = await db.query.users.findFirst({
+        where: eq(schema.users.id, req.user!.id),
+      });
+      if (!user) return reply.code(404).send({ error: "User not found." });
+
+      const valid = await verifyPassword(user.passwordHash, parsed.data.currentPassword);
+      if (!valid) return reply.code(401).send({ error: "Current password is incorrect." });
+
+      const pwError = validatePasswordShape(parsed.data.newPassword);
+      if (pwError) return reply.code(400).send({ error: pwError });
+
+      if (await isPasswordPwned(parsed.data.newPassword)) {
+        return reply.code(400).send({
+          error: "That password appears in known breach databases. Pick a different one.",
+        });
+      }
+
+      const newHash = await hashPassword(parsed.data.newPassword);
+      await db
+        .update(schema.users)
+        .set({ passwordHash: newHash })
+        .where(eq(schema.users.id, req.user!.id));
+
+      await logAuthEvent(req, "password.changed", req.user!.id);
+      return reply.send({ ok: true });
+    },
+  );
 }
 
 async function logAuthEvent(

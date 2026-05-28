@@ -59,8 +59,8 @@ export function EntityCard({
       to={href}
       className="group flex flex-col rounded-lg border border-border bg-surface overflow-hidden hover:border-accent-lime transition-colors"
     >
-      {/* Image / placeholder — always square for visual consistency across artists, venues, and festivals */}
-      <div className="aspect-square overflow-hidden">
+      {/* Image / placeholder — 16:9 for visual consistency across artists, venues, and festivals */}
+      <div className="aspect-video overflow-hidden">
         {imageUrl ? (
           <img
             src={imageUrl}

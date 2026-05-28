@@ -39,8 +39,9 @@ const mediaWorker = new Worker<MediaProcessJobData>(
   async (job) => runMediaProcess(job),
   {
     connection: redis,
-    // Up to 3 media jobs in parallel — ffmpeg is CPU-bound, don't overload the box
-    concurrency: 3,
+    // Up to 2 media jobs in parallel — ffmpeg is CPU-bound; 3 crashed containers
+    // under large batch uploads. Keep at 2 to leave headroom for the API process.
+    concurrency: 2,
   },
 );
 

@@ -248,6 +248,9 @@ function PhotoGallery({
   // Global upload overlay — also covers ArtistUploadZone uploads
   const [globalUploading, setGlobalUploading] = useState(false);
   const [globalUploadPercent, setGlobalUploadPercent] = useState<number | null>(null);
+  const [batchCurrent, setBatchCurrent] = useState(0);
+  const [batchTotal, setBatchTotal] = useState(0);
+  const [batchFileName, setBatchFileName] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<Photo | null>(null);
   // Ref so keyboard handler always sees the latest photos list
@@ -491,50 +494,79 @@ function PhotoGallery({
 
   const handleUpload = async (files: FileList | null): Promise<void> => {
     if (!files || files.length === 0) return;
+
+    const fileList = Array.from(files);
+    const total = fileList.length;
+
     setUploading(true);
     setGlobalUploading(true);
     setUploadPercent(0);
     setGlobalUploadPercent(0);
+    setBatchCurrent(0);
+    setBatchTotal(total);
+    setBatchFileName("");
     setUploadError(null);
 
-    // Client-side duplicate detection
+    // Pre-flight: filter out client-side duplicates (skip, don't abort)
     const existingHashes = new Set(photos.map((p) => p.contentHash).filter(Boolean));
-    for (const file of Array.from(files)) {
+    const skipped: string[] = [];
+    const toUpload: File[] = [];
+    for (const file of fileList) {
       try {
         const hash = await hashFile(file);
         if (existingHashes.has(hash)) {
-          setUploadError(`"${file.name}" has already been uploaded to this concert.`);
-          setUploading(false);
-          setGlobalUploading(false);
-          setUploadPercent(null);
-          setGlobalUploadPercent(null);
-          if (fileRef.current) fileRef.current.value = "";
-          return;
+          skipped.push(file.name);
+        } else {
+          existingHashes.add(hash);
+          toUpload.push(file);
         }
-        existingHashes.add(hash); // prevent intra-batch dupes too
       } catch {
-        // hash failed — let the server catch it
+        toUpload.push(file); // hash failed — let server catch it
       }
     }
 
+    const failed: string[] = [];
+
     try {
-      const fileList = Array.from(files);
-      for (let i = 0; i < fileList.length; i++) {
+      for (let i = 0; i < toUpload.length; i++) {
+        const file = toUpload[i]!;
+        setBatchCurrent(i + 1);
+        setBatchTotal(toUpload.length);
+        setBatchFileName(file.name);
         setUploadPercent(0);
         setGlobalUploadPercent(0);
-        await api.uploadPhoto(concertId, fileList[i]!, (pct) => {
-          setUploadPercent(pct);
-          setGlobalUploadPercent(pct);
-        });
+
+        try {
+          await api.uploadPhoto(concertId, file, (pct) => {
+            setUploadPercent(pct);
+            setGlobalUploadPercent(pct);
+          });
+        } catch (err) {
+          failed.push(file.name);
+          // Continue with remaining files
+        }
+
+        // Brief pause between files — lets the API and worker breathe
+        if (i < toUpload.length - 1) {
+          await new Promise((r) => setTimeout(r, 400));
+        }
       }
+
       await qc.invalidateQueries({ queryKey: ["concerts", concertId, "photos"] });
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Upload failed.");
+
+      // Summarise any skips or failures
+      const msgs: string[] = [];
+      if (skipped.length) msgs.push(`${skipped.length} duplicate${skipped.length > 1 ? "s" : ""} skipped`);
+      if (failed.length)  msgs.push(`${failed.length} failed: ${failed.join(", ")}`);
+      if (msgs.length) setUploadError(msgs.join(" · "));
     } finally {
       setUploading(false);
       setGlobalUploading(false);
       setUploadPercent(null);
       setGlobalUploadPercent(null);
+      setBatchCurrent(0);
+      setBatchTotal(0);
+      setBatchFileName("");
       if (fileRef.current) fileRef.current.value = "";
     }
   };
@@ -553,8 +585,14 @@ function PhotoGallery({
           <div className="w-72 text-center px-6 py-8 rounded-2xl bg-bg/90 border border-border shadow-2xl">
             <div className="w-12 h-12 border-[3px] border-accent-lime/20 border-t-accent-lime rounded-full animate-spin mx-auto mb-5" />
             <p className="text-sm font-mono text-text-base mb-1">
-              {globalUploadPercent !== null ? `Uploading… ${globalUploadPercent}%` : "Uploading…"}
+              {batchTotal > 1
+                ? `Photo ${batchCurrent} of ${batchTotal}`
+                : "Uploading…"}
+              {globalUploadPercent !== null ? ` · ${globalUploadPercent}%` : ""}
             </p>
+            {batchFileName && (
+              <p className="text-xs font-mono text-text-subtle truncate max-w-full mb-1">{batchFileName}</p>
+            )}
             <p className="text-xs font-mono text-text-subtle mb-4">Please wait</p>
             {globalUploadPercent !== null && (
               <div className="w-full bg-surface-2 rounded-full h-1.5 overflow-hidden">

@@ -4,7 +4,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { api, type ConcertDetail, type ArtistListItem, type VenueListItem, type ConcertArtist } from "@/lib/api";
@@ -2210,6 +2210,8 @@ function LineupEditor({ concert }: { concert: ConcertDetail }) {
 
 export function ConcertDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
 
   const concertQuery = useQuery({
     queryKey: ["concerts", id],
@@ -2329,6 +2331,26 @@ export function ConcertDetailPage() {
               → Event source ↗
             </a>
           )}
+
+          {/* Remove from log */}
+          <div className="pt-4 border-t border-border">
+            <button
+              disabled={deleting}
+              onClick={async () => {
+                if (!window.confirm("Remove this show from your log? This can't be undone.")) return;
+                setDeleting(true);
+                try {
+                  await api.deleteConcert(concert.id);
+                  navigate("/app/concerts");
+                } catch {
+                  setDeleting(false);
+                }
+              }}
+              className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors disabled:opacity-50"
+            >
+              {deleting ? "Removing…" : "Remove from log"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

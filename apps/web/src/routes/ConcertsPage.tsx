@@ -6,7 +6,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AddConcertModal } from "./AddConcertModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
@@ -231,7 +231,6 @@ function ConcertCard({
 
 export function ConcertsPage() {
   const qc = useQueryClient();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [addOpen, setAddOpen] = useState(false);
 
@@ -309,81 +308,68 @@ export function ConcertsPage() {
   return (
     <div>
       {/* Toolbar */}
-      <div className="flex flex-wrap gap-2 mb-5 items-center">
-        {/* Status tabs */}
-        <div className="flex gap-1 rounded border border-border p-0.5 bg-surface">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.label}
-              onClick={() => setFilter({ status: tab.value })}
-              className={clsx(
-                "px-3 py-1 rounded text-xs font-mono transition-colors",
-                statusFilter === tab.value
-                  ? tab.activeClass
-                  : "text-text-muted hover:text-text-base",
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search */}
-        <input
-          type="search"
-          placeholder="Search artist, venue, or festival…"
-          value={inputQ}
-          onChange={(e) => handleSearch(e.target.value)}
-          className="flex-1 min-w-40 max-w-64 rounded border border-border bg-surface px-3 py-1.5 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
-        />
-
-        {/* Sort */}
-        <div className="flex gap-1 rounded border border-border p-0.5 bg-surface">
-          <button
-            onClick={() => setFilter({ sort: "newest" })}
-            className={clsx(
-              "px-3 py-1 rounded text-xs font-mono transition-colors",
-              sort === "newest"
-                ? "bg-accent-lime text-bg font-bold"
-                : "text-text-muted hover:text-text-base",
-            )}
-          >
-            Newest first
-          </button>
-          <button
-            onClick={() => setFilter({ sort: "oldest" })}
-            className={clsx(
-              "px-3 py-1 rounded text-xs font-mono transition-colors",
-              sort === "oldest"
-                ? "bg-accent-lime text-bg font-bold"
-                : "text-text-muted hover:text-text-base",
-            )}
-          >
-            Oldest first
-          </button>
-        </div>
-
-        {/* Right-side actions */}
-        <div className="ml-auto flex items-center gap-2">
+      <div className="mb-5 space-y-2">
+        {/* Row 1: search + actions */}
+        <div className="flex items-center gap-2">
+          <input
+            type="search"
+            placeholder="Search artist, venue, or festival…"
+            value={inputQ}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="flex-1 rounded border border-border bg-surface px-3 py-1.5 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+          />
           <button
             onClick={() => setAddOpen(true)}
-            className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity"
+            className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity shrink-0"
           >
             + Add show
           </button>
           <button
             onClick={() => void handleExport()}
-            className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors border border-border rounded px-2.5 py-1.5"
+            className="hidden sm:block text-xs font-mono text-text-muted hover:text-accent-lime transition-colors border border-border rounded px-2.5 py-1.5 shrink-0"
           >
-            Export CSV ↓
+            Export ↓
           </button>
-          <button
-            onClick={() => navigate("/app/concerts/grid")}
-            className="text-xs font-mono text-text-muted hover:text-accent-lime border border-border rounded px-2.5 py-1.5 transition-colors"
-            title="Switch to grid / batch editor"
-          >
-            ⊞ Grid
-          </button>
+        </div>
+
+        {/* Row 2: status filter + sort */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex gap-1 rounded border border-border p-0.5 bg-surface">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.label}
+                onClick={() => setFilter({ status: tab.value })}
+                className={clsx(
+                  "px-2.5 py-1 rounded text-xs font-mono transition-colors",
+                  statusFilter === tab.value
+                    ? tab.activeClass
+                    : "text-text-muted hover:text-text-base",
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto flex gap-1 rounded border border-border p-0.5 bg-surface">
+            <button
+              onClick={() => setFilter({ sort: "newest" })}
+              className={clsx(
+                "px-2.5 py-1 rounded text-xs font-mono transition-colors",
+                sort === "newest" ? "bg-accent-lime text-bg font-bold" : "text-text-muted hover:text-text-base",
+              )}
+            >
+              Newest
+            </button>
+            <button
+              onClick={() => setFilter({ sort: "oldest" })}
+              className={clsx(
+                "px-2.5 py-1 rounded text-xs font-mono transition-colors",
+                sort === "oldest" ? "bg-accent-lime text-bg font-bold" : "text-text-muted hover:text-text-base",
+              )}
+            >
+              Oldest
+            </button>
+          </div>
         </div>
       </div>
 

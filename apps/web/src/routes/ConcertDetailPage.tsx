@@ -251,6 +251,7 @@ function PhotoGallery({
   const [batchCurrent, setBatchCurrent] = useState(0);
   const [batchTotal, setBatchTotal] = useState(0);
   const [batchFileName, setBatchFileName] = useState("");
+  const [batchPhase, setBatchPhase] = useState<"uploading" | "processing" | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<Photo | null>(null);
   // Ref so keyboard handler always sees the latest photos list
@@ -499,6 +500,25 @@ function PhotoGallery({
 
   const MAX_BATCH = 20;
 
+  // Polls the photo list directly (bypassing TanStack cache) until the given
+  // photo's processing flag clears, or until a 2-minute timeout.
+  const waitForProcessing = async (photoId: string): Promise<void> => {
+    const POLL_MS = 2000;
+    const TIMEOUT_MS = 120_000;
+    const deadline = Date.now() + TIMEOUT_MS;
+    while (Date.now() < deadline) {
+      await new Promise<void>((r) => setTimeout(r, POLL_MS));
+      try {
+        const data = await api.listPhotos(concertId);
+        const photo = data.photos.find((p) => p.id === photoId);
+        if (!photo || !photo.processing) return;
+      } catch {
+        // network blip — keep polling
+      }
+    }
+    // timed out — move on anyway
+  };
+
   const handleUpload = async (files: FileList | null): Promise<void> => {
     if (!files || files.length === 0) return;
 
@@ -520,6 +540,7 @@ function PhotoGallery({
     setBatchCurrent(0);
     setBatchTotal(total);
     setBatchFileName("");
+    setBatchPhase("uploading");
     setUploadError(null);
 
     // Pre-flight: filter out client-side duplicates (skip, don't abort)
@@ -548,27 +569,27 @@ function PhotoGallery({
         setBatchCurrent(i + 1);
         setBatchTotal(toUpload.length);
         setBatchFileName(file.name);
+        setBatchPhase("uploading");
         setUploadPercent(0);
         setGlobalUploadPercent(0);
 
         try {
-          await api.uploadPhoto(concertId, file, (pct) => {
+          const { photoId } = await api.uploadPhoto(concertId, file, (pct) => {
             setUploadPercent(pct);
             setGlobalUploadPercent(pct);
           });
+          // Switch to processing phase: poll until the worker finishes this file,
+          // then immediately add it to the gallery before starting the next one.
+          setBatchPhase("processing");
+          setUploadPercent(null);
+          setGlobalUploadPercent(null);
+          await waitForProcessing(photoId);
+          await qc.invalidateQueries({ queryKey: ["concerts", concertId, "photos"] });
         } catch (err) {
           failed.push(file.name);
           // Continue with remaining files
         }
-
-        // 2 s between files: keeps uploads well under the 100/min rate limit
-        // even with processing-state polling, and gives the worker breathing room.
-        if (i < toUpload.length - 1) {
-          await new Promise((r) => setTimeout(r, 2000));
-        }
       }
-
-      await qc.invalidateQueries({ queryKey: ["concerts", concertId, "photos"] });
 
       // Summarise any skips or failures
       const msgs: string[] = [];
@@ -583,6 +604,7 @@ function PhotoGallery({
       setBatchCurrent(0);
       setBatchTotal(0);
       setBatchFileName("");
+      setBatchPhase(null);
       if (fileRef.current) fileRef.current.value = "";
     }
   };
@@ -603,14 +625,17 @@ function PhotoGallery({
             <p className="text-sm font-mono text-text-base mb-1">
               {batchTotal > 1
                 ? `Photo ${batchCurrent} of ${batchTotal}`
-                : "Uploading…"}
-              {globalUploadPercent !== null ? ` · ${globalUploadPercent}%` : ""}
+                : (batchPhase === "processing" ? "Processing…" : "Uploading…")}
             </p>
             {batchFileName && (
               <p className="text-xs font-mono text-text-subtle truncate max-w-full mb-1">{batchFileName}</p>
             )}
-            <p className="text-xs font-mono text-text-subtle mb-4">Please wait</p>
-            {globalUploadPercent !== null && (
+            <p className="text-xs font-mono text-text-subtle mb-4">
+              {batchPhase === "processing"
+                ? "Worker processing…"
+                : (globalUploadPercent !== null ? `${globalUploadPercent}%` : "Please wait")}
+            </p>
+            {batchPhase === "uploading" && globalUploadPercent !== null && (
               <div className="w-full bg-surface-2 rounded-full h-1.5 overflow-hidden">
                 <div
                   className="h-full bg-accent-lime rounded-full transition-all duration-150"

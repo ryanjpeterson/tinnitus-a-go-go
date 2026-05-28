@@ -18,6 +18,7 @@ import { mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, extname } from "node:path";
 import { promisify } from "node:util";
+import heicConvert from "heic-convert";
 import sharp from "sharp";
 import type { Job } from "bullmq";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
@@ -32,28 +33,21 @@ const execFileAsync = promisify(execFile);
 // HEIC normalisation
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Sharp's bundled libvips lacks the HEVC (H.265) codec required for iPhone
-// HEICs.  ffmpeg (already in the container) handles it fine, so we convert
-// HEIC/HEIF → JPEG before handing the buffer to Sharp.
+// Sharp's bundled libvips lacks the libde265 (HEVC) codec plugin for iPhone HEICs.
+// Alpine's ffmpeg has the same gap — it only decodes the small JPEG thumbnail
+// embedded in the HEIC container (~512×384), not the full-resolution HEVC image.
+//
+// heic-convert uses a WASM build of libheif with a bundled HEVC decoder, so it
+// correctly extracts the full primary image with no system dependencies.
 const HEIC_EXTS = new Set([".heic", ".heif"]);
 
-async function heicToJpeg(original: Buffer, ext: string): Promise<Buffer> {
-  const tmpDir = await mkdtemp(join(tmpdir(), "tagg-heic-"));
-  try {
-    const inputPath  = join(tmpDir, `input${ext}`);
-    const outputPath = join(tmpDir, "normalized.jpg");
-    await writeFile(inputPath, original);
-    await execFileAsync("ffmpeg", [
-      "-y",
-      "-i",   inputPath,
-      "-vframes", "1",
-      "-q:v", "2",   // 1 = best JPEG quality; 2 is indistinguishable and slightly smaller
-      outputPath,
-    ]);
-    return await readFile(outputPath);
-  } finally {
-    await rm(tmpDir, { recursive: true, force: true });
-  }
+async function heicToJpeg(original: Buffer): Promise<Buffer> {
+  const result = await heicConvert({
+    buffer: original,
+    format: "JPEG",
+    quality: 0.92,
+  });
+  return Buffer.from(result);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -239,7 +233,7 @@ export async function runMediaProcess(
   // Sharp's bundled libvips lacks the HEVC (H.265) plugin needed for modern
   // iPhone photos; ffmpeg (already installed) handles them cleanly.
   const imageBuffer = (!isVideo && HEIC_EXTS.has(ext))
-    ? await heicToJpeg(original, ext)
+    ? await heicToJpeg(original)
     : original;
 
   await job.updateProgress(40);

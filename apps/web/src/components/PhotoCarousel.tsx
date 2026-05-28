@@ -46,6 +46,12 @@ interface PhotoCarouselProps {
 export function PhotoCarousel({ items, initialIndex = 0, onClose }: PhotoCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(initialIndex);
 
+  // Lock body scroll while open
+  useEffect(() => {
+    document.body.classList.add("overflow-hidden");
+    return () => document.body.classList.remove("overflow-hidden");
+  }, []);
+
   // Escape key — Swiper Keyboard handles ← → internally
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };

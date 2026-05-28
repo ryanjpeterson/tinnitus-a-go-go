@@ -2,7 +2,7 @@
  * Concert detail — full view of one show with flyer, lineup, attendance editor, and photo gallery.
  */
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -89,6 +89,13 @@ function FlyerSection({ concert }: { concert: ConcertDetail }) {
   const [isDragging, setIsDragging] = useState(false);
   const [flyerModal, setFlyerModal] = useState(false);
   const flyerDragCounterRef = useRef(0);
+
+  // Lock body scroll while flyer modal is open
+  useEffect(() => {
+    if (!flyerModal) return;
+    document.body.classList.add("overflow-hidden");
+    return () => document.body.classList.remove("overflow-hidden");
+  }, [flyerModal]);
 
   const currentUrl = localUrl ?? concert.flyerUrl;
 

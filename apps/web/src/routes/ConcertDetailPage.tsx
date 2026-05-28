@@ -2277,9 +2277,9 @@ export function ConcertDetailPage() {
       </Link>
 
       {/* Two-column layout: flyer left, main content right */}
-      <div className="mt-4 grid gap-6 lg:grid-cols-[320px_1fr]">
+      <div className="mt-4 grid gap-4 grid-cols-[120px_1fr] sm:grid-cols-[160px_1fr] md:grid-cols-[220px_1fr] lg:gap-6 lg:grid-cols-[320px_1fr]">
         {/* ── Left column: flyer ── */}
-        <div className="lg:sticky lg:top-6 self-start">
+        <div className="sticky top-6 self-start">
           <p className="text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Flyer</p>
           <FlyerSection concert={concert} />
         </div>

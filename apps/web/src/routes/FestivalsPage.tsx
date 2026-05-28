@@ -35,7 +35,6 @@ export function FestivalsPage() {
               key={s.id}
               href={`/app/festivals/${s.slug}`}
               name={s.name}
-              sub1={s.year ? String(s.year) : null}
               sub2={`${s.dayCount}d · ${s.artistCount} artists`}
               placeholderBg="bg-yellow-950"
               placeholderColor="text-yellow-400"

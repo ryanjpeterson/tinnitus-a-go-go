@@ -7,6 +7,113 @@ Self-hosted, invite-only, served directly from a personal Mac via Tailscale to a
 
 ---
 
+## Prerequisites
+
+Everything runs inside Docker, so the only hard requirements are **Docker** and **Git**. `Node` + `pnpm` are only needed if you want to run scripts outside the containers.
+
+| Tool | Required for | Min version |
+|---|---|---|
+| [Docker Desktop](https://www.docker.com/products/docker-desktop) (Mac/Win) or [Docker Engine](https://docs.docker.com/engine/install/) + Compose plugin (Linux) | Running the stack | Docker 24, Compose v2 |
+| [Git](https://git-scm.com) | Cloning the repo | any |
+| [Node.js](https://nodejs.org) | Running scripts outside Docker | 22 LTS |
+| [pnpm](https://pnpm.io) | Package management outside Docker | 9 |
+| [mc (MinIO Client)](https://min.io/docs/minio/linux/reference/minio-mc.html) | `scripts/backup.sh` media backup | any |
+
+---
+
+## Installation
+
+### macOS
+
+```bash
+# 1. Homebrew (if not already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 2. Core tools
+brew install git node pnpm
+
+# 3. Docker Desktop
+brew install --cask docker
+open /Applications/Docker.app   # start Docker, wait for the whale in the menu bar
+
+# 4. mc — only needed on the machine running backups
+brew install minio/stable/mc
+
+# 5. Clone and set up
+git clone https://github.com/ryanjpeterson/tinnitus-a-go-go.git
+cd tinnitus-a-go-go
+cp .env.example .env
+# edit .env — at minimum set SESSION_SECRET (openssl rand -base64 32)
+```
+
+### Linux (Debian / Ubuntu)
+
+```bash
+# 1. Git + Node (via nvm is cleanest)
+sudo apt update && sudo apt install -y git curl
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
+source ~/.bashrc
+nvm install 22 && nvm use 22
+
+# 2. pnpm
+npm install -g pnpm
+
+# 3. Docker Engine + Compose plugin
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER   # allow running docker without sudo
+newgrp docker
+
+# 4. mc — only needed on the machine running backups
+curl -O https://dl.min.io/client/mc/release/linux-amd64/mc
+chmod +x mc && sudo mv mc /usr/local/bin/
+
+# 5. Clone and set up
+git clone https://github.com/ryanjpeterson/tinnitus-a-go-go.git
+cd tinnitus-a-go-go
+cp .env.example .env
+# edit .env — at minimum set SESSION_SECRET (openssl rand -base64 32)
+```
+
+### Windows (WSL 2 — recommended)
+
+Docker Desktop on Windows works best with the WSL 2 backend.
+
+```powershell
+# 1. Enable WSL 2 (run in PowerShell as Administrator)
+wsl --install
+# Restart, then open the Ubuntu app that was installed
+
+# 2. Inside the Ubuntu WSL shell — follow the Linux steps above
+```
+
+If you prefer native Windows without WSL:
+
+```powershell
+# Install Chocolatey (PowerShell as Administrator)
+Set-ExecutionPolicy Bypass -Scope Process -Force
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+# Install tools
+choco install git nodejs-lts docker-desktop
+
+# Install pnpm
+npm install -g pnpm
+
+# mc (MinIO client) — only needed on the machine running backups
+choco install minio-client
+
+# Clone (in Git Bash or PowerShell)
+git clone https://github.com/ryanjpeterson/tinnitus-a-go-go.git
+cd tinnitus-a-go-go
+copy .env.example .env
+# edit .env
+```
+
+> ⚠️ **Windows note:** The `scripts/backup.sh` backup script requires a bash shell. Run it inside WSL or Git Bash. Native Windows cron equivalents (Task Scheduler) are untested.
+
+---
+
 ## Quick start
 
 ```bash
@@ -307,6 +414,7 @@ All defined in [.env.example](./.env.example). Highlights:
 | `GOOGLE_MAPS_API_KEY`      | Optional — enables embedded maps; OSM link shown when absent      |
 | `VITE_GOOGLE_MAPS_API_KEY` | Frontend Maps key (passed to `@vis.gl/react-google-maps`)         |
 | `APP_URL`                  | Public app base URL (used in email links)                         |
+| `TAGG_BACKUP_DIR`          | Backup destination path for `scripts/backup.sh` (prod only)      |
 
 ---
 
@@ -548,7 +656,34 @@ This is a friends project served from a personal Mac — no VPS. Tailscale handl
 5. Set `CORS_ORIGINS` to the Tailscale hostname
 6. Set `MINIO_PUBLIC_URL` to the externally-reachable MinIO address (used in media URLs)
 7. Optionally add `GOOGLE_MAPS_API_KEY` / `VITE_GOOGLE_MAPS_API_KEY`, `SETLISTFM_API_KEY`, `ANTHROPIC_API_KEY` in `.env`
-8. A local `pg_dump` cron job is worthwhile as a safety net
+
+### Automated backups
+
+`scripts/backup.sh` dumps Postgres and mirrors all MinIO media to a local directory, then rotates to keep the last 3 of each. It reads credentials from `.env` automatically.
+
+**Setup (macOS/Linux):**
+
+```bash
+# 1. Install mc if not already (see Prerequisites)
+brew install minio/stable/mc   # macOS
+# or: curl -O https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x mc && sudo mv mc /usr/local/bin/
+
+# 2. Set your backup destination in .env
+echo 'TAGG_BACKUP_DIR=/Volumes/YourDrive/Backups/tinnitus-a-go-go' >> .env
+
+# 3. Test manually
+bash /path/to/tinnitus-a-go-go/scripts/backup.sh
+
+# 4. Create the log directory
+mkdir -p /path/to/tinnitus-a-go-go/logs
+
+# 5. Add to crontab — runs every hour on the hour
+crontab -e
+# Add this line (adjust path to match your clone location):
+# 0 * * * * bash /path/to/tinnitus-a-go-go/scripts/backup.sh >> /path/to/tinnitus-a-go-go/logs/backup.log 2>&1
+```
+
+> **macOS note:** Cron jobs won't fire if the machine is asleep or the external drive isn't mounted — the script exits cleanly with an error in the log if `TAGG_BACKUP_DIR` is unset or unreachable.
 
 ---
 

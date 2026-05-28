@@ -13,7 +13,8 @@
     "db:studio": "drizzle-kit studio",
     "bootstrap-invite": "tsx src/scripts/bootstrap-invite.ts",
     "import-csv": "tsx src/scripts/import-csv.ts",
-    "seed": "tsx src/scripts/seed-dev.ts"
+    "seed": "tsx src/scripts/seed-dev.ts",
+    "requeue-stuck": "tsx src/scripts/requeue-stuck-photos.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",

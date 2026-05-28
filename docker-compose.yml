@@ -175,6 +175,10 @@ services:
       # Get one at https://console.cloud.google.com/ — enable Maps JavaScript API.
       # When absent, pages fall back to an OpenStreetMap link.
       VITE_GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+      # Admin services panel — set these so the dashboard shows clickable links
+      # to MinIO console and Mailpit for admin users.
+      VITE_MINIO_CONSOLE_URL: ${VITE_MINIO_CONSOLE_URL:-}
+      VITE_MAILPIT_URL: ${VITE_MAILPIT_URL:-}
     volumes:
       - ./apps/web:/app/apps/web
       - ./packages:/app/packages

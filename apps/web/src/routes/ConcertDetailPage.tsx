@@ -531,28 +531,15 @@ function PhotoGallery({
       // Still proceed with the first MAX_BATCH files
     }
     const fileList = allFiles.slice(0, MAX_BATCH);
-    const total = fileList.length;
 
-    setUploading(true);
-    setGlobalUploading(true);
-    setUploadPercent(0);
-    setGlobalUploadPercent(0);
-    setBatchCurrent(0);
-    setBatchTotal(total);
-    setBatchFileName("");
-    setBatchPhase("uploading");
-    setUploadError(null);
-
-    // Pre-flight: filter out client-side duplicates (skip, don't abort)
+    // Pre-flight dedup — run before showing the overlay so we know the real count.
+    // Duplicates are silently skipped; if a hash fails we let the server catch it.
     const existingHashes = new Set(photos.map((p) => p.contentHash).filter(Boolean));
-    const skipped: string[] = [];
     const toUpload: File[] = [];
     for (const file of fileList) {
       try {
         const hash = await hashFile(file);
-        if (existingHashes.has(hash)) {
-          skipped.push(file.name);
-        } else {
+        if (!existingHashes.has(hash)) {
           existingHashes.add(hash);
           toUpload.push(file);
         }
@@ -560,6 +547,22 @@ function PhotoGallery({
         toUpload.push(file); // hash failed — let server catch it
       }
     }
+
+    // Everything was a duplicate — nothing to do, silently bail
+    if (toUpload.length === 0) {
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+
+    setUploading(true);
+    setGlobalUploading(true);
+    setUploadPercent(0);
+    setGlobalUploadPercent(0);
+    setBatchCurrent(0);
+    setBatchTotal(toUpload.length);
+    setBatchFileName("");
+    setBatchPhase("uploading");
+    setUploadError(null);
 
     const failed: string[] = [];
 
@@ -591,11 +594,8 @@ function PhotoGallery({
         }
       }
 
-      // Summarise any skips or failures
-      const msgs: string[] = [];
-      if (skipped.length) msgs.push(`${skipped.length} duplicate${skipped.length > 1 ? "s" : ""} skipped`);
-      if (failed.length)  msgs.push(`${failed.length} failed: ${failed.join(", ")}`);
-      if (msgs.length) setUploadError(msgs.join(" · "));
+      // Only report actual upload failures; duplicates are silently skipped
+      if (failed.length) setUploadError(`${failed.length} failed: ${failed.join(", ")}`);
     } finally {
       setUploading(false);
       setGlobalUploading(false);

@@ -1,0 +1,35 @@
+node_modules
+dist
+build
+.turbo
+.cache
+
+.env
+.env.local
+.env.*.local
+!.env.example
+
+*.log
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+coverage
+*.tsbuildinfo
+
+# Drizzle local artifacts
+apps/api/drizzle/meta/_journal.json.bak
+
+# Local data dumps
+/data
+/backups
+*.sql.gz
+
+# Personal data exports
+Concerts\ -\ Shows.csv
+*.csv
+
+# Claude Code local settings
+.claude/settings.local.json

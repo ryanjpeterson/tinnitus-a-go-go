@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    // No `rootDir`: the worker imports the Drizzle schema directly from ../api/src/db,
+    // which lives outside src/. Build output paths will mirror the relative tree.
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "declaration": false,
+    "noEmit": false
+  },
+  "include": ["src/**/*", "../api/src/db/schema.ts"]
+}

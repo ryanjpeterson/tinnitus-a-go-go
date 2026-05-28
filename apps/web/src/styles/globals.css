@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    background-color: #141416;
+    background-image:
+      radial-gradient(ellipse at top, rgba(168, 255, 62, 0.06), transparent 60%),
+      radial-gradient(ellipse at bottom, rgba(255, 61, 110, 0.04), transparent 60%);
+  }
+  ::selection { background: #A8FF3E; color: #141416; }
+}
+
+@layer utilities {
+  .wordmark-display {
+    font-family: "Antonio", sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+  .wordmark-script {
+    font-family: "Caveat Brush", cursive;
+    letter-spacing: 0.02em;
+  }
+  .tag-pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+}

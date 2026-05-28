@@ -1,0 +1,382 @@
+/**
+ * Venue routes.
+ *
+ *   GET    /venues               paginated list of venues the user has shows at
+ *   GET    /venues/:slug         detail + that user's concerts at this venue (also matches alias slugs)
+ *   PATCH  /venues/:slug         update venue info (name, city, region, country, lat, lng, capacity)
+ *   POST   /venues/:slug/photo   upload a cover photo for a venue
+ *   POST   /venues/:slug/aliases add an alias name for this venue
+ *   DELETE /venues/:slug/aliases/:aliasId  remove an alias
+ */
+
+import type { FastifyInstance } from "fastify";
+import { desc, eq, inArray, sql, ilike, and, ne } from "drizzle-orm";
+import { z } from "zod";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { db, schema } from "../db/client.js";
+import { s3, bucket } from "../lib/s3.js";
+import { env } from "../lib/env.js";
+import { slugify } from "@tagg/shared";
+import { requireUser } from "../auth/middleware.js";
+
+/** Return a browser-accessible URL for a MinIO object key (no presign needed — bucket is public). */
+function mediaUrl(key: string): string {
+  const base = env.MINIO_PUBLIC_URL ?? `http://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`;
+  return `${base}/${bucket}/${key}`;
+}
+
+export async function venueRoutes(app: FastifyInstance): Promise<void> {
+  app.addHook("preHandler", requireUser);
+
+  const listQuery = z.object({
+    q: z.string().max(128).optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(30),
+  });
+
+  // ── GET /venues ────────────────────────────────────────────────────────────
+
+  app.get("/venues", async (req, reply) => {
+    const parsed = listQuery.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Invalid query.", details: parsed.error.flatten() });
+    }
+    const { q, page, limit } = parsed.data;
+    const userId = req.user!.id;
+    const offset = (page - 1) * limit;
+
+    const userConcertIds = db
+      .select({ id: schema.concertAttendees.concertId })
+      .from(schema.concertAttendees)
+      .where(eq(schema.concertAttendees.userId, userId));
+
+    const conditions = q
+      ? and(
+          inArray(schema.concerts.id, userConcertIds),
+          ilike(schema.venues.name, `%${q}%`),
+        )
+      : inArray(schema.concerts.id, userConcertIds);
+
+    const [rows, countRows] = await Promise.all([
+      db
+        .select({
+          id: schema.venues.id,
+          name: schema.venues.name,
+          slug: schema.venues.slug,
+          city: schema.venues.city,
+          region: schema.venues.region,
+          imageKey: schema.venues.imageKey,
+          showCount: sql<number>`count(distinct ${schema.concerts.id})::int`,
+        })
+        .from(schema.venues)
+        .innerJoin(schema.concerts, eq(schema.concerts.venueId, schema.venues.id))
+        .where(conditions!)
+        .groupBy(schema.venues.id)
+        .orderBy(desc(sql`count(distinct ${schema.concerts.id})`))
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ total: sql<number>`count(distinct ${schema.venues.id})::int` })
+        .from(schema.venues)
+        .innerJoin(schema.concerts, eq(schema.concerts.venueId, schema.venues.id))
+        .where(conditions!),
+    ]);
+
+    const total = countRows[0]?.total ?? 0;
+    return reply.send({
+      venues: rows.map((v) => ({
+        ...v,
+        imageUrl: v.imageKey ? mediaUrl(v.imageKey) : null,
+      })),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      limit,
+    });
+  });
+
+  // ── GET /venues/:slug ──────────────────────────────────────────────────────
+
+  app.get("/venues/:slug", async (req, reply) => {
+    const { slug } = req.params as { slug: string };
+    const userId = req.user!.id;
+
+    // Try direct slug first, then alias slug
+    let venue = await db.query.venues.findFirst({
+      where: eq(schema.venues.slug, slug),
+    });
+
+    if (!venue) {
+      // Check if it's an alias slug — redirect to canonical
+      const alias = await db.query.venueAliases.findFirst({
+        where: eq(schema.venueAliases.slug, slug),
+        with: { canonicalVenue: true },
+      });
+      if (alias?.canonicalVenue) {
+        // Fastify 5: redirect(url) — status code set separately
+        void reply.code(302).redirect(`/venues/${alias.canonicalVenue.slug}`);
+        return reply;
+      }
+      return reply.code(404).send({ error: "Venue not found." });
+    }
+
+    const concertRows = await db
+      .select({
+        concertId: schema.concerts.id,
+        date: schema.concerts.date,
+        type: schema.concerts.type,
+        headlinerHint: schema.concerts.headlinerHint,
+        seriesName: schema.eventSeries.name,
+        status: schema.concertAttendees.status,
+        rating: schema.concertAttendees.rating,
+      })
+      .from(schema.concerts)
+      .innerJoin(
+        schema.concertAttendees,
+        and(
+          eq(schema.concertAttendees.concertId, schema.concerts.id),
+          eq(schema.concertAttendees.userId, userId),
+        ),
+      )
+      .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
+      .where(eq(schema.concerts.venueId, venue.id))
+      .orderBy(desc(schema.concerts.date));
+
+    // Fetch headliner names for all these concerts in a single query
+    const concertIds = concertRows.map((r) => r.concertId);
+    const headlinerRows = concertIds.length > 0
+      ? await db
+          .select({
+            concertId: schema.concertArtists.concertId,
+            name: schema.artists.name,
+            slug: schema.artists.slug,
+          })
+          .from(schema.concertArtists)
+          .innerJoin(schema.artists, eq(schema.concertArtists.artistId, schema.artists.id))
+          .where(
+            and(
+              inArray(schema.concertArtists.concertId, concertIds),
+              eq(schema.concertArtists.role, "headliner"),
+            ),
+          )
+      : [];
+
+    const headlinerByConcert = new Map(headlinerRows.map((r) => [r.concertId, r]));
+
+    const concerts = concertRows.map((r) => {
+      const headliner = headlinerByConcert.get(r.concertId);
+      return {
+        id: r.concertId,
+        date: r.date,
+        type: r.type,
+        headlinerHint: r.headlinerHint,
+        // Prefer real headliner artist name; fall back to headliner_hint
+        headlinerName: headliner?.name ?? r.headlinerHint ?? null,
+        headlinerSlug: headliner?.slug ?? null,
+        eventSeries: r.seriesName ? { name: r.seriesName } : null,
+        attendance: { status: r.status, rating: r.rating },
+      };
+    });
+
+    // Load aliases for this venue
+    const aliases = await db.query.venueAliases.findMany({
+      where: eq(schema.venueAliases.canonicalVenueId, venue.id),
+      orderBy: (t, { asc }) => [asc(t.activeFrom), asc(t.name)],
+    });
+
+    return reply.send({
+      venue: {
+        id: venue.id,
+        name: venue.name,
+        slug: venue.slug,
+        city: venue.city,
+        region: venue.region,
+        country: venue.country,
+        lat: venue.lat,
+        lng: venue.lng,
+        capacity: venue.capacity,
+        imageUrl: venue.imageKey ? mediaUrl(venue.imageKey) : null,
+        aliases: aliases.map((a) => ({
+          id: a.id,
+          name: a.name,
+          slug: a.slug,
+          activeFrom: a.activeFrom,
+          activeUntil: a.activeUntil,
+          notes: a.notes,
+        })),
+      },
+      concerts,
+      stats: {
+        total: concerts.length,
+        attended: concerts.filter((c) => c.attendance.status === "attended").length,
+        firstVisit: concerts.at(-1)?.date ?? null,
+        lastVisit: concerts[0]?.date ?? null,
+      },
+    });
+  });
+
+  // ── PATCH /venues/:slug ────────────────────────────────────────────────────
+
+  const venuePatchBody = z.object({
+    name:     z.string().min(1).max(255).optional(),
+    city:     z.string().max(100).nullable().optional(),
+    region:   z.string().max(100).nullable().optional(),
+    country:  z.string().max(100).nullable().optional(),
+    lat:      z.number().min(-90).max(90).nullable().optional(),
+    lng:      z.number().min(-180).max(180).nullable().optional(),
+    capacity: z.number().int().positive().nullable().optional(),
+  });
+
+  app.patch("/venues/:slug", async (req, reply) => {
+    const { slug } = req.params as { slug: string };
+
+    const venue = await db.query.venues.findFirst({
+      where: eq(schema.venues.slug, slug),
+    });
+    if (!venue) return reply.code(404).send({ error: "Venue not found." });
+
+    const parsed = venuePatchBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Invalid body.", details: parsed.error.flatten() });
+    }
+    const updates = parsed.data;
+
+    // Regenerate slug if name changes
+    let newSlug = venue.slug;
+    if (updates.name && updates.name !== venue.name) {
+      const base = slugify(`${updates.name} ${updates.city ?? venue.city ?? ""}`);
+      const conflict = await db.query.venues.findFirst({
+        where: and(eq(schema.venues.slug, base), ne(schema.venues.id, venue.id)),
+      });
+      newSlug = conflict ? `${base}-${venue.id.slice(0, 8)}` : base;
+    }
+
+    await db
+      .update(schema.venues)
+      .set({
+        ...(updates.name     !== undefined && { name:     updates.name }),
+        ...(updates.city     !== undefined && { city:     updates.city }),
+        ...(updates.region   !== undefined && { region:   updates.region }),
+        ...(updates.country  !== undefined && { country:  updates.country }),
+        ...(updates.lat      !== undefined && { lat:      updates.lat }),
+        ...(updates.lng      !== undefined && { lng:      updates.lng }),
+        ...(updates.capacity !== undefined && { capacity: updates.capacity }),
+        slug: newSlug,
+      })
+      .where(eq(schema.venues.id, venue.id));
+
+    return reply.send({ ok: true, slug: newSlug });
+  });
+
+  // ── POST /venues/:slug/aliases ─────────────────────────────────────────────
+
+  const aliasBody = z.object({
+    name:        z.string().min(1).max(255),
+    activeFrom:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    activeUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    notes:       z.string().max(500).nullable().optional(),
+  });
+
+  app.post("/venues/:slug/aliases", async (req, reply) => {
+    const { slug } = req.params as { slug: string };
+
+    const venue = await db.query.venues.findFirst({
+      where: eq(schema.venues.slug, slug),
+    });
+    if (!venue) return reply.code(404).send({ error: "Venue not found." });
+
+    const parsed = aliasBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Invalid body.", details: parsed.error.flatten() });
+    }
+    const { name, activeFrom, activeUntil, notes } = parsed.data;
+
+    // Generate a unique slug for the alias
+    const base = slugify(name);
+    const existing = await db.query.venueAliases.findFirst({
+      where: eq(schema.venueAliases.slug, base),
+    });
+    const aliasSlug = existing ? `${base}-alias-${Date.now().toString(36)}` : base;
+
+    const [created] = await db
+      .insert(schema.venueAliases)
+      .values({
+        canonicalVenueId: venue.id,
+        name,
+        slug: aliasSlug,
+        activeFrom:  activeFrom  ?? null,
+        activeUntil: activeUntil ?? null,
+        notes:       notes       ?? null,
+      })
+      .returning();
+
+    return reply.code(201).send({ ok: true, alias: created });
+  });
+
+  // ── DELETE /venues/:slug/aliases/:aliasId ──────────────────────────────────
+
+  app.delete("/venues/:slug/aliases/:aliasId", async (req, reply) => {
+    const { slug, aliasId } = req.params as { slug: string; aliasId: string };
+
+    const venue = await db.query.venues.findFirst({
+      where: eq(schema.venues.slug, slug),
+    });
+    if (!venue) return reply.code(404).send({ error: "Venue not found." });
+
+    await db
+      .delete(schema.venueAliases)
+      .where(and(
+        eq(schema.venueAliases.id, aliasId),
+        eq(schema.venueAliases.canonicalVenueId, venue.id),
+      ));
+
+    return reply.send({ ok: true });
+  });
+
+  // ── POST /venues/:slug/photo ───────────────────────────────────────────────
+
+  app.post("/venues/:slug/photo", async (req, reply) => {
+    const { slug } = req.params as { slug: string };
+
+    const venue = await db.query.venues.findFirst({
+      where: eq(schema.venues.slug, slug),
+    });
+    if (!venue) return reply.code(404).send({ error: "Venue not found." });
+
+    const file = await req.file({ limits: { fileSize: 10 * 1024 * 1024 } });
+    if (!file) return reply.code(400).send({ error: "No file uploaded." });
+
+    const mime = file.mimetype.toLowerCase();
+    const allowed = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+    if (!allowed.has(mime)) {
+      await file.toBuffer().catch(() => undefined);
+      return reply.code(415).send({ error: "Only JPEG, PNG, or WebP allowed for venue photos." });
+    }
+
+    const ext = mime === "image/png" ? ".png" : mime === "image/webp" ? ".webp" : ".jpg";
+    const objectKey = `venues/${venue.id}/cover${ext}`;
+
+    try {
+      const buffer = await file.toBuffer();
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: objectKey,
+          Body: buffer,
+          ContentType: mime,
+          ContentLength: buffer.length,
+        }),
+      );
+    } catch (err) {
+      req.log.error({ err }, "MinIO venue photo upload failed");
+      return reply.code(502).send({ error: "Storage upload failed." });
+    }
+
+    await db
+      .update(schema.venues)
+      .set({ imageKey: objectKey })
+      .where(eq(schema.venues.id, venue.id));
+
+    return reply.send({ imageUrl: mediaUrl(objectKey) });
+  });
+}

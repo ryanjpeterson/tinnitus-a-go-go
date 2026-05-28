@@ -1,0 +1,30 @@
+{
+  "name": "tinnitus-a-go-go",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Multi-user concert log. Self-hosted, invite-only.",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "docker compose up",
+    "dev:detached": "docker compose up -d",
+    "dev:tailscale": "docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d",
+    "setup:tailscale": "bash scripts/setup-tailscale.sh",
+    "down": "docker compose down",
+    "logs": "docker compose logs -f",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "db:generate": "pnpm --filter @tagg/api db:generate",
+    "db:migrate": "pnpm --filter @tagg/api db:migrate",
+    "db:studio": "pnpm --filter @tagg/api db:studio",
+    "bootstrap-invite": "pnpm --filter @tagg/api bootstrap-invite",
+    "import-csv": "pnpm --filter @tagg/api import-csv"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

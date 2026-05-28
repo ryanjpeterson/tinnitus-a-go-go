@@ -8,6 +8,7 @@
 import type { FastifyInstance } from "fastify";
 import { desc, eq, inArray, sql, and } from "drizzle-orm";
 import { z } from "zod";
+import { slugify } from "@tagg/shared";
 import { db, schema } from "../db/client.js";
 import { requireUser } from "../auth/middleware.js";
 
@@ -148,5 +149,43 @@ export async function seriesRoutes(app: FastifyInstance): Promise<void> {
         uniqueArtists: allArtistSlugs.size,
       },
     });
+  });
+
+  // ----- PATCH /series/:slug -----
+  const patchBodySchema = z.object({
+    name: z.string().min(1).max(200).optional(),
+    year: z.number().int().min(1900).max(2100).nullable().optional(),
+  });
+
+  app.patch("/series/:slug", async (req, reply) => {
+    const { slug } = req.params as { slug: string };
+    const parsed = patchBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Invalid body.", details: parsed.error.flatten() });
+    }
+
+    const series = await db.query.eventSeries.findFirst({
+      where: eq(schema.eventSeries.slug, slug),
+    });
+    if (!series) return reply.code(404).send({ error: "Series not found." });
+
+    const updates: Partial<typeof schema.eventSeries.$inferInsert> = {};
+    if (parsed.data.name !== undefined) {
+      updates.name = parsed.data.name;
+      updates.slug = slugify(parsed.data.name);
+    }
+    if (parsed.data.year !== undefined) updates.year = parsed.data.year;
+
+    if (Object.keys(updates).length === 0) {
+      return reply.send({ series });
+    }
+
+    const [updated] = await db
+      .update(schema.eventSeries)
+      .set(updates)
+      .where(eq(schema.eventSeries.id, series.id))
+      .returning();
+
+    return reply.send({ series: updated });
   });
 }

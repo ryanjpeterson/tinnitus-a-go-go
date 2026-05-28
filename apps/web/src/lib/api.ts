@@ -315,6 +315,11 @@ export const api = {
     return request<SeriesListResponse>(`/series${query}`);
   },
   getSeries: (slug: string) => request<SeriesDetailResponse>(`/series/${slug}`),
+  patchSeries: (slug: string, body: { name?: string; year?: number | null }) =>
+    request<{ series: { id: string; name: string; slug: string; year: number | null } }>(
+      `/series/${slug}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
 
   // Flyer
   uploadFlyer: (concertId: string, file: File) => {

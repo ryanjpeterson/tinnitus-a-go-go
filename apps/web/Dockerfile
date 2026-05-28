@@ -16,7 +16,7 @@ ENV NODE_ENV=development
 COPY apps/web apps/web
 COPY packages/shared packages/shared
 WORKDIR /app/apps/web
-EXPOSE 5173
+EXPOSE 4444
 CMD ["pnpm", "dev"]
 
 FROM deps AS build

@@ -184,7 +184,7 @@ services:
       - ./packages:/app/packages
       - web_node_modules:/app/apps/web/node_modules
     ports:
-      - "5173:5173"
+      - "4444:4444"
 
 volumes:
   db_data:

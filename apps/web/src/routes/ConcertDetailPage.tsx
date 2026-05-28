@@ -3,6 +3,7 @@
  */
 
 import { useState, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
@@ -203,10 +204,10 @@ function FlyerSection({ concert }: { concert: ConcertDetail }) {
         )}
       </div>
 
-      {/* Full-size flyer modal */}
-      {flyerModal && currentUrl && (
+      {/* Full-size flyer modal — portalled to body to escape any parent stacking context */}
+      {flyerModal && currentUrl && createPortal(
         <div
-          className="fixed inset-0 z-[200] bg-black flex items-center justify-center p-4"
+          className="fixed inset-0 z-[200] bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
           onClick={() => setFlyerModal(false)}
         >
           <button
@@ -219,7 +220,8 @@ function FlyerSection({ concert }: { concert: ConcertDetail }) {
             className="max-h-[90vh] max-w-full object-contain rounded"
             onClick={(e) => e.stopPropagation()}
           />
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Controls below image */}

@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Keyboard } from "swiper/modules";
 import "swiper/css";
@@ -52,8 +53,8 @@ export function PhotoCarousel({ items, initialIndex = 0, onClose }: PhotoCarouse
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
-    <div className="fixed inset-0 z-[200] bg-black flex flex-col select-none">
+  return createPortal(
+    <div className="fixed inset-0 z-[200] bg-black/85 backdrop-blur-md flex flex-col select-none">
       {/* Header bar: counter left, close right */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
         <span className="text-xs font-mono text-white/40">
@@ -119,6 +120,7 @@ export function PhotoCarousel({ items, initialIndex = 0, onClose }: PhotoCarouse
           ))}
         </Swiper>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

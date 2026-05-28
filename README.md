@@ -3,7 +3,7 @@
 A multi-user concert log for people who still believe the next show is worth the ringing.
 Self-hosted, invite-only, served directly from a personal Mac via Tailscale to a small group of friends.
 
-> **Current status:** Phase 10+ complete — artist/venue editing, venue aliases, URL paste parser, photo-artist tagging, Google Maps (custom-branded), drag-and-drop uploads, URL-synced grid editor, public show log, co-headliner rules + top-billing enforcement, SVG logo system, CMS copy editor, and a full personal stats dashboard are all live.
+> **Current status:** Phase 11 complete — video upload (MP4/MOV/WebM, ffmpeg transcoding, live progress overlay), new Illustrator SVG logo, dashboard Attended + Watchlist tiles, stats On This Day uses local browser time, shared EntityCard component across artist/venue/festival grids, production Mac mini deployment with hourly automated backups.
 
 ---
 
@@ -235,7 +235,8 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 | Routing        | React Router v6                                                      |
 | Grid editor    | AG-Grid Community v35                                                |
 | Maps           | `@vis.gl/react-google-maps` v1 (dark-styled, custom pin; OSM fallback) |
-| Image proc.    | Sharp (WebP variants, EXIF strip) via BullMQ worker                  |
+| Image proc.    | Sharp (WebP variants at 200/800/1600 px, EXIF GPS strip) via BullMQ worker |
+| Video proc.    | ffmpeg (H.264 MP4 transcode + WebP poster frame) via BullMQ worker   |
 | LLM fallback   | `@anthropic-ai/sdk` — Claude Haiku for URL paste extraction (optional)|
 | Fonts          | Antonio (display) · Caveat Brush (script) · Inter (body) · JetBrains Mono |
 | Mail (dev)     | Mailpit                                                               |
@@ -309,24 +310,29 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   │                           enforceTopBilling() prevents mixing headliner +
 │   │       │   │                           co_headliner simultaneously; ★ shown for both
 │   │       │   │                         · Attendance editor (status, rating, notes, ticket price)
-│   │       │   │                         · Photo gallery: drag-and-drop upload, reorder, delete,
-│   │       │   │                           SHA-256 dedup, "⊕ Tag artists" tagging mode
+│   │       │   │                         · Media gallery (photos + videos): drag-and-drop upload,
+│   │       │   │                           XHR progress overlay (blocks UI, live %), reorder,
+│   │       │   │                           delete, SHA-256 dedup, lightbox with video playback,
+│   │       │   │                           "⊕ Tag artists" tagging mode
 │   │       │   ├── ConcertGridPage.tsx   AG-Grid batch editor — URL-synced status filter +
 │   │       │   │                         quick search; 1 000 rows; inline editing; undo/redo
 │   │       │   ├── StatsPage.tsx         personal analytics at /app/stats:
-│   │       │   │                         overview tiles, on-this-day card, activity by year
-│   │       │   │                         (stacked bars), year×month heatmap, day-of-week +
-│   │       │   │                         month mini-charts, top 20 artists + top 15 venues,
-│   │       │   │                         rating distribution, status donut, ticket price stats,
-│   │       │   │                         milestone timeline — all custom CSS/SVG (no chart lib)
-│   │       │   ├── ArtistsPage.tsx       paginated artist card grid with search
+│   │       │   │                         overview tiles (attended count, unique artists/venues,
+│   │       │   │                         years active, avg rating, first/last show),
+│   │       │   │                         on-this-day card (uses local browser date, not server),
+│   │       │   │                         activity by year (full-width stacked bars),
+│   │       │   │                         year×month heatmap, day-of-week + month mini-charts,
+│   │       │   │                         top 20 artists + top 15 venues, rating distribution,
+│   │       │   │                         ticket price stats, milestone timeline —
+│   │       │   │                         all custom CSS/SVG (no chart lib)
+│   │       │   ├── ArtistsPage.tsx       paginated artist card grid (EntityCard) with search
 │   │       │   ├── ArtistPage.tsx        artist detail: image, bio, stats, concert history,
 │   │       │   │                         tagged photos section; inline edit form
-│   │       │   ├── VenuesPage.tsx        paginated venue card grid with search
+│   │       │   ├── VenuesPage.tsx        paginated venue card grid (EntityCard) with search
 │   │       │   ├── VenuePage.tsx         venue detail: cover photo, stats, "Also known as"
 │   │       │   │                         aliases, full Google Maps embed, show history;
 │   │       │   │                         inline edit form for all fields
-│   │       │   ├── FestivalsPage.tsx     paginated festival/series list
+│   │       │   ├── FestivalsPage.tsx     paginated festival card grid (EntityCard)
 │   │       │   ├── SeriesPage.tsx        festival detail: day-by-day lineup + stats
 │   │       │   ├── CopyEditorPage.tsx    admin CMS at /app/admin/copy: edit all landing-page
 │   │       │   │                         and UI copy in-place; grouped by section; instant
@@ -335,9 +341,13 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   │                         rating or notes in the last 14 days
 │   │       │   └── ImportsPage.tsx       admin: CSV import job queue with live status
 │   │       ├── components/
+│   │       │   ├── EntityCard.tsx        shared card component used by ArtistsPage,
+│   │       │   │                         VenuesPage, FestivalsPage — image/initials placeholder,
+│   │       │   │                         sub1/sub2 lines, aspect ratio, placeholder colours
 │   │       │   ├── VenueMap.tsx          Google Maps embed (dark style, pink/lime pin);
 │   │       │   │                         OSM fallback when API key absent
-│   │       │   └── Wordmark.tsx          SVG logo.svg via `svg` prop; CSS text fallback
+│   │       │   └── Wordmark.tsx          Illustrator-exported SVG logo (190×92.3 viewBox);
+│   │       │                             TINNITUS in white/#a8ff3e, a-go-go in #f87171
 │   │       ├── lib/
 │   │       │   ├── api.ts                typed fetch wrapper + all request/response interfaces
 │   │       │   ├── auth-context.tsx      React context: user, signOut
@@ -347,17 +357,24 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       └── styles/
 │   │           └── globals.css           Tailwind base, body gradient, ::selection
 │   │
-│   └── worker/               BullMQ worker: image processing (Sharp WebP variants
-│                             at 200/800/1600px, EXIF GPS strip)
+│   └── worker/               BullMQ worker:
+│                             · Images — Sharp WebP variants (200/800/1600 px), EXIF GPS strip
+│                             · Videos — ffmpeg H.264 MP4 transcode + WebP poster frame extraction
 │
 ├── packages/
 │   └── shared/               Zod schemas + TypeScript types shared by api + web
 │                             (AttendanceStatus, concertArtistRoles, slugify, etc.)
 │
+├── scripts/
+│   └── backup.sh             Hourly Postgres dump + MinIO mirror; 3-backup rotation;
+│                             reads TAGG_BACKUP_DIR from .env; run via cron on prod machine
+│
+├── logs/                     Backup and ops log output (gitignored except .gitkeep)
 ├── docker-compose.yml        7 services: api, web, worker, db, redis, minio,
 │                             minio-init (bucket setup), mailpit — all restart: always
 ├── .env.example              all required env vars with safe dev defaults
-├── Concerts - Shows.csv      source data — 467 historical entries (2008→2026)
+├── .npmrc                    shamefully-hoist=true — ensures pnpm hoists all deps to
+│                             root node_modules so Docker bind mounts resolve correctly
 ├── CHANGELOG.md              Keep a Changelog format, CalVer
 └── README.md
 ```
@@ -382,7 +399,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 
 Body gradient: subtle lime bloom top, pink bloom bottom. `::selection` uses lime on dark.
 
-Logo and favicon use a **newspaper cut-and-paste / ransom note** aesthetic: individual letter tiles at slight random angles, alternating paper tones (cream, off-white, black, lime, pink), mixed Impact + Georgia serif fonts. The `<Wordmark svg />` component renders `logo.svg` as an `<img>`; omitting the `svg` prop falls back to the CSS text version. All auth, landing, admin, and imports pages use the SVG wordmark.
+The logo (`Wordmark.tsx`) is an Illustrator-exported SVG (190 × 92.3 viewBox) embedded directly as React path data — no external font dependency. "TINNITUS" renders in white fill with `#a8ff3e` stroke; "a-go-go" in `#f87171` (red). The favicon (`public/favicon.svg`) uses the same path data scaled into a 32 × 32 dark rounded-rect. All auth, landing, admin, and imports pages render the `<Wordmark />` component.
 
 ---
 
@@ -438,6 +455,9 @@ pnpm import-csv -- --username <user>   # direct-to-DB CSV import (no Docker need
 
 pnpm typecheck            # typecheck all workspaces
 pnpm build                # build all workspaces
+
+# Dev seed (wipes DB and loads dummy data — dev only)
+docker compose exec api pnpm seed
 ```
 
 ---
@@ -489,7 +509,7 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | Method   | Path                           | Description                                                  |
 | -------- | ------------------------------ | ------------------------------------------------------------ |
 | `GET`    | `/concerts/:id/photos`         | List all photos for a concert                                |
-| `POST`   | `/concerts/:id/photos`         | Upload photo/video (multipart ≤30 MB); queues Sharp processing; SHA-256 dedup |
+| `POST`   | `/concerts/:id/photos`         | Upload photo (JPEG/PNG/WebP ≤30 MB) or video (MP4/MOV/WebM ≤500 MB); queues processing; SHA-256 dedup |
 | `PUT`    | `/concerts/:id/photos/order`   | Reorder photos by providing a full ordered array of IDs      |
 | `DELETE` | `/photos/:id`                  | Delete photo from MinIO and DB (uploader or admin only)      |
 | `PUT`    | `/photos/:id/artists`          | Replace all artist tags on a photo. Body: `{ artistIds: string[] }` |
@@ -558,7 +578,19 @@ pnpm --filter @tagg/api import-csv -- --username YOUR_USERNAME [--file /path/to/
 
 The script is **idempotent** — safe to re-run. Duplicate concerts (same date + venue) are skipped; past dates → `attended`, future → `attending`.
 
-### Clearing and reseeding
+### Dev seed (dummy data)
+
+Wipes the database and loads 2 users, 5 venues, 8 artists, and 13 concerts with a realistic mix of statuses. **Dev only — destructive.**
+
+```bash
+# Full reset → migrate → seed
+docker compose down -v && docker compose up -d
+docker compose exec api pnpm db:migrate
+docker compose exec api pnpm seed
+# Login: admin@example.com / password123456
+```
+
+### Clearing and reseeding with real data
 
 ```bash
 # Wipe music-domain tables only (users/sessions/invites survive):
@@ -570,8 +602,7 @@ docker compose exec db psql -U tagg -d tagg -c "
 docker compose exec api pnpm import-csv -- --username YOUR_USERNAME
 
 # Full reset (destroys all data including users):
-pnpm down -v
-docker compose up -d
+docker compose down -v && docker compose up -d
 docker compose exec api pnpm db:migrate
 # then re-run quick-start steps
 ```
@@ -726,8 +757,8 @@ crontab -e
 
 ### Stats dashboard
 - Personal analytics page at `/app/stats`
-- **Overview tiles** — total shows, attended, unique artists, unique venues, years active, average rating, first and latest show
-- **On This Day** — accent-pink card showing concerts from today's date in prior years
+- **Overview tiles** — attended count (primary), total logged, unique artists, unique venues, years active, average rating, first and latest show
+- **On This Day** — accent-pink card showing concerts from today's date in prior years; uses local browser date (not server time) so it's always correct regardless of server timezone
 - **Activity by year** — stacked bar chart: lime = attended, dim overlay = other statuses; sorted newest-first
 - **Year × month heatmap** — GitHub contribution-style grid, opacity-scaled lime cells
 - **Day of week + month of year** — mini vertical bar charts showing when you go to shows
@@ -738,8 +769,9 @@ crontab -e
 - **Milestone timeline** — 1st, 5th, 10th, 25th, 50th, 100th, 200th, 500th attended show
 - All charts custom CSS/SVG — no external chart library
 
-### Artist pages
-- Paginated card grid with search
+### Artist, venue, and festival pages
+- Shared `EntityCard` component across all three index pages — consistent image/initials placeholder, sub-lines, aspect ratio, and placeholder colour theming
+- Artist and venue grids use square aspect; festival grid uses video aspect
 - Detail: image, genre, bio, MusicBrainz link, stats (total / attended / upcoming), full concert history
 - **Inline edit form** — name, genre, bio, MusicBrainz ID, image upload
 - **Photos section** — all photos tagged with this artist across all concerts, grouped by concert, with lightbox
@@ -762,8 +794,11 @@ crontab -e
 - Save invalidates the shared `["public/copy"]` React Query cache — changes reflect on the landing page immediately with no deploy required
 - Landing page uses `useCopy(fallbacks)` hook: falls back to hardcoded strings if the DB is empty (safe on fresh installs)
 
-### Media
-- Photos and videos stored in MinIO; worker generates WebP variants (200 / 800 / 1600 px), strips EXIF GPS
+### Media (photos + videos)
+- **Photos** (JPEG/PNG/WebP ≤ 30 MB): worker generates WebP variants at 200/800/1600 px, strips EXIF GPS
+- **Videos** (MP4/MOV/WebM ≤ 500 MB): ffmpeg worker transcodes to H.264 MP4 and extracts a WebP poster frame; lightbox plays video inline with poster
+- **Upload progress overlay** — full-screen modal with spinner, live percentage, and animated progress bar blocks all interaction during upload; works for both gallery and per-artist zone uploads
+- SHA-256 dedup prevents duplicate uploads
 - Direct public bucket URLs — no presigning required
 - Flyer, artist image, venue cover photo each stored at deterministic MinIO paths
 
@@ -802,12 +837,22 @@ crontab -e
 - **SVG logo system** — `logo.svg` wordmark rendered on all auth, landing, admin, and imports pages via `<Wordmark svg />`
 - **Stats dashboard** — 12-query analytics endpoint; full-page stats view with custom CSS/SVG charts, milestone timeline, on-this-day card
 - **CMS copy editor** — `site_copy` table; admin editor at `/app/admin/copy`; `useCopy()` hook; landing page copy fully editable without a deploy
+- **Video upload** — MP4/MOV/WebM up to 500 MB; ffmpeg worker transcodes to H.264 MP4 + extracts WebP poster; lightbox plays video inline
+- **Upload progress overlay** — full-screen modal with spinner, live %, animated progress bar; blocks all interaction during upload
+- **New SVG logo** — Illustrator-exported paths embedded in `Wordmark.tsx`; no font dependency; matching favicon
+- **Dashboard tiles** — Attended count (primary tile, lime), Watchlist / interested count (purple); status breakdown strip removed from concerts list and stats page
+- **Stats: On This Day local time** — `?localDate=` param from browser; server uses `cast($date as date)` in SQL
+- **Stats: milestones headliner coalesce** — `COALESCE(headliner_hint, headliner artist, any artist)` fixes "Untitled show"
+- **Shared EntityCard** — single card component used by Artists, Venues, and Festivals index pages
+- **Production deployment** — Mac mini (Tailscale `stingray-octatonic`, `100.123.243.36`) running the full stack; data migrated from dev
+- **Automated backups** — `scripts/backup.sh` hourly Postgres dump + MinIO mirror, 3-backup rotation, `TAGG_BACKUP_DIR` from `.env`
+- **Dev seed script** — `pnpm seed` wipes and loads dummy data (2 users, 5 venues, 8 artists, 13 concerts)
+- **GitHub repo** — private repo; `shamefully-hoist` `.npmrc` so Docker bind mounts resolve pnpm workspace deps on fresh clones
 
 ### ⏳ Planned
 - **Export CSV UI** — button in the app to trigger `GET /users/me/export.csv` download (endpoint exists, no UI yet)
 - **Photo captions** — per-photo text captions
 - **Multi-user social** — "shows we both went to" views, shared activity within the instance
-- **Tailscale + prod compose** — `docker-compose.prod.yml`, Funnel setup, `pg_dump` cron docs
 
 ### 💡 Wishlist
 - **Setlist.fm display** — after saving an attended show, fetch the setlist from setlist.fm and display songs played inline; link to the setlist page; optionally store in DB for personal annotation

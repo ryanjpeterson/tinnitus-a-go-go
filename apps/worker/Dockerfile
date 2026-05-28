@@ -10,7 +10,7 @@ RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* .npmrc* ./
 COPY apps/worker/package.json apps/worker/
 COPY apps/api/package.json apps/api/
 COPY packages/shared/package.json packages/shared/

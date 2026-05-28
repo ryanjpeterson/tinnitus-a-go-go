@@ -1,11 +1,12 @@
 /**
  * requeue-stuck-photos.ts
  *
- * Finds all photos where variants IS NULL (worker never completed processing)
- * and re-enqueues a media-process job for each one.
+ * Finds all photos where variants IS NULL (worker never completed processing),
+ * clears any existing failed/waiting BullMQ jobs for those photos, then adds
+ * fresh jobs so the worker processes them with current code.
  *
- * Safe to run multiple times — BullMQ deduplicates by jobId and the worker
- * will simply overwrite the variants when it finishes.
+ * Safe to run multiple times — the obliterate-then-add pattern means old
+ * failed jobs never block new ones.
  *
  * Usage (from project root):
  *   docker compose exec api pnpm requeue-stuck
@@ -29,17 +30,32 @@ async function main() {
     process.exit(0);
   }
 
-  console.log(`[requeue] Found ${stuck.length} stuck photo(s). Enqueueing…`);
+  console.log(`[requeue] Found ${stuck.length} stuck photo(s).`);
 
+  // Remove any existing jobs for these photos (failed/waiting) so BullMQ
+  // doesn't deduplicate the fresh adds we're about to make.
+  console.log("[requeue] Clearing stale BullMQ jobs…");
+  const [waiting, failed, delayed] = await Promise.all([
+    mediaProcessQueue.getWaiting(),
+    mediaProcessQueue.getFailed(),
+    mediaProcessQueue.getDelayed(),
+  ]);
+
+  const stuckIds = new Set(stuck.map((p) => p.id));
+  const staleJobs = [...waiting, ...failed, ...delayed].filter((j) => {
+    const data = j.data as { photoId?: string };
+    return data.photoId && stuckIds.has(data.photoId);
+  });
+
+  if (staleJobs.length > 0) {
+    await Promise.all(staleJobs.map((j) => j.remove()));
+    console.log(`[requeue] Removed ${staleJobs.length} stale job(s).`);
+  }
+
+  // Add fresh jobs — no fixed jobId so BullMQ never deduplicates.
+  console.log("[requeue] Enqueueing fresh jobs…");
   for (const photo of stuck) {
-    await mediaProcessQueue.add(
-      "process",
-      { photoId: photo.id },
-      {
-        // Use photoId as jobId so re-runs don't stack duplicate jobs
-        jobId: `requeue-${photo.id}`,
-      },
-    );
+    await mediaProcessQueue.add("process", { photoId: photo.id });
     console.log(`[requeue]   queued photoId=${photo.id}  key=${photo.objectKey}`);
   }
 

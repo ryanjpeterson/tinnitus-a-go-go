@@ -7,7 +7,6 @@ import { Wordmark } from "@/components/Wordmark";
 import { api } from "@/lib/api";
 import { ConcertsPage } from "./ConcertsPage";
 import { ConcertDetailPage } from "./ConcertDetailPage";
-import { ConcertGridPage } from "./ConcertGridPage";
 import { ArtistsPage } from "./ArtistsPage";
 import { ArtistPage } from "./ArtistPage";
 import { VenuesPage } from "./VenuesPage";
@@ -350,7 +349,6 @@ export function AppShell() {
       <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <Routes>
           <Route path="concerts" element={<ConcertsPage />} />
-          <Route path="concerts/grid" element={<ConcertGridPage />} />
           <Route path="concerts/:id" element={<ConcertDetailPage />} />
           <Route path="artists" element={<ArtistsPage />} />
           <Route path="artists/:slug" element={<ArtistPage />} />

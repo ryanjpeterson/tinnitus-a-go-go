@@ -59,7 +59,6 @@ export function VenuesPage() {
                 imageUrl={v.imageUrl}
                 sub1={[v.city, v.region].filter(Boolean).join(", ") || null}
                 sub2={`${v.showCount} ${v.showCount === 1 ? "show" : "shows"}`}
-                imageAspect="video"
               />
             ))}
           </div>

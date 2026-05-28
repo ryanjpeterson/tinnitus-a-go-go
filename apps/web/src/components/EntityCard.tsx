@@ -6,19 +6,16 @@
  */
 
 import { Link } from "react-router-dom";
-import { clsx } from "clsx";
 
 interface EntityCardProps {
   href: string;
   name: string;
   /** Direct image URL — shows a photo when available. */
   imageUrl?: string | null;
-  /** First sub-line: genre, city/region, year, etc. */
+  /** First sub-line: genre, city/region, etc. */
   sub1?: string | null;
   /** Second sub-line: show count, days · artists, etc. */
   sub2?: string | null;
-  /** Image crop ratio. Venues use "video" (16 : 9); everything else "square". */
-  imageAspect?: "square" | "video";
   /** Tailwind bg-* class for the placeholder background. */
   placeholderBg?: string;
   /** Tailwind text-* class for the initials colour inside the placeholder. */
@@ -54,7 +51,6 @@ export function EntityCard({
   imageUrl,
   sub1,
   sub2,
-  imageAspect = "square",
   placeholderBg = "bg-surface-2",
   placeholderColor = "text-text-subtle",
 }: EntityCardProps) {
@@ -63,13 +59,8 @@ export function EntityCard({
       to={href}
       className="group flex flex-col rounded-lg border border-border bg-surface overflow-hidden hover:border-accent-lime transition-colors"
     >
-      {/* Image / placeholder */}
-      <div
-        className={clsx(
-          "overflow-hidden",
-          imageAspect === "video" ? "aspect-video" : "aspect-square",
-        )}
-      >
+      {/* Image / placeholder — always square for visual consistency across artists, venues, and festivals */}
+      <div className="aspect-square overflow-hidden">
         {imageUrl ? (
           <img
             src={imageUrl}

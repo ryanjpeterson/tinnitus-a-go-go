@@ -688,6 +688,46 @@ This is a friends project served from a personal Mac — no VPS. Tailscale handl
 6. Set `MINIO_PUBLIC_URL` to the externally-reachable MinIO address (used in media URLs)
 7. Optionally add `GOOGLE_MAPS_API_KEY` / `VITE_GOOGLE_MAPS_API_KEY`, `SETLISTFM_API_KEY`, `ANTHROPIC_API_KEY` in `.env`
 
+### Tailscale Funnel (public internet access)
+
+Funnel exposes the app at `https://macmini.stingray-octatonic.ts.net` on the public internet. Media is proxied through the app server (`/tagg-media/` path in Vite and nginx), so only port 5173 (or 80 for a prod build) needs to be tunnelled — MinIO port 9000 stays internal.
+
+**1 — Update `.env` on the Mac mini before enabling Funnel:**
+
+```env
+APP_URL=https://macmini.stingray-octatonic.ts.net
+MINIO_PUBLIC_URL=https://macmini.stingray-octatonic.ts.net
+CORS_ORIGINS=https://macmini.stingray-octatonic.ts.net,http://100.123.243.36:5173
+```
+
+`SESSION_COOKIE_OPTS.secure` is automatically set to `true` when `APP_URL` starts with `https://`, so cookies are hardened without any extra config.
+
+**2 — Restart to apply the new env, then enable Funnel:**
+
+```bash
+docker compose down && docker compose up -d
+
+# Serve local port 5173 via HTTPS at your Tailscale domain
+tailscale serve --bg https / http://localhost:5173
+
+# Open it to the public internet
+tailscale funnel --bg 443
+
+# Verify
+tailscale serve status
+tailscale funnel status
+```
+
+**3 — To turn Funnel off:**
+
+```bash
+tailscale funnel --bg off
+```
+
+> **Note:** With the Vite dev server (current setup), hot-module reload WebSocket connections from external users will silently fail — this has no effect on app functionality, only on live code updates. For a fully hardened public deployment, build the frontend and serve via the nginx container (port 80) instead of Vite (port 5173).
+
+---
+
 ### Automated backups
 
 `scripts/backup.sh` dumps Postgres and mirrors all MinIO media to a local directory, then rotates to keep the last 3 of each. It reads credentials from `.env` automatically.

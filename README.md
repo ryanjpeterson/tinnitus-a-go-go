@@ -143,7 +143,7 @@ Then visit:
 
 | URL                            | What                            |
 | ------------------------------ | ------------------------------- |
-| <http://localhost:5173>        | Web app (public landing page)   |
+| <http://localhost:4444>        | Web app (public landing page)   |
 | <http://localhost:3000/health> | API health                      |
 | <http://localhost:9001>        | MinIO console                   |
 | <http://localhost:8025>        | Mailpit (captures dev SMTP)     |
@@ -156,13 +156,13 @@ Credentials for everything: see [Dev logins](#dev-logins) below.
 
 > ⚠️ **Dev only.** These values come from `.env.example` and are checked into git. **Never** ship a deployed instance with any of them unchanged — rotate every secret (Postgres password, MinIO creds, `SESSION_SECRET`, SMTP) before sharing access beyond your own machine.
 
-### Web app — <http://localhost:5173>
+### Web app — <http://localhost:4444>
 
 The DB starts with zero users. To get in the first time:
 
 ```bash
 docker compose exec api pnpm bootstrap-invite
-# Open the printed http://localhost:5173/signup?invite=... URL.
+# Open the printed http://localhost:4444/signup?invite=... URL.
 # Pick a username/email/password (≥12 chars, screened against haveibeenpwned).
 # Verify your email in Mailpit (localhost:8025) before logging in.
 
@@ -171,7 +171,7 @@ docker compose exec db psql -U tagg -d tagg -c \
   "UPDATE users SET is_admin = true WHERE username = 'YOUR_USERNAME';"
 ```
 
-Subsequent logins at <http://localhost:5173/login> with the same username (or email) + password.
+Subsequent logins at <http://localhost:4444/login> with the same username (or email) + password.
 
 ### MinIO console — <http://localhost:9001>
 
@@ -695,41 +695,51 @@ This is a friends project served from a personal Mac — no VPS. Tailscale handl
 
 ### Tailscale Funnel (public internet access)
 
-Funnel exposes the app at `https://macmini.stingray-octatonic.ts.net` on the public internet. Media is proxied through the app server (`/tagg-media/` path in Vite and nginx), so only port 5173 (or 80 for a prod build) needs to be tunnelled — MinIO port 9000 stays internal.
+Funnel exposes the app at `https://macmini.stingray-octatonic.ts.net` on the public internet. Media is proxied through the Vite dev server (`/tagg-media/` path), so only port 4444 needs to be tunnelled — MinIO port 9000 stays private.
 
 **1 — Update `.env` on the Mac mini before enabling Funnel:**
 
 ```env
 APP_URL=https://macmini.stingray-octatonic.ts.net
 MINIO_PUBLIC_URL=https://macmini.stingray-octatonic.ts.net
-CORS_ORIGINS=https://macmini.stingray-octatonic.ts.net,http://100.123.243.36:5173
+CORS_ORIGINS=https://macmini.stingray-octatonic.ts.net,http://100.123.243.36:4444
 ```
 
 `SESSION_COOKIE_OPTS.secure` is automatically set to `true` when `APP_URL` starts with `https://`, so cookies are hardened without any extra config.
 
-**2 — Restart to apply the new env, then enable Funnel:**
+**2 — Pull the latest changes and restart the stack:**
 
 ```bash
+git pull
 docker compose down && docker compose up -d
+docker compose exec api pnpm db:migrate   # run if there are new migrations
+```
 
-# Serve local port 5173 via HTTPS at your Tailscale domain
-tailscale serve --bg https / http://localhost:5173
+**3 — Enable Funnel:**
 
-# Open it to the public internet
+```bash
+# Route HTTPS traffic at your Tailscale domain to the local Vite server
+tailscale serve --bg https / http://localhost:4444
+
+# Open port 443 to the public internet
 tailscale funnel --bg 443
 
-# Verify
+# Confirm both are active
 tailscale serve status
 tailscale funnel status
 ```
 
-**3 — To turn Funnel off:**
+The app will be reachable at `https://macmini.stingray-octatonic.ts.net` for anyone on the internet.
+
+**4 — To turn Funnel off:**
 
 ```bash
 tailscale funnel --bg off
+# Optionally remove the serve rule too:
+tailscale serve --bg https / off
 ```
 
-> **Note:** With the Vite dev server (current setup), hot-module reload WebSocket connections from external users will silently fail — this has no effect on app functionality, only on live code updates. For a fully hardened public deployment, build the frontend and serve via the nginx container (port 80) instead of Vite (port 5173).
+> **Note:** HMR (hot-module reload) WebSocket connections from external users will silently fail — this has no effect on app functionality, only on live code reloading. For a fully hardened public deployment, build the frontend (`docker compose exec web pnpm build`) and serve it via an nginx container on port 80 instead of the Vite dev server.
 
 ---
 

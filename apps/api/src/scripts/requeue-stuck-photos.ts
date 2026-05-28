@@ -11,7 +11,7 @@
  *   docker compose exec api pnpm requeue-stuck
  */
 
-import { db } from "../db/index.js";
+import { db } from "../db/client.js";
 import { photos } from "../db/schema.js";
 import { mediaProcessQueue } from "../lib/queues.js";
 import { isNull } from "drizzle-orm";

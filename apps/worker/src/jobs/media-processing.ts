@@ -97,6 +97,15 @@ async function processImage(
   objectKey: string,
   original: Buffer,
 ): Promise<{ variants: Record<string, string>; width: number; height: number }> {
+  // Read dimensions from a clean instance BEFORE building the transform pipeline.
+  // Calling .metadata() on a pipeline that already has .rotate()/.withMetadata()
+  // queued returns width: undefined (Sharp can't read source metadata through a
+  // transform chain), which caused width to default to 0 and skip all variants
+  // larger than thumb.
+  const meta = await sharp(original, { failOn: "none" }).metadata();
+  const width = meta.width ?? 0;
+  const height = meta.height ?? 0;
+
   // Build one pipeline that corrects EXIF orientation and strips GPS metadata.
   // We clone it for each variant so libvips only decodes the source image once,
   // avoiding the ~72 MB raw-pixel spike that occurred when we called
@@ -104,10 +113,6 @@ async function processImage(
   const pipeline = sharp(original, { failOn: "none" })
     .rotate()                    // apply EXIF orientation
     .withMetadata({ exif: {} }); // strip GPS; keep corrected orientation
-
-  const meta = await pipeline.clone().metadata();
-  const width = meta.width ?? 0;
-  const height = meta.height ?? 0;
 
   const variants: Record<string, string> = {};
 

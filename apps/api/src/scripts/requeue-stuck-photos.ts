@@ -1,9 +1,9 @@
 /**
  * requeue-stuck-photos.ts
  *
- * Finds all photos where variants IS NULL (worker never completed processing),
- * clears any existing failed/waiting BullMQ jobs for those photos, then adds
- * fresh jobs so the worker processes them with current code.
+ * Finds all photos where variants IS NULL or incomplete (missing medium/large),
+ * resets those variants to NULL, clears any stale BullMQ jobs, then adds fresh
+ * jobs so the worker reprocesses them with current code.
  *
  * Safe to run multiple times — the obliterate-then-add pattern means old
  * failed jobs never block new ones.
@@ -15,22 +15,39 @@
 import { db } from "../db/client.js";
 import { photos } from "../db/schema.js";
 import { mediaProcessQueue } from "../lib/queues.js";
-import { isNull } from "drizzle-orm";
+import { isNull, or, sql } from "drizzle-orm";
 
 async function main() {
-  console.log("[requeue] Scanning for photos with unprocessed variants…");
+  console.log("[requeue] Scanning for photos with missing or incomplete variants…");
 
+  // Also catch photos that were processed but only got thumb (width detection bug
+  // caused medium/large to be skipped when meta.width returned undefined → 0).
   const stuck = await db
     .select({ id: photos.id, objectKey: photos.objectKey })
     .from(photos)
-    .where(isNull(photos.variants));
+    .where(
+      or(
+        isNull(photos.variants),
+        // variants exists but is missing the 'medium' key (thumb-only result)
+        sql`${photos.variants} IS NOT NULL AND NOT (${photos.variants} ? 'medium')`,
+      ),
+    );
 
   if (stuck.length === 0) {
     console.log("[requeue] Nothing to do — all photos have variants.");
     process.exit(0);
   }
 
-  console.log(`[requeue] Found ${stuck.length} stuck photo(s).`);
+  console.log(`[requeue] Found ${stuck.length} photo(s) to reprocess.`);
+
+  // Reset incomplete variants to NULL so the UI shows the processing spinner
+  // while the worker regenerates them.
+  const stuckIds = stuck.map((p) => p.id);
+  await db
+    .update(photos)
+    .set({ variants: null })
+    .where(sql`${photos.id} = ANY(${stuckIds})`);
+  console.log(`[requeue] Reset variants to NULL for ${stuck.length} photo(s).`);
 
   // Remove any existing jobs for these photos (failed/waiting) so BullMQ
   // doesn't deduplicate the fresh adds we're about to make.
@@ -41,10 +58,10 @@ async function main() {
     mediaProcessQueue.getDelayed(),
   ]);
 
-  const stuckIds = new Set(stuck.map((p) => p.id));
+  const stuckIdSet = new Set(stuckIds);
   const staleJobs = [...waiting, ...failed, ...delayed].filter((j) => {
     const data = j.data as { photoId?: string };
-    return data.photoId && stuckIds.has(data.photoId);
+    return data.photoId && stuckIdSet.has(data.photoId);
   });
 
   if (staleJobs.length > 0) {

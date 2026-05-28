@@ -53,7 +53,7 @@ export function PhotoCarousel({ items, initialIndex = 0, onClose }: PhotoCarouse
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/92 flex flex-col select-none">
+    <div className="fixed inset-0 z-[200] bg-black/92 flex flex-col select-none">
       {/* Header bar: counter left, close right */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
         <span className="text-xs font-mono text-white/40">

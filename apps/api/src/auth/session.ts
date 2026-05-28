@@ -113,7 +113,10 @@ export async function cleanupExpiredSessions(): Promise<number> {
 export const SESSION_COOKIE_OPTS = {
   httpOnly: true,
   sameSite: "lax" as const,
-  secure: env.NODE_ENV === "production",
+  // Use Secure only when the app is actually served over HTTPS.
+  // Basing this on APP_URL (not NODE_ENV) means HTTP Tailscale/LAN deployments
+  // work correctly even with NODE_ENV=production.
+  secure: env.APP_URL.startsWith("https://"),
   path: "/",
   maxAge: env.SESSION_TTL_DAYS * 24 * 60 * 60,
 };

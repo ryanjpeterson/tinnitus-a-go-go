@@ -2,9 +2,9 @@
 ARG NODE_VERSION=22-alpine
 
 FROM node:${NODE_VERSION} AS base
-# ffmpeg: video transcoding / poster-frame extraction
-# libheif: HEIC/HEIF decode support for Sharp (vips must be compiled with heif support)
-# python3 + make + g++: native module build tools (sharp, canvas, etc.)
+# ffmpeg: video transcoding, poster-frame extraction, AND HEIC/HEIF decode.
+# Sharp's bundled libvips lacks the HEVC plugin for modern iPhone HEICs, so
+# the worker pre-converts HEIC → JPEG via ffmpeg before passing to Sharp.
 RUN apk add --no-cache ffmpeg
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 WORKDIR /app
@@ -33,6 +33,7 @@ COPY packages/shared packages/shared
 RUN pnpm --filter @tagg/worker build
 
 FROM node:${NODE_VERSION} AS prod
+# Same as base — ffmpeg handles HEIC decode and video transcoding
 RUN apk add --no-cache ffmpeg
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 WORKDIR /app

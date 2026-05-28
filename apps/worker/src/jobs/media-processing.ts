@@ -29,6 +29,34 @@ import { s3, bucket } from "../s3.js";
 const execFileAsync = promisify(execFile);
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HEIC normalisation
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Sharp's bundled libvips lacks the HEVC (H.265) codec required for iPhone
+// HEICs.  ffmpeg (already in the container) handles it fine, so we convert
+// HEIC/HEIF → JPEG before handing the buffer to Sharp.
+const HEIC_EXTS = new Set([".heic", ".heif"]);
+
+async function heicToJpeg(original: Buffer, ext: string): Promise<Buffer> {
+  const tmpDir = await mkdtemp(join(tmpdir(), "tagg-heic-"));
+  try {
+    const inputPath  = join(tmpDir, `input${ext}`);
+    const outputPath = join(tmpDir, "normalized.jpg");
+    await writeFile(inputPath, original);
+    await execFileAsync("ffmpeg", [
+      "-y",
+      "-i",   inputPath,
+      "-vframes", "1",
+      "-q:v", "2",   // 1 = best JPEG quality; 2 is indistinguishable and slightly smaller
+      outputPath,
+    ]);
+    return await readFile(outputPath);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // S3 helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -195,11 +223,21 @@ export async function runMediaProcess(
   });
   if (!photo) throw new Error(`Photo ${photoId} not found`);
 
-  const isVideo = VIDEO_EXTS.has(extname(photo.objectKey).toLowerCase());
+  const ext     = extname(photo.objectKey).toLowerCase();
+  const isVideo = VIDEO_EXTS.has(ext);
 
   await job.updateProgress(10);
   const original = await download(photo.objectKey);
   await job.updateProgress(30);
+
+  // HEIC/HEIF → JPEG via ffmpeg before Sharp sees the buffer.
+  // Sharp's bundled libvips lacks the HEVC (H.265) plugin needed for modern
+  // iPhone photos; ffmpeg (already installed) handles them cleanly.
+  const imageBuffer = (!isVideo && HEIC_EXTS.has(ext))
+    ? await heicToJpeg(original, ext)
+    : original;
+
+  await job.updateProgress(40);
 
   let variants: Record<string, string>;
   let width: number | null = null;
@@ -211,7 +249,7 @@ export async function runMediaProcess(
     variants = result.variants;
     durationSec = result.durationSec;
   } else {
-    const result = await processImage(photoId, photo.objectKey, original);
+    const result = await processImage(photoId, photo.objectKey, imageBuffer);
     variants = result.variants;
     width = result.width;
     height = result.height;

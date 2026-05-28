@@ -15,7 +15,7 @@
 import { db } from "../db/client.js";
 import { photos } from "../db/schema.js";
 import { mediaProcessQueue } from "../lib/queues.js";
-import { isNull, or, sql } from "drizzle-orm";
+import { isNull, or, sql, inArray } from "drizzle-orm";
 
 async function main() {
   console.log("[requeue] Scanning for photos with missing or incomplete variants…");
@@ -46,7 +46,7 @@ async function main() {
   await db
     .update(photos)
     .set({ variants: null })
-    .where(sql`${photos.id} = ANY(${stuckIds})`);
+    .where(inArray(photos.id, stuckIds));
   console.log(`[requeue] Reset variants to NULL for ${stuck.length} photo(s).`);
 
   // Remove any existing jobs for these photos (failed/waiting) so BullMQ

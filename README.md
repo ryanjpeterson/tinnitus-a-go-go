@@ -3,7 +3,7 @@
 A multi-user concert log for people who still believe the next show is worth the ringing.
 Self-hosted, invite-only, served directly from a personal Mac via Tailscale to a small group of friends.
 
-> **Current status:** Phase 11 complete — video upload (MP4/MOV/WebM, ffmpeg transcoding, live progress overlay), new Illustrator SVG logo, dashboard Attended + Watchlist tiles, stats On This Day uses local browser time, shared EntityCard component across artist/venue/festival grids, production Mac mini deployment with hourly automated backups.
+> **Current status:** Phase 12 complete — sequential photo/video upload with per-file process-wait (BullMQ polling), silent duplicate skip on batch drag, Swiper.js shared `PhotoCarousel` lightbox (keyboard/swipe/mouse), semi-transparent blurred modal overlays portalled to `<body>` to escape CSS stacking contexts, body scroll-lock while any modal is open, flyer repositioned below the header on mobile/tablet, entity cards unified to 16:9 aspect ratio across Artists/Venues/Festivals, background glow fixed to viewport, stats page 500 fix (`event_series_id` column).
 
 ---
 
@@ -343,7 +343,12 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       ├── components/
 │   │       │   ├── EntityCard.tsx        shared card component used by ArtistsPage,
 │   │       │   │                         VenuesPage, FestivalsPage — image/initials placeholder,
-│   │       │   │                         sub1/sub2 lines, aspect ratio, placeholder colours
+│   │       │   │                         sub1/sub2 lines, 16:9 aspect ratio, placeholder colour theming
+│   │       │   ├── PhotoCarousel.tsx     full-screen Swiper lightbox shared across the app:
+│   │       │   │                         touch swipe, mouse drag, keyboard ← →, Escape to close,
+│   │       │   │                         video slides with autoplay + controls, per-slide captions,
+│   │       │   │                         portalled to document.body (escapes CSS stacking contexts),
+│   │       │   │                         semi-transparent blurred overlay, body scroll-lock on open
 │   │       │   ├── VenueMap.tsx          Google Maps embed (dark style, pink/lime pin);
 │   │       │   │                         OSM fallback when API key absent
 │   │       │   └── Wordmark.tsx          Illustrator-exported SVG logo (190×92.3 viewBox);
@@ -782,12 +787,12 @@ crontab -e
 - Artist search with fuzzy "did you mean?" suggestion; type a new name to create on save
 
 ### Concert detail
-- **Flyer panel** — drag-and-drop or click to upload; SHA-256 dedup; delete
+- **Flyer panel** — drag-and-drop or click to upload; SHA-256 dedup; delete; tap to open full-screen modal; on mobile/tablet the flyer appears inline between the title/date/venue header and the concert meta editor; on desktop it is a sticky left column
 - **Compact map** — 160 px Google Maps snippet in the header when venue has lat/lng
 - **Concert info editor** — inline edit: date, type, venue (with autocomplete), event/festival name, notes, source URL
 - **Lineup editor** — add/remove/reorder artists per role tier; fuzzy artist search; free-text new artist creation; `enforceTopBilling()` cascades role changes to prevent mixing `headliner` + `co_headliner`; ★ indicator shown for both headliner and co_headliner roles
 - **Attendance editor** — status, rating (1–10), personal notes, ticket price
-- **Photo gallery** — drag-and-drop or click upload; sequential uploads (no server overload); SHA-256 dedup; reorder with ← → controls; delete with confirm overlay; lightbox
+- **Photo gallery** — drag-and-drop or click upload; **sequential upload**: each file uploads, then polls BullMQ until `processing = false` before the next begins — photo appears in gallery immediately, no server overload; silent duplicate skip on batch drag (SHA-256 dedup, no error shown); reorder with ← → controls; delete with confirm overlay; Swiper lightbox (`PhotoCarousel`)
 - **"⊕ Tag artists" mode** — pick an artist from the lineup, tap photos to select (lime checkmark overlay), click "Tag N photos" to assign; existing tags shown as initials badges; click a badge to untag; multi-pass support
 
 ### Co-headliner support
@@ -810,8 +815,7 @@ crontab -e
 - All charts custom CSS/SVG — no external chart library
 
 ### Artist, venue, and festival pages
-- Shared `EntityCard` component across all three index pages — consistent image/initials placeholder, sub-lines, aspect ratio, and placeholder colour theming
-- Artist and venue grids use square aspect; festival grid uses video aspect
+- Shared `EntityCard` component across all three index pages — consistent image/initials placeholder, sub-lines, **16:9 aspect ratio**, and placeholder colour theming
 - Detail: image, genre, bio, MusicBrainz link, stats (total / attended / upcoming), full concert history
 - **Inline edit form** — name, genre, bio, MusicBrainz ID, image upload
 - **Photos section** — all photos tagged with this artist across all concerts, grouped by concert, with lightbox
@@ -837,8 +841,11 @@ crontab -e
 ### Media (photos + videos)
 - **Photos** (JPEG/PNG/WebP ≤ 30 MB): worker generates WebP variants at 200/800/1600 px, strips EXIF GPS
 - **Videos** (MP4/MOV/WebM ≤ 500 MB): ffmpeg worker transcodes to H.264 MP4 and extracts a WebP poster frame; lightbox plays video inline with poster
-- **Upload progress overlay** — full-screen modal with spinner, live percentage, and animated progress bar blocks all interaction during upload; works for both gallery and per-artist zone uploads
-- SHA-256 dedup prevents duplicate uploads
+- **Sequential upload** — files upload one at a time; after each upload the client polls the API every 2 s until the BullMQ worker sets `processing = false`, then shows the photo in the gallery before starting the next file; prevents server overload and gives immediate visual feedback
+- **Silent duplicate skip** — on batch drag, each file is SHA-256 hashed client-side; already-present hashes are skipped without an error; only new files are uploaded
+- **Upload progress overlay** — full-screen modal with spinner, file counter ("Photo 2 of 5"), filename, live percentage, animated progress bar, and a "Worker processing…" phase; blocks all interaction during upload
+- **Swiper lightbox** (`PhotoCarousel`) — shared component for the concert gallery and artist photos; touch swipe, mouse drag, keyboard ← → navigation, Escape to close; portalled to `document.body` so it sits above all page stacking contexts; `bg-black/85 backdrop-blur-md` overlay; body `overflow-hidden` lock applied on open and removed on close
+- SHA-256 dedup at both client (skip before upload) and server (flyer endpoint) levels
 - Direct public bucket URLs — no presigning required
 - Flyer, artist image, venue cover photo each stored at deterministic MinIO paths
 
@@ -888,6 +895,15 @@ crontab -e
 - **Automated backups** — `scripts/backup.sh` hourly Postgres dump + MinIO mirror, 3-backup rotation, `TAGG_BACKUP_DIR` from `.env`
 - **Dev seed script** — `pnpm seed` wipes and loads dummy data (2 users, 5 venues, 8 artists, 13 concerts)
 - **GitHub repo** — private repo; `shamefully-hoist` `.npmrc` so Docker bind mounts resolve pnpm workspace deps on fresh clones
+- **Sequential upload + process-wait** — one file at a time; BullMQ polling per file; photo visible in gallery before next upload starts
+- **Silent duplicate skip** — batch drag skips already-present files (SHA-256 client-side); no error shown for skips
+- **Swiper lightbox (`PhotoCarousel`)** — shared full-screen carousel: swipe/drag/keyboard, video support, captions, portalled to `<body>`, blurred overlay, scroll-lock; replaces all manual lightbox implementations
+- **Modal portal fix** — both the photo carousel and flyer modal use `createPortal(…, document.body)` to escape CSS stacking contexts created by parent `position: relative` + `z-index`; blurred semi-transparent overlay (`bg-black/85 backdrop-blur-md`)
+- **Body scroll-lock** — `overflow-hidden` added to `<body>` on modal open, removed on close; prevents page scroll behind active lightbox or flyer
+- **Flyer mobile/tablet layout** — below `lg` the flyer moves inline between the title/date/venue header and the concert meta editor; desktop sticky-left column unchanged
+- **Entity cards 16:9 aspect ratio** — `EntityCard` unified to `aspect-video` across Artists, Venues, and Festivals index grids
+- **Background glow fixed to viewport** — `background-attachment: fixed` so the gradient stays pinned as content scrolls over it
+- **Stats 500 fix** — corrected `c.series_id` → `c.event_series_id` in two raw SQL joins in `stats.ts`; fixed all concert links from `/shows/` → `/app/concerts/`
 
 ### ⏳ Planned
 - **Export CSV UI** — button in the app to trigger `GET /users/me/export.csv` download (endpoint exists, no UI yet)

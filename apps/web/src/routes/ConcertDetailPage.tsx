@@ -62,6 +62,17 @@ function levenshtein(a: string, b: string): number {
   return row[n]!;
 }
 
+/**
+ * localUid() requires a secure context (HTTPS / localhost) and fails
+ * over plain HTTP (e.g. Tailscale IP).  This helper uses crypto.getRandomValues
+ * which is available in all contexts and produces a good-enough local row key.
+ */
+function localUid(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Flyer section
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1655,7 +1666,7 @@ function enforceTopBilling(artists: LocalArtist[], changedUid: string): LocalArt
 }
 
 interface LocalArtist {
-  uid: string;            // local-only unique key (crypto.randomUUID)
+  uid: string;            // local-only unique key (localUid)
   artistId: string | null; // null for name-only (new) artists — server will upsert
   name: string;
   slug: string;
@@ -1696,7 +1707,7 @@ function LineupEditor({ concert }: { concert: ConcertDetail }) {
     });
     setLocalArtists(
       sorted.map((a) => ({
-        uid: crypto.randomUUID(),
+        uid: localUid(),
         artistId: a.id,
         name: a.name,
         slug: a.slug,
@@ -1785,7 +1796,7 @@ function LineupEditor({ concert }: { concert: ConcertDetail }) {
   const handleAddArtist = (artist: ArtistListItem) => {
     if (localArtists.some((a) => a.artistId === artist.id)) return;
     insertArtist({
-      uid: crypto.randomUUID(),
+      uid: localUid(),
       artistId: artist.id,
       name: artist.name,
       slug: artist.slug,
@@ -1805,7 +1816,7 @@ function LineupEditor({ concert }: { concert: ConcertDetail }) {
       handleAddArtist(addSelectedArtist);
     } else if (addQuery.trim()) {
       insertArtist({
-        uid: crypto.randomUUID(),
+        uid: localUid(),
         artistId: null,
         name: addQuery.trim(),
         slug: "",

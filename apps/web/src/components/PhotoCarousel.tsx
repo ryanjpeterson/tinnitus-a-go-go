@@ -60,7 +60,7 @@ export function PhotoCarousel({ items, initialIndex = 0, onClose }: PhotoCarouse
   }, [onClose]);
 
   return createPortal(
-    <div className="fixed inset-0 z-[200] bg-black/85 backdrop-blur-md flex flex-col select-none">
+    <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-xl flex flex-col select-none">
       {/* Header bar: counter left, close right */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
         <span className="text-xs font-mono text-white/40">
@@ -75,8 +75,8 @@ export function PhotoCarousel({ items, initialIndex = 0, onClose }: PhotoCarouse
         </button>
       </div>
 
-      {/* Swiper — fills remaining height, explicit bg so slides never bleed */}
-      <div className="flex-1 min-h-0 bg-black">
+      {/* Swiper — fills remaining height */}
+      <div className="flex-1 min-h-0">
         <Swiper
           modules={[Navigation, Keyboard]}
           navigation

@@ -69,8 +69,15 @@ async function processImage(
   objectKey: string,
   original: Buffer,
 ): Promise<{ variants: Record<string, string>; width: number; height: number }> {
-  const img = sharp(original, { failOn: "warning" });
-  const meta = await img.metadata();
+  // Build one pipeline that corrects EXIF orientation and strips GPS metadata.
+  // We clone it for each variant so libvips only decodes the source image once,
+  // avoiding the ~72 MB raw-pixel spike that occurred when we called
+  // sharp(original) separately for every size.
+  const pipeline = sharp(original, { failOn: "none" })
+    .rotate()                    // apply EXIF orientation
+    .withMetadata({ exif: {} }); // strip GPS; keep corrected orientation
+
+  const meta = await pipeline.clone().metadata();
   const width = meta.width ?? 0;
   const height = meta.height ?? 0;
 
@@ -81,11 +88,10 @@ async function processImage(
     if (width <= v.width && v.name !== "thumb") continue;
 
     const variantKey = `photos/variants/${photoId}_${v.name}.webp`;
-    const buf = await sharp(original)
-      .rotate() // apply EXIF orientation
+    const buf = await pipeline
+      .clone()
       .resize({ width: v.width, withoutEnlargement: true })
       .webp({ quality: 82, effort: 4 })
-      .withMetadata({ exif: {} }) // strip GPS; keep orientation (already applied)
       .toBuffer();
 
     await upload(variantKey, buf, "image/webp");

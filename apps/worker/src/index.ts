@@ -39,9 +39,10 @@ const mediaWorker = new Worker<MediaProcessJobData>(
   async (job) => runMediaProcess(job),
   {
     connection: redis,
-    // Up to 2 media jobs in parallel — ffmpeg is CPU-bound; 3 crashed containers
-    // under large batch uploads. Keep at 2 to leave headroom for the API process.
-    concurrency: 2,
+    // One media job at a time — Sharp decodes full-res images into raw pixel buffers
+    // (~72 MB for a 12 MP photo). Running two simultaneously caused OOM kills that
+    // took down Redis (and with it all sessions). Serialise to keep peak memory low.
+    concurrency: 1,
   },
 );
 

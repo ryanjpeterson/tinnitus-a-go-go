@@ -546,9 +546,11 @@ function PhotoGallery({
           // Continue with remaining files
         }
 
-        // Brief pause between files — lets the API and worker breathe
+        // Pause between files so the worker (concurrency: 1, single Sharp decode)
+        // has time to start processing the previous job before the next upload
+        // lands. 1500ms is enough for the API to acknowledge + BullMQ to pick up.
         if (i < toUpload.length - 1) {
-          await new Promise((r) => setTimeout(r, 400));
+          await new Promise((r) => setTimeout(r, 1500));
         }
       }
 

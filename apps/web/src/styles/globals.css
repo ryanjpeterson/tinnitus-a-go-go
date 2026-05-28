@@ -9,6 +9,7 @@
     background-image:
       radial-gradient(ellipse at top, rgba(168, 255, 62, 0.06), transparent 60%),
       radial-gradient(ellipse at bottom, rgba(255, 61, 110, 0.04), transparent 60%);
+    background-attachment: fixed;
   }
   ::selection { background: #A8FF3E; color: #141416; }
 }

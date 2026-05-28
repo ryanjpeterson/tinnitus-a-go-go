@@ -290,8 +290,13 @@ function PhotoGallery({
     queryKey: ["concerts", concertId, "photos"],
     queryFn: () => api.listPhotos(concertId),
     staleTime: 30_000,
-    refetchInterval: (q) =>
-      q.state.data?.photos.some((p) => p.processing) ? 3000 : false,
+    // Suppress the processing-state poll while an upload is in progress —
+    // it stacks against the rate limit alongside the upload requests.
+    // When idle, poll every 8 s (down from 3 s) to reduce request volume.
+    refetchInterval: (q) => {
+      if (uploading) return false;
+      return q.state.data?.photos.some((p) => p.processing) ? 8000 : false;
+    },
   });
 
   // Filter out flyers — they're shown in their own section
@@ -492,10 +497,20 @@ function PhotoGallery({
     }
   };
 
+  const MAX_BATCH = 20;
+
   const handleUpload = async (files: FileList | null): Promise<void> => {
     if (!files || files.length === 0) return;
 
-    const fileList = Array.from(files);
+    const allFiles = Array.from(files);
+    if (allFiles.length > MAX_BATCH) {
+      setUploadError(
+        `Max ${MAX_BATCH} photos per upload. You selected ${allFiles.length} — ` +
+        `upload the first ${MAX_BATCH} now, then drag the rest in a second batch.`,
+      );
+      // Still proceed with the first MAX_BATCH files
+    }
+    const fileList = allFiles.slice(0, MAX_BATCH);
     const total = fileList.length;
 
     setUploading(true);
@@ -546,11 +561,10 @@ function PhotoGallery({
           // Continue with remaining files
         }
 
-        // Pause between files so the worker (concurrency: 1, single Sharp decode)
-        // has time to start processing the previous job before the next upload
-        // lands. 1500ms is enough for the API to acknowledge + BullMQ to pick up.
+        // 2 s between files: keeps uploads well under the 100/min rate limit
+        // even with processing-state polling, and gives the worker breathing room.
         if (i < toUpload.length - 1) {
-          await new Promise((r) => setTimeout(r, 1500));
+          await new Promise((r) => setTimeout(r, 2000));
         }
       }
 

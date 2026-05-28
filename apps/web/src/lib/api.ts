@@ -195,40 +195,52 @@ export const api = {
     file: File,
     onProgress?: (pct: number) => void,
   ): Promise<{ photoId: string; objectKey: string }> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      const form = new FormData();
-      form.append("file", file, file.name);
+    // Wraps the XHR in a retry loop: if the server returns 429 (rate limited)
+    // we wait 6 seconds and try once more before surfacing the error.
+    const attempt = (): Promise<{ photoId: string; objectKey: string }> =>
+      new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const form = new FormData();
+        form.append("file", file, file.name);
 
-      xhr.upload.addEventListener("progress", (e) => {
-        if (e.lengthComputable && onProgress) {
-          onProgress(Math.round((e.loaded / e.total) * 100));
-        }
-      });
-
-      xhr.addEventListener("load", () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            resolve(JSON.parse(xhr.responseText) as { photoId: string; objectKey: string });
-          } catch {
-            reject(new ApiError("Invalid response", xhr.status));
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable && onProgress) {
+            onProgress(Math.round((e.loaded / e.total) * 100));
           }
-        } else {
-          let errMsg = "Upload failed";
-          try {
-            const body = JSON.parse(xhr.responseText) as { error?: string };
-            if (body.error) errMsg = body.error;
-          } catch { /* not JSON */ }
-          reject(new ApiError(errMsg, xhr.status));
-        }
+        });
+
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText) as { photoId: string; objectKey: string });
+            } catch {
+              reject(new ApiError("Invalid response", xhr.status));
+            }
+          } else {
+            let errMsg = "Upload failed";
+            try {
+              const body = JSON.parse(xhr.responseText) as { error?: string };
+              if (body.error) errMsg = body.error;
+            } catch { /* not JSON */ }
+            reject(new ApiError(errMsg, xhr.status));
+          }
+        });
+
+        xhr.addEventListener("error", () => reject(new ApiError("Network error during upload", 0)));
+        xhr.addEventListener("abort", () => reject(new ApiError("Upload cancelled", 0)));
+
+        xhr.open("POST", `/api/concerts/${concertId}/photos`);
+        xhr.withCredentials = true;
+        xhr.send(form);
       });
 
-      xhr.addEventListener("error", () => reject(new ApiError("Network error during upload", 0)));
-      xhr.addEventListener("abort", () => reject(new ApiError("Upload cancelled", 0)));
-
-      xhr.open("POST", `/api/concerts/${concertId}/photos`);
-      xhr.withCredentials = true;
-      xhr.send(form);
+    return attempt().catch(async (err: unknown) => {
+      if (err instanceof ApiError && err.status === 429) {
+        // Rate limited — back off 6 s then retry once
+        await new Promise((r) => setTimeout(r, 6000));
+        return attempt();
+      }
+      throw err;
     });
   },
   deletePhoto: (photoId: string) =>

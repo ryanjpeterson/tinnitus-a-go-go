@@ -111,9 +111,9 @@ async function processImage(
   const variants: Record<string, string> = {};
 
   for (const v of IMAGE_VARIANTS) {
-    // Only generate a variant if the original is wider than that breakpoint
-    if (width <= v.width && v.name !== "thumb") continue;
-
+    // No skip condition — Sharp's withoutEnlargement:true (set in the resize call
+    // below) already prevents upscaling smaller sources. Skipping here caused
+    // medium/large to be omitted whenever width was 0 or small.
     const variantKey = `photos/variants/${photoId}_${v.name}.webp`;
     const buf = await pipeline
       .clone()

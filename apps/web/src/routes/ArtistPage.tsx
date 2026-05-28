@@ -6,6 +6,7 @@ import { useState, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type ArtistPhoto } from "@/lib/api";
+import { PhotoCarousel } from "@/components/PhotoCarousel";
 
 function fmtDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -213,7 +214,7 @@ export function ArtistPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
-  const [photoLightbox, setPhotoLightbox] = useState<ArtistPhoto | null>(null);
+  const [photoLightbox, setPhotoLightbox] = useState<{ photos: ArtistPhoto[]; index: number } | null>(null);
 
   const q = useQuery({
     queryKey: ["artists", slug],
@@ -395,10 +396,10 @@ export function ArtistPage() {
                   </Link>
                 </div>
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                  {group.photos.map((p) => (
+                  {group.photos.map((p, pi) => (
                     <button
                       key={p.id}
-                      onClick={() => setPhotoLightbox(p)}
+                      onClick={() => setPhotoLightbox({ photos: group.photos, index: pi })}
                       className="aspect-square rounded overflow-hidden bg-surface border border-border hover:border-accent-lime transition-colors"
                     >
                       <img
@@ -416,33 +417,26 @@ export function ArtistPage() {
         </div>
       )}
 
-      {/* Photo lightbox */}
+      {/* Photo carousel lightbox */}
       {photoLightbox && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
-          onClick={() => setPhotoLightbox(null)}
-        >
-          <button
-            className="absolute top-4 right-4 text-white text-2xl font-mono"
-            onClick={() => setPhotoLightbox(null)}
-          >×</button>
-          <img
-            src={photoLightbox.urls.medium ?? photoLightbox.urls.original}
-            alt=""
-            className="max-h-[90vh] max-w-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/70 text-xs font-mono text-center">
-            <Link
-              to={`/app/concerts/${photoLightbox.concert.id}`}
-              className="hover:text-accent-lime transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {fmtDate(photoLightbox.concert.date)}
-              {photoLightbox.concert.venue && ` · ${photoLightbox.concert.venue.name}`}
-            </Link>
-          </div>
-        </div>
+        <PhotoCarousel
+          items={photoLightbox.photos.map((p) => ({
+            id: p.id,
+            src: p.urls.medium ?? p.urls.original,
+            srcLarge: p.urls.large,
+            caption: (
+              <Link
+                to={`/app/concerts/${p.concert.id}`}
+                className="hover:text-accent-lime transition-colors"
+              >
+                {fmtDate(p.concert.date)}
+                {p.concert.venue && ` · ${p.concert.venue.name}`}
+              </Link>
+            ),
+          }))}
+          initialIndex={photoLightbox.index}
+          onClose={() => setPhotoLightbox(null)}
+        />
       )}
     </div>
   );

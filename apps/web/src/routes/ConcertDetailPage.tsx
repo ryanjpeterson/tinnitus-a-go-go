@@ -2,13 +2,15 @@
  * Concert detail — full view of one show with flyer, lineup, attendance editor, and photo gallery.
  */
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { api, type ConcertDetail, type ArtistListItem, type VenueListItem, type ConcertArtist } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
 import { VenueMap } from "@/components/VenueMap";
+import { PhotoCarousel } from "@/components/PhotoCarousel";
+import type { CarouselItem } from "@/components/PhotoCarousel";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -265,7 +267,7 @@ interface Photo {
   processing: boolean;
   setOrder: number | null;
   contentHash: string | null;
-  urls: { original: string; thumb: string | null; medium: string | null; video: string | null };
+  urls: { original: string; thumb: string | null; medium: string | null; large: string | null; video: string | null };
 }
 
 /** SHA-256 hex of a File using the Web Crypto API (no library needed). */
@@ -298,9 +300,8 @@ function PhotoGallery({
   const [batchFileName, setBatchFileName] = useState("");
   const [batchPhase, setBatchPhase] = useState<"uploading" | "processing" | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [lightbox, setLightbox] = useState<Photo | null>(null);
-  // Ref so keyboard handler always sees the latest photos list
-  const photosNavRef = useRef<Photo[]>([]);
+  // lightboxIndex: index into `photos` of the slide to open; null = closed
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Delete: track which photo ID is awaiting confirmation
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -347,30 +348,11 @@ function PhotoGallery({
 
   // Filter out flyers — they're shown in their own section
   const photos: Photo[] = (photosQuery.data?.photos ?? []).filter((p) => p.kind !== "flyer");
-  photosNavRef.current = photos;
 
   // In reorder mode, display photos in localOrder sequence
   const displayPhotos = reordering
     ? localOrder.map((id) => photos.find((p) => p.id === id)).filter(Boolean) as Photo[]
     : photos;
-
-  // Keyboard navigation for lightbox: Escape=close, ←/→=prev/next
-  useEffect(() => {
-    if (!lightbox) return;
-    const handler = (e: KeyboardEvent) => {
-      const all = photosNavRef.current;
-      const idx = all.findIndex((p) => p.id === lightbox.id);
-      if (e.key === "Escape") {
-        setLightbox(null);
-      } else if (e.key === "ArrowRight") {
-        if (idx < all.length - 1) setLightbox(all[idx + 1]!);
-      } else if (e.key === "ArrowLeft") {
-        if (idx > 0) setLightbox(all[idx - 1]!);
-      }
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [lightbox]);
 
   const enterReorder = () => {
     setLocalOrder(photos.map((p) => p.id));
@@ -855,7 +837,7 @@ function PhotoGallery({
                   onClick={() => {
                     if (tagging) { togglePhotoForTag(p.id); return; }
                     if (reordering || confirmDeleteId === p.id) return;
-                    setLightbox(p);
+                    setLightboxIndex(photos.findIndex((ph) => ph.id === p.id));
                   }}
                   className={clsx(
                     "w-full h-full rounded overflow-hidden bg-surface border transition-colors",
@@ -1001,65 +983,20 @@ function PhotoGallery({
         </div>
       )}
 
-      {/* Lightbox */}
-      {lightbox && (() => {
-        const idx = photos.findIndex((p) => p.id === lightbox.id);
-        return (
-          <div
-            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
-            onClick={() => setLightbox(null)}
-          >
-            {/* Close */}
-            <button
-              className="absolute top-4 right-4 text-white/70 hover:text-white text-2xl font-mono w-10 h-10 flex items-center justify-center"
-              onClick={() => setLightbox(null)}
-            >×</button>
-
-            {/* Counter */}
-            {photos.length > 1 && (
-              <span className="absolute top-4 left-1/2 -translate-x-1/2 text-xs font-mono text-white/50">
-                {idx + 1} / {photos.length}
-              </span>
-            )}
-
-            {/* Prev */}
-            {idx > 0 && (
-              <button
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white text-3xl font-mono w-12 h-12 flex items-center justify-center"
-                onClick={(e) => { e.stopPropagation(); setLightbox(photos[idx - 1]!); }}
-                title="Previous (←)"
-              >‹</button>
-            )}
-
-            {/* Next */}
-            {idx < photos.length - 1 && (
-              <button
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white text-3xl font-mono w-12 h-12 flex items-center justify-center"
-                onClick={(e) => { e.stopPropagation(); setLightbox(photos[idx + 1]!); }}
-                title="Next (→)"
-              >›</button>
-            )}
-
-            {lightbox.kind === "video" ? (
-              <video
-                src={lightbox.urls.video ?? lightbox.urls.original}
-                poster={lightbox.urls.thumb ?? undefined}
-                controls
-                autoPlay
-                className="max-h-[90vh] max-w-[calc(100vw-6rem)]"
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <img
-                src={lightbox.urls.medium ?? lightbox.urls.original}
-                alt=""
-                className="max-h-[90vh] max-w-[calc(100vw-6rem)] object-contain"
-                onClick={(e) => e.stopPropagation()}
-              />
-            )}
-          </div>
-        );
-      })()}
+      {/* Photo carousel lightbox */}
+      {lightboxIndex !== null && (
+        <PhotoCarousel
+          items={photos.map((p): CarouselItem => ({
+            id: p.id,
+            src: p.urls.medium ?? p.urls.original,
+            srcLarge: p.urls.large,
+            poster: p.urls.thumb,
+            isVideo: p.kind === "video",
+          }))}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </div>
   );
 }

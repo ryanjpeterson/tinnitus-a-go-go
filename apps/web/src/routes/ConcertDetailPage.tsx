@@ -84,6 +84,7 @@ function FlyerSection({ concert }: { concert: ConcertDetail }) {
   const [error, setError] = useState<string | null>(null);
   const [localUrl, setLocalUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [flyerModal, setFlyerModal] = useState(false);
   const flyerDragCounterRef = useRef(0);
 
   const currentUrl = localUrl ?? concert.flyerUrl;
@@ -169,10 +170,24 @@ function FlyerSection({ concert }: { concert: ConcertDetail }) {
           <span className="text-sm font-mono text-accent-lime font-bold">Drop flyer</span>
         </div>
       )}
-      {/* Image area */}
-      <div className="relative aspect-[2/3] overflow-hidden bg-surface-2">
+      {/* Image area — square on mobile/tablet, portrait (2:3) on desktop */}
+      <div className="relative aspect-square lg:aspect-[2/3] overflow-hidden bg-surface-2">
         {currentUrl ? (
-          <img src={currentUrl} alt="Flyer" className="w-full h-full object-contain" />
+          <button
+            className="w-full h-full focus:outline-none"
+            title="View full size"
+            onClick={() => setFlyerModal(true)}
+          >
+            <img
+              src={currentUrl}
+              alt="Flyer"
+              className="w-full h-full object-cover lg:object-contain"
+            />
+            {/* Expand hint */}
+            <span className="absolute bottom-2 right-2 bg-black/50 text-white/70 text-[10px] font-mono px-1.5 py-0.5 rounded pointer-events-none">
+              ⤢ full
+            </span>
+          </button>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-text-subtle">
             <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="opacity-20">
@@ -185,6 +200,25 @@ function FlyerSection({ concert }: { concert: ConcertDetail }) {
           </div>
         )}
       </div>
+
+      {/* Full-size flyer modal */}
+      {flyerModal && currentUrl && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setFlyerModal(false)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/70 hover:text-white text-2xl font-mono w-10 h-10 flex items-center justify-center"
+            onClick={() => setFlyerModal(false)}
+          >×</button>
+          <img
+            src={currentUrl}
+            alt="Flyer"
+            className="max-h-[90vh] max-w-full object-contain rounded"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       {/* Controls below image */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-t border-border">

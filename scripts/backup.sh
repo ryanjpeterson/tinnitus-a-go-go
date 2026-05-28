@@ -7,8 +7,8 @@ set -euo pipefail
 # Rolling window — how many of each backup to keep
 MAX_BACKUPS=3
 
-# Project directory on this machine
-COMPOSE_DIR="$HOME/Development/tinnitus-a-go-go"
+# Project directory — derived from the script's own location (scripts/ lives at project root)
+COMPOSE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # ───────────────────────────────────────────────────────────────────────────────
 
 TIMESTAMP=$(date +%Y-%m-%d-%H%M)

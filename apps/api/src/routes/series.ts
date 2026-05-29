@@ -34,6 +34,7 @@ export async function seriesRoutes(app: FastifyInstance): Promise<void> {
       .from(schema.concertAttendees)
       .where(eq(schema.concertAttendees.userId, userId));
 
+    // Only include series that have festival_day type concerts (not regular concerts with tour names)
     const [rows, countRows] = await Promise.all([
       db
         .select({
@@ -45,7 +46,10 @@ export async function seriesRoutes(app: FastifyInstance): Promise<void> {
           artistCount: sql<number>`count(distinct ${schema.concertArtists.artistId})::int`,
         })
         .from(schema.eventSeries)
-        .innerJoin(schema.concerts, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
+        .innerJoin(schema.concerts, and(
+          eq(schema.concerts.eventSeriesId, schema.eventSeries.id),
+          eq(schema.concerts.type, "festival_day"),
+        ))
         .leftJoin(schema.concertArtists, eq(schema.concertArtists.concertId, schema.concerts.id))
         .where(inArray(schema.concerts.id, userConcertIds))
         .groupBy(schema.eventSeries.id)
@@ -55,7 +59,10 @@ export async function seriesRoutes(app: FastifyInstance): Promise<void> {
       db
         .select({ total: sql<number>`count(distinct ${schema.eventSeries.id})::int` })
         .from(schema.eventSeries)
-        .innerJoin(schema.concerts, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
+        .innerJoin(schema.concerts, and(
+          eq(schema.concerts.eventSeriesId, schema.eventSeries.id),
+          eq(schema.concerts.type, "festival_day"),
+        ))
         .where(inArray(schema.concerts.id, userConcertIds)),
     ]);
 

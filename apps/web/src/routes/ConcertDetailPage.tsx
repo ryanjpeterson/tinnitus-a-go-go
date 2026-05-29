@@ -2415,7 +2415,7 @@ export function ConcertDetailPage() {
     return (
       <div className="py-16 text-center font-mono text-sm text-accent-pink">
         Concert not found.{" "}
-        <Link to="/app/concerts" className="underline text-text-muted">Back to The Damage</Link>
+        <Link to="/app/concerts" className="underline text-text-muted">Back to Shows</Link>
       </div>
     );
   }
@@ -2444,7 +2444,7 @@ export function ConcertDetailPage() {
     <div>
       {/* Breadcrumb */}
       <Link to="/app/concerts" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
-        ← The Damage
+        ← Shows
       </Link>
 
       {/* Two-column layout on desktop; single column on mobile/tablet */}

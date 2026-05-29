@@ -287,7 +287,7 @@ export function AppShell() {
   const followupCount = followupQuery.data?.total ?? 0;
 
   const navLinks = [
-    { to: "/app/concerts", label: "The Damage" },
+    { to: "/app/concerts", label: "Shows" },
     { to: "/app/artists",  label: "Artists" },
     { to: "/app/venues",   label: "Venues" },
     { to: "/app/festivals",label: "Festivals" },
@@ -444,7 +444,7 @@ function Dashboard({
         <div className="text-xs uppercase tracking-wider text-text-muted mb-3 font-mono">Quick actions</div>
         <div className="flex flex-wrap gap-3">
           <Link to="/app/concerts" className="text-sm text-accent-lime hover:underline font-mono">
-            → Browse The Damage
+            → Browse Shows
           </Link>
           <Link to="/app/concerts?sort=date_asc&status=attending" className="text-sm text-text-muted hover:text-text-base font-mono">
             → Upcoming shows

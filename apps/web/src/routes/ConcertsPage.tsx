@@ -326,7 +326,7 @@ export function ConcertsPage() {
           </button>
           <button
             onClick={() => void handleExport()}
-            className="hidden sm:block text-xs font-mono text-text-muted hover:text-accent-lime transition-colors border border-border rounded px-2.5 py-1.5 shrink-0"
+            className="hidden sm:block text-xs font-mono text-text-muted hover:text-accent-lime transition-colors border border-border rounded px-3 py-1.5 shrink-0"
           >
             Export ↓
           </button>
@@ -340,7 +340,7 @@ export function ConcertsPage() {
                 key={tab.label}
                 onClick={() => setFilter({ status: tab.value })}
                 className={clsx(
-                  "px-2.5 py-1 rounded text-xs font-mono transition-colors",
+                  "min-w-[72px] px-3 py-1 rounded text-xs font-mono transition-colors text-center",
                   statusFilter === tab.value
                     ? tab.activeClass
                     : "text-text-muted hover:text-text-base",
@@ -350,12 +350,12 @@ export function ConcertsPage() {
               </button>
             ))}
           </div>
-          <div className="ml-auto flex gap-1 rounded border border-border p-0.5 bg-surface">
+          <div className="ml-auto flex gap-1">
             <button
               onClick={() => setFilter({ sort: "newest" })}
               className={clsx(
-                "px-2.5 py-1 rounded text-xs font-mono transition-colors",
-                sort === "newest" ? "bg-accent-lime text-bg font-bold" : "text-text-muted hover:text-text-base",
+                "min-w-[56px] px-3 py-1.5 rounded text-xs font-mono transition-colors text-center border",
+                sort === "newest" ? "bg-accent-lime text-bg font-bold border-accent-lime" : "text-text-muted hover:text-text-base border-border",
               )}
             >
               Newest
@@ -363,8 +363,8 @@ export function ConcertsPage() {
             <button
               onClick={() => setFilter({ sort: "oldest" })}
               className={clsx(
-                "px-2.5 py-1 rounded text-xs font-mono transition-colors",
-                sort === "oldest" ? "bg-accent-lime text-bg font-bold" : "text-text-muted hover:text-text-base",
+                "min-w-[56px] px-3 py-1.5 rounded text-xs font-mono transition-colors text-center border",
+                sort === "oldest" ? "bg-accent-lime text-bg font-bold border-accent-lime" : "text-text-muted hover:text-text-base border-border",
               )}
             >
               Oldest

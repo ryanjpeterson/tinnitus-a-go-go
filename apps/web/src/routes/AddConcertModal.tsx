@@ -672,7 +672,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                     type="button"
                     onClick={() => handleTypeChange(t)}
                     className={clsx(
-                      "px-3 py-1.5 text-xs font-mono transition-colors",
+                      "min-w-[64px] px-3 py-1 text-xs font-mono transition-colors text-center",
                       form.type === t
                         ? "bg-accent-lime text-bg font-bold"
                         : "bg-surface-2 text-text-muted hover:text-text-base",
@@ -879,7 +879,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                   type="button"
                   onClick={() => handleStatusChange(s.value)}
                   className={clsx(
-                    "px-3 py-1 rounded border text-xs font-mono transition-colors",
+                    "min-w-[72px] px-3 py-1 rounded border text-xs font-mono transition-colors text-center",
                     form.status === s.value
                       ? s.active
                       : "border-border text-text-muted hover:border-accent-lime",

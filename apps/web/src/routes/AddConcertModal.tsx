@@ -739,31 +739,17 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
               />
             </div>
           ) : (
-            <div className="flex gap-2">
-              <div className="flex-[3]">
-                <label className="block text-xs text-text-muted font-mono mb-1">
-                  Festival name <span className="text-accent-pink">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Festival name…"
-                  value={form.eventSeriesName}
-                  onChange={(e) => setField("eventSeriesName", e.target.value)}
-                  className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
-                />
-              </div>
-              <div className="w-24">
-                <label className="block text-xs text-text-muted font-mono mb-1">Year</label>
-                <input
-                  type="number"
-                  placeholder={new Date().getFullYear().toString()}
-                  min={1900}
-                  max={2100}
-                  value={form.eventSeriesYear}
-                  onChange={(e) => setField("eventSeriesYear", e.target.value)}
-                  className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
-                />
-              </div>
+            <div>
+              <label className="block text-xs text-text-muted font-mono mb-1">
+                Festival name <span className="text-accent-pink">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Festival name…"
+                value={form.eventSeriesName}
+                onChange={(e) => setField("eventSeriesName", e.target.value)}
+                className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+              />
             </div>
           )}
 

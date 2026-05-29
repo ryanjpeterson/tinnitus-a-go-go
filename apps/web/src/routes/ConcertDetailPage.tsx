@@ -1407,7 +1407,7 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
           {concert.eventSeries && (
             <div className="flex items-baseline gap-2">
               <dt className="text-xs text-text-subtle font-mono w-16 shrink-0">
-                {concert.type === "festival_day" ? "Festival" : "Event"}
+                {concert.type === "festival_day" ? "Festival" : "Tour"}
               </dt>
               <dd className="text-text-base">
                 {concert.eventSeries.name}
@@ -2460,6 +2460,11 @@ export function ConcertDetailPage() {
           {/* Header */}
           <div>
             <h1 className="font-display uppercase text-3xl mb-1">{title}</h1>
+            {concert.eventSeries && (
+              <Link to={`/app/festivals/${concert.eventSeries.slug}`} className="inline-block text-accent-pink hover:underline font-mono text-sm mb-1">
+                {concert.eventSeries.name}
+              </Link>
+            )}
             <div className="text-text-muted text-sm">
               <time dateTime={concert.date} className="font-mono">{fmtDateLong(concert.date)}</time>
               {concert.dateIsApproximate && <span className="ml-2 text-text-subtle text-xs">(approximate)</span>}
@@ -2471,11 +2476,6 @@ export function ConcertDetailPage() {
                 </Link>
                 {concert.venue.city && <span className="text-text-subtle"> · {concert.venue.city}</span>}
               </div>
-            )}
-            {concert.eventSeries && (
-              <Link to={`/app/festivals/${concert.eventSeries.slug}`} className="inline-block text-accent-pink hover:underline font-mono text-xs mt-0.5">
-                {concert.eventSeries.name}
-              </Link>
             )}
             {/* Compact venue map */}
             {concert.venue?.lat != null && concert.venue.lng != null && (

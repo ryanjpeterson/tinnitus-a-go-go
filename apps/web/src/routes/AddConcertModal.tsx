@@ -54,6 +54,8 @@ interface FormState {
   ticketCurrency: string;
 }
 
+const CURRENCIES = ["CAD", "USD", "EUR"] as const;
+
 const DEFAULT_FORM: FormState = {
   date: "",
   dateIsApproximate: false,
@@ -64,10 +66,10 @@ const DEFAULT_FORM: FormState = {
   eventSeriesName: "",
   eventSeriesYear: "",
   artists: [{ name: "", role: "headliner" }],
-  status: "attending",
+  status: "interested",
   personalNotes: "",
   ticketPrice: "",
-  ticketCurrency: "USD",
+  ticketCurrency: "CAD",
 };
 
 /** Levenshtein edit distance (case-insensitive inputs expected). */
@@ -314,19 +316,51 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [showOptional, setShowOptional] = useState(false);
 
-  // Close on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape" && !submitting) onClose(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose, submitting]);
-
   // Flyer upload (optional, happens after concert is created)
   const [flyerFile, setFlyerFile] = useState<File | null>(null);
   const flyerFileRef = useRef<HTMLInputElement>(null);
+  const [flyerUrl, setFlyerUrl] = useState("");
+  const [showFlyerUrlInput, setShowFlyerUrlInput] = useState(false);
 
   // URL paste parser
   const [urlInput, setUrlInput] = useState("");
+
+  // Check if form has been modified from defaults
+  const isFormDirty = (): boolean => {
+    if (form.date !== DEFAULT_FORM.date) return true;
+    if (form.venueName !== DEFAULT_FORM.venueName) return true;
+    if (form.venueCity !== DEFAULT_FORM.venueCity) return true;
+    if (form.venueRegion !== DEFAULT_FORM.venueRegion) return true;
+    if (form.eventSeriesName !== DEFAULT_FORM.eventSeriesName) return true;
+    if (form.personalNotes !== DEFAULT_FORM.personalNotes) return true;
+    if (form.ticketPrice !== DEFAULT_FORM.ticketPrice) return true;
+    if (form.artists.length !== 1) return true;
+    if (form.artists[0]?.name !== "") return true;
+    if (flyerFile !== null) return true;
+    if (flyerUrl.trim() !== "") return true;
+    if (urlInput.trim() !== "") return true;
+    return false;
+  };
+
+  // Close with confirmation if form has unsaved changes
+  const handleClose = () => {
+    if (submitting) return;
+    if (isFormDirty()) {
+      if (!window.confirm("Are you sure you want to close this modal? Any unsaved changes will be lost.")) {
+        return;
+      }
+    }
+    onClose();
+  };
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") handleClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, flyerFile, urlInput, submitting]);
+
   const [urlParsing, setUrlParsing] = useState(false);
   const [urlParseError, setUrlParseError] = useState<string | null>(null);
   const [urlParseApplied, setUrlParseApplied] = useState(false);
@@ -347,11 +381,18 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
   };
 
   const applyParsed = (parsed: ParsedEvent): void => {
+    // Auto-select status based on date: past = attended, future/none = interested
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const autoStatus: AttendanceStatus = parsed.date && parsed.date < todayStr
+      ? "attended"
+      : "interested";
+
     setForm((prev) => ({
       ...prev,
       date:            parsed.date       ?? prev.date,
       venueName:       parsed.venueName  ?? prev.venueName,
       venueCity:       parsed.venueCity  ?? prev.venueCity,
+      status:          autoStatus,
       artists: parsed.artists.length > 0
         ? parsed.artists.map((name, i) => ({
             name,
@@ -431,7 +472,9 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
   };
 
   useEffect(() => {
-    if (!firstArtistName || !form.date || setlistApplied) return;
+    // Skip if no artist, no date, already applied, or date is today or in the future
+    // (setlist.fm only has data for past concerts)
+    if (!firstArtistName || !form.date || setlistApplied || form.date >= today) return;
     // Clear stale results/errors whenever the inputs change
     setSetlistError(null);
     setSetlistResults([]);
@@ -441,7 +484,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
     }, 600);
     return () => { if (setlistTimerRef.current) clearTimeout(setlistTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firstArtistName, form.date]);
+  }, [firstArtistName, form.date, today]);
 
   const applySetlistResult = (r: SetlistfmResult) => {
     setField("venueName", r.venue);
@@ -529,6 +572,12 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
         } catch {
           // Flyer upload failure is non-fatal; user can upload from the detail page
         }
+      } else if (flyerUrl.trim()) {
+        try {
+          await api.uploadFlyerFromUrl(concertId, flyerUrl.trim());
+        } catch {
+          // Flyer URL upload failure is non-fatal; user can upload from the detail page
+        }
       }
 
       void qc.invalidateQueries({ queryKey: ["concerts"] });
@@ -546,14 +595,14 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
     /* Backdrop */
     <div
       className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-4 sm:p-8 overflow-y-auto"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
       <div className="w-full max-w-lg bg-bg border border-border rounded-xl shadow-2xl my-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="font-display uppercase text-lg">Add show</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-text-subtle hover:text-text-base transition-colors text-xl font-mono w-8 h-8 flex items-center justify-center"
           >×</button>
         </div>
@@ -856,34 +905,70 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
               {/* Flyer upload */}
               <div>
                 <label className="block text-xs text-text-muted font-mono mb-1">Flyer</label>
-                <div className="flex items-center gap-2">
-                  <label className={clsx(
-                    "text-xs font-mono px-3 py-1.5 rounded border cursor-pointer transition-colors shrink-0",
-                    "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
-                  )}>
-                    {flyerFile ? "Change" : "Choose image"}
-                    <input
-                      ref={flyerFileRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="sr-only"
-                      onChange={(e) => setFlyerFile(e.target.files?.[0] ?? null)}
-                    />
-                  </label>
-                  {flyerFile ? (
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-xs text-text-base truncate">{flyerFile.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFlyerFile(null);
-                          if (flyerFileRef.current) flyerFileRef.current.value = "";
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <label className={clsx(
+                      "text-xs font-mono px-3 py-1.5 rounded border cursor-pointer transition-colors shrink-0",
+                      "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
+                      flyerUrl && "opacity-50 cursor-not-allowed",
+                    )}>
+                      {flyerFile ? "Change" : "Choose image"}
+                      <input
+                        ref={flyerFileRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        disabled={!!flyerUrl}
+                        onChange={(e) => {
+                          setFlyerFile(e.target.files?.[0] ?? null);
+                          setFlyerUrl("");
+                          setShowFlyerUrlInput(false);
                         }}
-                        className="text-xs text-text-subtle hover:text-accent-pink transition-colors shrink-0"
-                      >×</button>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-text-subtle">No file selected</span>
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowFlyerUrlInput((v) => !v)}
+                      disabled={!!flyerFile}
+                      className={clsx(
+                        "text-xs font-mono px-3 py-1.5 rounded border transition-colors shrink-0",
+                        showFlyerUrlInput
+                          ? "border-accent-lime text-accent-lime"
+                          : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
+                        flyerFile && "opacity-50 cursor-not-allowed",
+                      )}
+                    >
+                      URL
+                    </button>
+                    {(flyerFile || flyerUrl) && (
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-xs text-text-base truncate">
+                          {flyerFile ? flyerFile.name : "URL set"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFlyerFile(null);
+                            setFlyerUrl("");
+                            setShowFlyerUrlInput(false);
+                            if (flyerFileRef.current) flyerFileRef.current.value = "";
+                          }}
+                          className="text-xs text-text-subtle hover:text-accent-pink transition-colors shrink-0"
+                        >×</button>
+                      </div>
+                    )}
+                    {!flyerFile && !flyerUrl && !showFlyerUrlInput && (
+                      <span className="text-xs text-text-subtle">No flyer selected</span>
+                    )}
+                  </div>
+                  {showFlyerUrlInput && (
+                    <input
+                      type="url"
+                      placeholder="Paste image URL…"
+                      value={flyerUrl}
+                      onChange={(e) => setFlyerUrl(e.target.value)}
+                      className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                    />
                   )}
                 </div>
               </div>
@@ -904,14 +989,13 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                 </div>
                 <div className="w-20">
                   <label className="block text-xs text-text-muted font-mono mb-1">Currency</label>
-                  <input
-                    type="text"
-                    maxLength={3}
-                    placeholder="USD"
+                  <select
                     value={form.ticketCurrency}
-                    onChange={(e) => setField("ticketCurrency", e.target.value.toUpperCase())}
-                    className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base font-mono uppercase placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
-                  />
+                    onChange={(e) => setField("ticketCurrency", e.target.value)}
+                    className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base font-mono focus:outline-none focus:border-accent-lime"
+                  >
+                    {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </div>
               </div>
 
@@ -936,7 +1020,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
           <div className="flex items-center justify-end gap-3 pt-1">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="text-xs font-mono text-text-subtle hover:text-text-base transition-colors px-3 py-1.5"
             >
               Cancel

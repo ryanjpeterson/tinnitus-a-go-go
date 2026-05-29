@@ -90,6 +90,11 @@ function FlyerSection({ concert }: { concert: ConcertDetail }) {
   const [flyerModal, setFlyerModal] = useState(false);
   const flyerDragCounterRef = useRef(0);
 
+  // URL import state
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+  const [urlImporting, setUrlImporting] = useState(false);
+
   // Lock body scroll while flyer modal is open
   useEffect(() => {
     if (!flyerModal) return;
@@ -166,6 +171,24 @@ function FlyerSection({ concert }: { concert: ConcertDetail }) {
     if (files.length > 0) await handleUpload(files);
   };
 
+  const handleUrlImport = async (): Promise<void> => {
+    if (!urlInput.trim()) return;
+    setUrlImporting(true);
+    setError(null);
+    try {
+      const res = await api.uploadFlyerFromUrl(concert.id, urlInput.trim());
+      setLocalUrl(res.flyerUrl);
+      await qc.invalidateQueries({ queryKey: ["concerts", concert.id] });
+      await qc.invalidateQueries({ queryKey: ["concerts"] });
+      setUrlInput("");
+      setShowUrlInput(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to import image from URL.");
+    } finally {
+      setUrlImporting(false);
+    }
+  };
+
   return (
     <div
       className="rounded-lg border border-border bg-surface overflow-hidden relative"
@@ -232,30 +255,68 @@ function FlyerSection({ concert }: { concert: ConcertDetail }) {
       )}
 
       {/* Controls below image */}
-      <div className="flex items-center gap-2 px-3 py-2.5 border-t border-border">
-        <label className={clsx(
-          "flex-1 text-center text-xs font-mono px-2 py-1.5 rounded border cursor-pointer transition-colors",
-          uploading
-            ? "border-border text-text-subtle cursor-not-allowed"
-            : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
-        )}>
-          {uploading ? "Uploading…" : currentUrl ? "Replace" : "Set flyer"}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="sr-only"
-            disabled={uploading}
-            onChange={(e) => void handleUpload(e.target.files)}
-          />
-        </label>
-        {currentUrl && !uploading && (
+      <div className="px-3 py-2.5 border-t border-border space-y-2">
+        <div className="flex items-center gap-2">
+          <label className={clsx(
+            "flex-1 text-center text-xs font-mono px-2 py-1.5 rounded border cursor-pointer transition-colors",
+            uploading || urlImporting
+              ? "border-border text-text-subtle cursor-not-allowed"
+              : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
+          )}>
+            {uploading ? "Uploading…" : currentUrl ? "Replace" : "Set flyer"}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              disabled={uploading || urlImporting}
+              onChange={(e) => void handleUpload(e.target.files)}
+            />
+          </label>
           <button
-            onClick={() => void handleRemove()}
-            className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors px-2 py-1.5"
+            onClick={() => setShowUrlInput((v) => !v)}
+            disabled={uploading || urlImporting}
+            className={clsx(
+              "text-xs font-mono px-2 py-1.5 rounded border transition-colors",
+              showUrlInput
+                ? "border-accent-lime text-accent-lime"
+                : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
+              (uploading || urlImporting) && "opacity-50 cursor-not-allowed",
+            )}
+            title="Import from URL"
           >
-            Remove
+            URL
           </button>
+          {currentUrl && !uploading && !urlImporting && (
+            <button
+              onClick={() => void handleRemove()}
+              className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors px-2 py-1.5"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+
+        {/* URL input */}
+        {showUrlInput && (
+          <div className="flex gap-2">
+            <input
+              type="url"
+              placeholder="Paste image URL…"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleUrlImport(); } }}
+              disabled={urlImporting}
+              className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime disabled:opacity-50"
+            />
+            <button
+              onClick={() => void handleUrlImport()}
+              disabled={urlImporting || !urlInput.trim()}
+              className="text-xs font-mono px-2 py-1 rounded bg-surface-2 border border-border text-text-muted hover:text-accent-lime hover:border-accent-lime transition-colors disabled:opacity-40"
+            >
+              {urlImporting ? "Importing…" : "Import"}
+            </button>
+          </div>
         )}
       </div>
 

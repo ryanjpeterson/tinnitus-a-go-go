@@ -123,6 +123,47 @@ function jsonldPerformers(obj: unknown): string[] {
   return [...new Set(performers)];
 }
 
+/**
+ * Extract artist names from an event name string.
+ * Handles formats like "Artist1, Artist2, Artist3" or "Artist1 / Artist2 / Artist3"
+ * Common on Eventbrite where performers aren't in separate JSON-LD fields.
+ */
+function extractArtistsFromEventName(eventName: string | null): string[] {
+  if (!eventName) return [];
+
+  // Skip if it looks like a generic event name (contains common non-artist words)
+  const skipPatterns = /\b(festival|tour|concert series|presents|night|party|showcase|celebration)\b/i;
+  if (skipPatterns.test(eventName)) return [];
+
+  // Try comma separation first (most common for Eventbrite)
+  // "AngelMaker, Ingested, Disfiguring the Goddess, Soulthief"
+  if (eventName.includes(",")) {
+    const parts = eventName.split(",").map((s) => s.trim()).filter(Boolean);
+    // Only use if we get 2+ parts and each part looks like an artist name (not too long)
+    if (parts.length >= 2 && parts.every((p) => p.length <= 50)) {
+      return parts;
+    }
+  }
+
+  // Try slash separation ("Artist1 / Artist2")
+  if (eventName.includes(" / ")) {
+    const parts = eventName.split(" / ").map((s) => s.trim()).filter(Boolean);
+    if (parts.length >= 2 && parts.every((p) => p.length <= 50)) {
+      return parts;
+    }
+  }
+
+  // Try "with" or "w/" patterns ("Headliner with Support1, Support2")
+  const withMatch = eventName.match(/^(.+?)\s+(?:with|w\/)\s+(.+)$/i);
+  if (withMatch) {
+    const headliner = withMatch[1]!.trim();
+    const supports = withMatch[2]!.split(/,|&/).map((s) => s.trim()).filter(Boolean);
+    return [headliner, ...supports];
+  }
+
+  return [];
+}
+
 /** Try to extract an event from a JSON-LD block. */
 function parseJsonLd(blocks: unknown[]): Partial<ParsedEvent> | null {
   for (const block of blocks) {
@@ -141,7 +182,13 @@ function parseJsonLd(blocks: unknown[]): Partial<ParsedEvent> | null {
     ) {
       const eventName  = jsonldString(block, "name");
       const rawDate    = jsonldString(block, "startDate", "startTime");
-      const performers = jsonldPerformers(block);
+      let performers = jsonldPerformers(block);
+
+      // If no performers found in JSON-LD, try to extract from event name
+      // (common on Eventbrite where artist names are comma-separated in the title)
+      if (performers.length === 0) {
+        performers = extractArtistsFromEventName(eventName);
+      }
 
       const locRaw = (b["location"] ?? (b["@graph"] as unknown[])
         ?.find((n: unknown) => (n as Record<string,unknown>)["location"])

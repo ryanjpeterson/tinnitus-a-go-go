@@ -336,6 +336,12 @@ export const api = {
   deleteFlyer: (concertId: string) =>
     request<void>(`/concerts/${concertId}/flyer`, { method: "DELETE" }),
 
+  uploadFlyerFromUrl: (concertId: string, url: string) =>
+    request<{ flyerUrl: string }>(`/concerts/${concertId}/flyer/url`, {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
+
   // Venue photo
   uploadVenuePhoto: (venueSlug: string, file: File) => {
     const form = new FormData();

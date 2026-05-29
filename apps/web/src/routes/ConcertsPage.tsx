@@ -138,12 +138,22 @@ function ConcertCard({
       <Link to={`/app/concerts/${concert.id}`} className="block">
         <div className="aspect-[3/2] overflow-hidden bg-surface-2 relative">
           {concert.flyerUrl ? (
-            <img
-              src={concert.flyerUrl}
-              alt={headliner}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
-            />
+            <>
+              {/* Blurred background */}
+              <img
+                src={concert.flyerUrl}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 w-full h-full object-cover blur-lg scale-110 opacity-80"
+              />
+              {/* Sharp foreground image */}
+              <img
+                src={concert.flyerUrl}
+                alt={headliner}
+                className="relative w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                loading="lazy"
+              />
+            </>
           ) : (
             <FlyerPlaceholder title={headliner} status={concert.attendance.status} />
           )}

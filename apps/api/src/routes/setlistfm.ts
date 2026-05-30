@@ -190,4 +190,168 @@ export async function setlistfmRoutes(app: FastifyInstance): Promise<void> {
     const results = mapSetlists(data.setlist ?? []);
     return reply.send(ok(results, data.total ?? results.length));
   });
+
+  // ── GET /setlistfm/setlist/:id ──────────────────────────────────────────────
+  // Fetch a specific setlist by its setlist.fm ID.
+  // Also accepts full URLs like https://www.setlist.fm/setlist/x/3b5e8864.html
+
+  const setlistIdParamSchema = z.object({
+    id: z.string().min(1).max(512),
+  });
+
+  app.get("/setlistfm/setlist/:id", async (req, reply) => {
+    const parsed = setlistIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Invalid parameter.", details: parsed.error.flatten() });
+    }
+
+    if (!env.SETLISTFM_API_KEY) {
+      return reply.send({ result: null, available: false, error: null });
+    }
+
+    let setlistId = parsed.data.id;
+
+    // Parse ID from full URL if provided
+    // URL format: https://www.setlist.fm/setlist/artist-name/year/venue-city-country-XXXXX.html
+    // The ID is the alphanumeric string before .html
+    if (setlistId.includes("setlist.fm")) {
+      const match = setlistId.match(/([a-z0-9]+)\.html$/i);
+      if (match) {
+        setlistId = match[1]!;
+      } else {
+        return reply.code(400).send({ error: "Could not parse setlist ID from URL." });
+      }
+    }
+
+    const url = `https://api.setlist.fm/rest/1.0/setlist/${setlistId}`;
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+          "x-api-key": env.SETLISTFM_API_KEY,
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+    } catch (fetchErr) {
+      const isTimeout =
+        fetchErr instanceof Error &&
+        (fetchErr.name === "TimeoutError" || fetchErr.name === "AbortError");
+      app.log.warn({ fetchErr, isTimeout }, "setlist.fm fetch by ID failed");
+      return reply.send({ result: null, available: true, error: "network_error" as SetlistfmError });
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      app.log.warn({ status: res.status }, "setlist.fm auth failure");
+      return reply.send({ result: null, available: true, error: "auth_error" as SetlistfmError });
+    }
+    if (res.status === 429) {
+      app.log.warn("setlist.fm rate limit hit");
+      return reply.send({ result: null, available: true, error: "rate_limited" as SetlistfmError });
+    }
+    if (res.status === 404) {
+      return reply.send({ result: null, available: true, error: null });
+    }
+    if (!res.ok) {
+      app.log.warn({ status: res.status }, "setlist.fm upstream error");
+      return reply.send({ result: null, available: true, error: "upstream_error" as SetlistfmError });
+    }
+
+    let data: SetlistFmSetlist;
+    try {
+      data = (await res.json()) as SetlistFmSetlist;
+    } catch (parseErr) {
+      app.log.warn({ parseErr }, "setlist.fm response parse error");
+      return reply.send({ result: null, available: true, error: "parse_error" as SetlistfmError });
+    }
+
+    const results = mapSetlists([data]);
+    return reply.send({ result: results[0] ?? null, available: true, error: null });
+  });
+
+  // ── GET /setlistfm/artist/:mbidOrName ───────────────────────────────────────
+  // Search setlist.fm for an artist's recent setlists by MBID or name.
+
+  const artistParamSchema = z.object({
+    mbidOrName: z.string().min(1).max(256),
+  });
+
+  const artistQuerySchema = z.object({
+    page: z.coerce.number().int().min(1).optional().default(1),
+  });
+
+  app.get("/setlistfm/artist/:mbidOrName", async (req, reply) => {
+    const paramParsed = artistParamSchema.safeParse(req.params);
+    if (!paramParsed.success) {
+      return reply.code(400).send({ error: "Invalid parameter.", details: paramParsed.error.flatten() });
+    }
+    const queryParsed = artistQuerySchema.safeParse(req.query);
+    if (!queryParsed.success) {
+      return reply.code(400).send({ error: "Invalid query.", details: queryParsed.error.flatten() });
+    }
+
+    // No key configured — feature unavailable
+    if (!env.SETLISTFM_API_KEY) {
+      return reply.send({ results: [], total: 0, available: false, error: null });
+    }
+
+    const { mbidOrName } = paramParsed.data;
+    const { page } = queryParsed.data;
+
+    // Check if it looks like a UUID (MBID) or a name
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mbidOrName);
+
+    const url = new URL("https://api.setlist.fm/rest/1.0/search/setlists");
+    if (isUuid) {
+      url.searchParams.set("artistMbid", mbidOrName);
+    } else {
+      url.searchParams.set("artistName", mbidOrName);
+    }
+    url.searchParams.set("p", String(page));
+
+    let res: Response;
+    try {
+      res = await fetch(url.toString(), {
+        headers: {
+          Accept: "application/json",
+          "x-api-key": env.SETLISTFM_API_KEY,
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+    } catch (fetchErr) {
+      const isTimeout =
+        fetchErr instanceof Error &&
+        (fetchErr.name === "TimeoutError" || fetchErr.name === "AbortError");
+      app.log.warn({ fetchErr, isTimeout }, "setlist.fm artist search failed");
+      return reply.send(err("network_error"));
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      app.log.warn({ status: res.status }, "setlist.fm auth failure");
+      return reply.send(err("auth_error"));
+    }
+    if (res.status === 429) {
+      app.log.warn("setlist.fm rate limit hit");
+      return reply.send(err("rate_limited"));
+    }
+    if (res.status === 404) {
+      return reply.send(ok([], 0));
+    }
+    if (!res.ok) {
+      app.log.warn({ status: res.status }, "setlist.fm upstream error");
+      return reply.send(err("upstream_error"));
+    }
+
+    let data: SetlistFmResponse;
+    try {
+      data = (await res.json()) as SetlistFmResponse;
+    } catch (parseErr) {
+      app.log.warn({ parseErr }, "setlist.fm response parse error");
+      return reply.send(err("parse_error"));
+    }
+
+    const results = mapSetlists(data.setlist ?? []);
+    return reply.send(ok(results, data.total ?? results.length));
+  });
 }

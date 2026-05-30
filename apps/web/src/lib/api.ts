@@ -89,7 +89,7 @@ export const api = {
   },
   concertStats: () => request<ConcertStatsResponse>("/concerts/stats"),
   listFollowup: () => request<{ concerts: ConcertListItem[]; total: number }>("/concerts/followup"),
-  getConcert: (id: string) => request<{ concert: ConcertDetail }>(`/concerts/${id}`),
+  getConcert: (id: string) => request<ConcertDetailResponse>(`/concerts/${id}`),
   patchConcert: (
     id: string,
     body: {
@@ -470,6 +470,38 @@ export const api = {
     const qs = new URLSearchParams({ artist: params.artist, date: params.date });
     return request<SetlistfmSearchResponse>(`/setlistfm/search?${qs.toString()}`);
   },
+  searchSetlistfmArtist: (mbidOrName: string, page?: number) => {
+    const qs = new URLSearchParams();
+    if (page && page > 1) qs.set("page", String(page));
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return request<SetlistfmSearchResponse>(`/setlistfm/artist/${encodeURIComponent(mbidOrName)}${query}`);
+  },
+  getSetlistfmById: (idOrUrl: string) => {
+    // Parse ID from URL if it's a full setlist.fm URL
+    let setlistId = idOrUrl;
+    if (idOrUrl.includes("setlist.fm")) {
+      const match = idOrUrl.match(/([a-z0-9]+)\.html$/i);
+      if (match) {
+        setlistId = match[1]!;
+      } else {
+        return Promise.reject(new ApiError("Could not parse setlist ID from URL", 400));
+      }
+    }
+    return request<SetlistfmByIdResponse>(`/setlistfm/setlist/${encodeURIComponent(setlistId)}`);
+  },
+  parseSetlistfmId: (url: string): string | null => {
+    const match = url.match(/([a-z0-9]+)\.html$/i);
+    return match ? match[1]! : null;
+  },
+  saveSetlistLink: (concertId: string, artistId: string, setlistfmId: string) =>
+    request<{ ok: true; setlistId: string | null }>(`/concerts/${concertId}/setlists/${artistId}`, {
+      method: "PUT",
+      body: JSON.stringify({ setlistfmId }),
+    }),
+  deleteSetlistLink: (concertId: string, artistId: string) =>
+    request<void>(`/concerts/${concertId}/setlists/${artistId}`, { method: "DELETE" }),
+  getArtistSetlists: (slug: string) =>
+    request<ArtistSetlistsResponse>(`/artists/${slug}/setlists`),
 
   // Admin
   uploadCsvImport: (file: File) => {
@@ -546,6 +578,7 @@ export interface ConcertListItem {
   dateIsApproximate: boolean;
   headlinerHint: string | null;
   flyerUrl: string | null;
+  flyerInherited?: boolean;
   venue: ConcertVenue | null;
   eventSeries: ConcertSeries | null;
   attendance: ConcertAttendance;
@@ -555,10 +588,21 @@ export interface ConcertListItem {
 export interface ConcertDetail extends ConcertListItem {
   flyerUrl: string | null;
   flyerHash: string | null;
+  flyerInherited: boolean;
   eventNotes: string | null;
   sourceUrl: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ConcertSetlistEntry {
+  id: string;
+  setlistfmId: string | null;
+}
+
+export interface ConcertDetailResponse {
+  concert: ConcertDetail;
+  setlists: Record<string, ConcertSetlistEntry>;
 }
 
 export interface ConcertListResponse {
@@ -912,6 +956,35 @@ export interface SetlistfmSearchResponse {
   total: number;
   available: boolean; // false when SETLISTFM_API_KEY is not configured
   error: SetlistfmError | null;
+}
+
+export interface SetlistfmByIdResponse {
+  result: SetlistfmResult | null;
+  available: boolean;
+  error: SetlistfmError | null;
+}
+
+// ─── Artist Setlist types ─────────────────────────────────────────────────────
+
+export interface ArtistSetlistSong {
+  position: number;
+  name: string;
+  isCover: boolean;
+}
+
+export interface ArtistSetlist {
+  id: string;
+  setlistfmId: string | null;
+  concertId: string;
+  concertDate: string;
+  venue: { name: string; city: string | null } | null;
+  songs: ArtistSetlistSong[];
+}
+
+export interface ArtistSetlistsResponse {
+  artist: { id: string; name: string; slug: string; mbid: string | null };
+  setlists: ArtistSetlist[];
+  total: number;
 }
 
 // ─── Public types (no auth) ───────────────────────────────────────────────────

@@ -233,8 +233,36 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       };
     });
 
+    // Fetch festival flyers for any festival_day concerts without their own flyer
+    const festivalDayIdsWithoutFlyer = concertRows
+      .filter((r) => r.type === "festival_day" && !r.flyerKey && r.seriesId)
+      .map((r) => r.seriesId!);
+
+    let festivalFlyerMap = new Map<string, string>();
+    if (festivalDayIdsWithoutFlyer.length > 0) {
+      const festivalRows = await db
+        .select({ id: schema.eventSeries.id, flyerKey: schema.eventSeries.flyerKey })
+        .from(schema.eventSeries)
+        .where(inArray(schema.eventSeries.id, festivalDayIdsWithoutFlyer));
+      for (const row of festivalRows) {
+        if (row.flyerKey) festivalFlyerMap.set(row.id, row.flyerKey);
+      }
+    }
+
+    // Apply inherited flyers
+    const concertsWithInheritedFlyers = concerts.map((c, i) => {
+      const r = concertRows[i]!;
+      if (!c.flyerUrl && r.type === "festival_day" && r.seriesId) {
+        const inheritedKey = festivalFlyerMap.get(r.seriesId);
+        if (inheritedKey) {
+          return { ...c, flyerUrl: mediaUrl(inheritedKey), flyerInherited: true };
+        }
+      }
+      return { ...c, flyerInherited: false };
+    });
+
     return reply.send({
-      concerts,
+      concerts: concertsWithInheritedFlyers,
       total: total ?? 0,
       page,
       totalPages: Math.ceil((total ?? 0) / limit),
@@ -339,7 +367,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       artistsByConcert.set(row.concertId, list);
     }
 
-    const concerts = rows.map((r) => ({
+    const baseConcerts = rows.map((r) => ({
       id: r.concertId,
       date: r.date,
       type: r.type,
@@ -370,6 +398,33 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         appearanceNotes: a.appearanceNotes,
       })),
     }));
+
+    // Fetch festival flyers for festival_day concerts without their own flyer
+    const festivalDayIdsWithoutFlyer = rows
+      .filter((r) => r.type === "festival_day" && !r.flyerKey && r.seriesId)
+      .map((r) => r.seriesId!);
+
+    let festivalFlyerMap = new Map<string, string>();
+    if (festivalDayIdsWithoutFlyer.length > 0) {
+      const festivalRows = await db
+        .select({ id: schema.eventSeries.id, flyerKey: schema.eventSeries.flyerKey })
+        .from(schema.eventSeries)
+        .where(inArray(schema.eventSeries.id, festivalDayIdsWithoutFlyer));
+      for (const row of festivalRows) {
+        if (row.flyerKey) festivalFlyerMap.set(row.id, row.flyerKey);
+      }
+    }
+
+    const concerts = baseConcerts.map((c, i) => {
+      const r = rows[i]!;
+      if (!c.flyerUrl && r.type === "festival_day" && r.seriesId) {
+        const inheritedKey = festivalFlyerMap.get(r.seriesId);
+        if (inheritedKey) {
+          return { ...c, flyerUrl: mediaUrl(inheritedKey), flyerInherited: true };
+        }
+      }
+      return { ...c, flyerInherited: false };
+    });
 
     return reply.send({ concerts, total: concerts.length });
   });
@@ -444,6 +499,31 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
 
     const attendee = concert.concertAttendees[0] ?? null;
 
+    // Flyer inheritance: festival_day concerts can inherit the festival's flyer
+    let flyerUrl: string | null = concert.flyerKey ? mediaUrl(concert.flyerKey) : null;
+    let flyerInherited = false;
+    if (!concert.flyerKey && concert.type === "festival_day" && concert.eventSeries?.flyerKey) {
+      flyerUrl = mediaUrl(concert.eventSeries.flyerKey);
+      flyerInherited = true;
+    }
+
+    // Fetch saved setlists for this concert
+    const setlistRows = await db
+      .select({
+        id: schema.setlists.id,
+        artistId: schema.setlists.artistId,
+        setlistfmId: schema.setlists.setlistfmId,
+      })
+      .from(schema.setlists)
+      .where(eq(schema.setlists.concertId, concert.id));
+
+    const setlistsByArtist: Record<string, { id: string; setlistfmId: string | null }> = {};
+    for (const row of setlistRows) {
+      if (row.artistId) {
+        setlistsByArtist[row.artistId] = { id: row.id, setlistfmId: row.setlistfmId };
+      }
+    }
+
     return reply.send({
       concert: {
         id: concert.id,
@@ -451,8 +531,9 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         type: concert.type,
         dateIsApproximate: concert.dateIsApproximate,
         headlinerHint: concert.headlinerHint,
-        flyerUrl: concert.flyerKey ? mediaUrl(concert.flyerKey) : null,
+        flyerUrl,
         flyerHash: concert.flyerHash ?? null,
+        flyerInherited,
         eventNotes: concert.eventNotes,
         sourceUrl: concert.sourceUrl,
         venue: concert.venue
@@ -491,6 +572,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         createdAt: concert.createdAt,
         updatedAt: concert.updatedAt,
       },
+      setlists: setlistsByArtist,
     });
   });
 
@@ -1254,5 +1336,84 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
     }
 
     return reply.send({ ok: true });
+  });
+
+  // ── PUT /concerts/:id/setlists/:artistId ───────────────────────────────────
+  // Save a setlist.fm link for an artist on this concert.
+
+  const putSetlistBody = z.object({
+    setlistfmId: z.string().min(1).max(512), // Can be full URL or just ID
+  });
+
+  app.put("/concerts/:id/setlists/:artistId", async (req, reply) => {
+    const { id: concertId, artistId } = req.params as { id: string; artistId: string };
+    const userId = req.user!.id;
+
+    const parsed = putSetlistBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Invalid body.", details: parsed.error.flatten() });
+    }
+
+    // Verify user is an attendee
+    const attendee = await db.query.concertAttendees.findFirst({
+      where: and(
+        eq(schema.concertAttendees.concertId, concertId),
+        eq(schema.concertAttendees.userId, userId),
+      ),
+    });
+    if (!attendee) return reply.code(404).send({ error: "Concert not found." });
+
+    // Verify artist exists
+    const artist = await db.query.artists.findFirst({
+      where: eq(schema.artists.id, artistId),
+      columns: { id: true },
+    });
+    if (!artist) return reply.code(404).send({ error: "Artist not found." });
+
+    const { setlistfmId } = parsed.data;
+
+    // Upsert the setlist
+    const [setlist] = await db
+      .insert(schema.setlists)
+      .values({
+        concertId,
+        artistId,
+        setlistfmId,
+      })
+      .onConflictDoUpdate({
+        target: schema.setlists.setlistfmId,
+        set: { concertId, artistId },
+      })
+      .returning({ id: schema.setlists.id });
+
+    return reply.send({ ok: true, setlistId: setlist?.id ?? null });
+  });
+
+  // ── DELETE /concerts/:id/setlists/:artistId ────────────────────────────────
+  // Remove a setlist link for an artist on this concert.
+
+  app.delete("/concerts/:id/setlists/:artistId", async (req, reply) => {
+    const { id: concertId, artistId } = req.params as { id: string; artistId: string };
+    const userId = req.user!.id;
+
+    // Verify user is an attendee
+    const attendee = await db.query.concertAttendees.findFirst({
+      where: and(
+        eq(schema.concertAttendees.concertId, concertId),
+        eq(schema.concertAttendees.userId, userId),
+      ),
+    });
+    if (!attendee) return reply.code(404).send({ error: "Concert not found." });
+
+    await db
+      .delete(schema.setlists)
+      .where(
+        and(
+          eq(schema.setlists.concertId, concertId),
+          eq(schema.setlists.artistId, artistId),
+        ),
+      );
+
+    return reply.code(204).send();
   });
 }

@@ -5,7 +5,7 @@
 import { useState, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type ArtistPhoto } from "@/lib/api";
+import { api, type ArtistPhoto, type ArtistSetlist, type SetlistfmResult } from "@/lib/api";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
 
 function fmtDate(iso: string): string {
@@ -229,6 +229,13 @@ export function ArtistPage() {
     staleTime: 30_000,
   });
 
+  const setlistsQ = useQuery({
+    queryKey: ["artists", slug, "setlists"],
+    queryFn: () => api.getArtistSetlists(slug!),
+    enabled: !!slug,
+    staleTime: 30_000,
+  });
+
   if (q.isLoading) {
     return <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">Loading…</div>;
   }
@@ -371,6 +378,68 @@ export function ArtistPage() {
           })
         )}
       </div>
+
+      {/* Setlists section */}
+      {(setlistsQ.data?.total ?? 0) > 0 && (
+        <div className="mt-8">
+          <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted mb-3">
+            Setlists
+            <span className="ml-2 text-text-subtle">({setlistsQ.data!.total})</span>
+          </h2>
+
+          <div className="rounded-lg border border-border bg-surface overflow-hidden">
+            {setlistsQ.data!.setlists.map((setlist) => (
+              <div
+                key={setlist.id}
+                className="border-b border-border last:border-b-0 p-4"
+              >
+                <div className="flex items-baseline gap-2 mb-2">
+                  <Link
+                    to={`/app/concerts/${setlist.concertId}`}
+                    className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors"
+                  >
+                    {fmtDate(setlist.concertDate)}
+                    {setlist.venue && (
+                      <>
+                        <span className="ml-1 text-text-subtle">· {setlist.venue.name}</span>
+                        {setlist.venue.city && <span className="text-text-subtle">, {setlist.venue.city}</span>}
+                      </>
+                    )}
+                  </Link>
+                  {setlist.setlistfmId && (
+                    <a
+                      href={`https://www.setlist.fm/setlist/-/${setlist.setlistfmId}.html`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors ml-auto"
+                    >
+                      setlist.fm ↗
+                    </a>
+                  )}
+                </div>
+
+                {setlist.songs.length > 0 && (
+                  <ol className="text-sm text-text-muted space-y-0.5">
+                    {setlist.songs.map((song, i) => (
+                      <li key={i} className="flex items-baseline gap-2">
+                        <span className="text-xs text-text-subtle tabular-nums w-5 text-right">{song.position}.</span>
+                        <span className={song.isCover ? "italic" : ""}>
+                          {song.name}
+                          {song.isCover && <span className="text-text-subtle ml-1">(cover)</span>}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+
+                {setlist.songs.length === 0 && (
+                  <p className="text-xs text-text-subtle italic">No song data available</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Photos section */}
       {(photosQ.data?.total ?? 0) > 0 && (

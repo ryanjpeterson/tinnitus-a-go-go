@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { api, type ConcertDetail, type ArtistListItem, type VenueListItem, type ConcertArtist, type SetlistfmResult } from "@/lib/api";
+import { api, type ConcertDetail, type ArtistListItem, type VenueListItem, type ConcertArtist, type SetlistfmResult, type ConcertSetlistEntry } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
 import { VenueMap } from "@/components/VenueMap";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
@@ -2249,128 +2249,409 @@ function LineupEditor({ concert }: { concert: ConcertDetail }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Setlist section (attended shows only)
+// Setlist section (attended shows only) — per-artist setlist lookups
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SetlistSection({ concert }: { concert: ConcertDetail }) {
-  const [loaded, setLoaded] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<SetlistfmResult | null>(null);
+interface ArtistSetlistState {
+  loaded: boolean;
+  loading: boolean;
+  result: SetlistfmResult | null;
+  error: string | null;
+  expanded: boolean;
+  showUrlInput: boolean;
+  urlInput: string;
+  manualUrl: string | null; // For when API doesn't work - just store the link
+}
+
+function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; savedSetlists: Record<string, ConcertSetlistEntry> }) {
+  const qc = useQueryClient();
   const [unavailable, setUnavailable] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [artistStates, setArtistStates] = useState<Record<string, ArtistSetlistState>>(() => {
+    // Initialize from saved setlists
+    const initial: Record<string, ArtistSetlistState> = {};
+    for (const [artistId, entry] of Object.entries(savedSetlists)) {
+      if (entry.setlistfmId) {
+        // setlistfmId stores the full URL
+        initial[artistId] = {
+          loaded: true,
+          loading: false,
+          result: null,
+          error: null,
+          expanded: false,
+          showUrlInput: false,
+          urlInput: "",
+          manualUrl: entry.setlistfmId,
+        };
+      }
+    }
+    return initial;
+  });
 
   const sortedArtists = [...concert.artists].sort(
     (a, b) => (ROLE_ORDER[a.role] ?? 99) - (ROLE_ORDER[b.role] ?? 99),
   );
-  const artistName = sortedArtists[0]?.name ?? null;
 
-  if (!artistName) return null;
+  if (sortedArtists.length === 0) return null;
 
-  const handleLoad = async (): Promise<void> => {
-    setLoading(true);
-    setError(null);
+  const getState = (artistId: string): ArtistSetlistState =>
+    artistStates[artistId] ?? {
+      loaded: false,
+      loading: false,
+      result: null,
+      error: null,
+      expanded: false,
+      showUrlInput: false,
+      urlInput: "",
+      manualUrl: null,
+    };
+
+  const updateState = (artistId: string, update: Partial<ArtistSetlistState>) => {
+    setArtistStates((prev) => ({
+      ...prev,
+      [artistId]: { ...getState(artistId), ...update },
+    }));
+  };
+
+  const handleLoad = async (artist: ConcertArtist): Promise<void> => {
+    updateState(artist.id, { loading: true, error: null });
     try {
-      const res = await api.searchSetlistfm({ artist: artistName, date: concert.date });
+      const res = await api.searchSetlistfm({ artist: artist.name, date: concert.date });
       if (!res.available) {
         setUnavailable(true);
-        setLoaded(true);
+        updateState(artist.id, { loaded: true, loading: false });
         return;
       }
       if (res.error) {
-        setError(
-          res.error === "rate_limited"
-            ? "Setlist.fm rate limited — try again in a moment."
-            : "Could not load setlist from setlist.fm.",
-        );
-        setLoaded(true);
+        updateState(artist.id, {
+          loaded: true,
+          loading: false,
+          error: res.error === "rate_limited"
+            ? "Rate limited — try again in a moment."
+            : "Could not load setlist.",
+        });
         return;
       }
-      setResult(res.results[0] ?? null);
-      setLoaded(true);
+      updateState(artist.id, {
+        loaded: true,
+        loading: false,
+        result: res.results[0] ?? null,
+        expanded: true,
+      });
     } catch {
-      setError("Could not reach setlist.fm.");
-    } finally {
-      setLoading(false);
+      updateState(artist.id, { loading: false, error: "Could not reach setlist.fm." });
     }
   };
 
-  const setlistUrl = result
-    ? `https://www.setlist.fm/setlist/x/${result.id}.html`
-    : null;
+  const handleLoadFromUrl = async (artistId: string, url: string): Promise<void> => {
+    if (!url.trim()) return;
+    const trimmedUrl = url.trim();
+
+    // Validate it looks like a setlist.fm URL
+    if (!trimmedUrl.includes("setlist.fm")) {
+      updateState(artistId, { error: "Please paste a setlist.fm URL" });
+      return;
+    }
+
+    updateState(artistId, { loading: true, error: null });
+    try {
+      const res = await api.getSetlistfmById(trimmedUrl);
+
+      // If API works and we got data, use it
+      if (res.available && !res.error && res.result) {
+        // Save full URL to backend
+        await api.saveSetlistLink(concert.id, artistId, trimmedUrl);
+        await qc.invalidateQueries({ queryKey: ["concerts", concert.id] });
+
+        updateState(artistId, {
+          loaded: true,
+          loading: false,
+          result: res.result,
+          expanded: true,
+          showUrlInput: false,
+          urlInput: "",
+          manualUrl: null,
+        });
+        return;
+      }
+
+      // API didn't work (auth error, not configured, etc.) - fall back to link-only mode
+      // Save full URL to backend anyway
+      await api.saveSetlistLink(concert.id, artistId, trimmedUrl);
+      await qc.invalidateQueries({ queryKey: ["concerts", concert.id] });
+
+      updateState(artistId, {
+        loaded: true,
+        loading: false,
+        result: null,
+        manualUrl: trimmedUrl,
+        showUrlInput: false,
+        urlInput: "",
+        error: null,
+      });
+    } catch {
+      // Network error - still try to save the link
+      try {
+        await api.saveSetlistLink(concert.id, artistId, trimmedUrl);
+        await qc.invalidateQueries({ queryKey: ["concerts", concert.id] });
+      } catch {
+        // Ignore save error
+      }
+
+      updateState(artistId, {
+        loaded: true,
+        loading: false,
+        result: null,
+        manualUrl: trimmedUrl,
+        showUrlInput: false,
+        urlInput: "",
+        error: null,
+      });
+    }
+  };
+
+  const toggleExpanded = (artistId: string) => {
+    updateState(artistId, { expanded: !getState(artistId).expanded });
+  };
+
+  const toggleUrlInput = (artistId: string) => {
+    const state = getState(artistId);
+    updateState(artistId, { showUrlInput: !state.showUrlInput, error: null });
+  };
+
+  const handleRemoveSetlist = async (artistId: string): Promise<void> => {
+    if (!window.confirm("Remove this setlist link?")) return;
+    try {
+      await api.deleteSetlistLink(concert.id, artistId);
+      await qc.invalidateQueries({ queryKey: ["concerts", concert.id] });
+      updateState(artistId, {
+        loaded: false,
+        loading: false,
+        result: null,
+        error: null,
+        expanded: false,
+        showUrlInput: false,
+        urlInput: "",
+        manualUrl: null,
+      });
+    } catch {
+      // Ignore errors
+    }
+  };
+
+  const handleEditSetlist = (artistId: string) => {
+    const state = getState(artistId);
+    // Pre-fill the input with the current URL
+    updateState(artistId, {
+      showUrlInput: true,
+      urlInput: state.manualUrl ?? "",
+      error: null,
+    });
+  };
+
+  // Check if any artist has been loaded
+  const anyLoaded = Object.values(artistStates).some((s) => s.loaded);
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted">Setlist</h2>
-        {!loaded ? (
-          <button
-            onClick={() => void handleLoad()}
-            disabled={loading}
-            className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors disabled:opacity-50"
-          >
-            {loading ? "Loading…" : "Load from setlist.fm"}
-          </button>
-        ) : result && setlistUrl ? (
-          <a
-            href={setlistUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
-          >
-            setlist.fm ↗
-          </a>
-        ) : null}
+    <div className="rounded-lg border border-border bg-surface overflow-hidden">
+      <div className="px-4 py-3 border-b border-border">
+        <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted">Setlists</h2>
       </div>
 
-      {!loaded && !loading && (
-        <p className="text-xs text-text-subtle font-mono">
-          Search setlist.fm for <span className="text-text-muted">{artistName}</span> on {fmtDateLong(concert.date)}.
+      {unavailable && (
+        <p className="px-4 py-3 text-xs text-text-subtle font-mono italic">
+          Setlist.fm not configured on this server.
         </p>
       )}
 
-      {loaded && unavailable && (
-        <p className="text-xs text-text-subtle font-mono italic">Setlist.fm not configured on this server.</p>
-      )}
+      {!unavailable && (
+        <div className="divide-y divide-border">
+          {sortedArtists.map((artist) => {
+            const state = getState(artist.id);
+            const setlistUrl = state.result
+              ? `https://www.setlist.fm/setlist/x/${state.result.id}.html`
+              : state.manualUrl;
 
-      {loaded && error && (
-        <p className="text-xs text-accent-pink font-mono">{error}</p>
-      )}
+            return (
+              <div key={artist.id} className="px-4 py-3">
+                {/* Artist row header */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {state.loaded && state.result && (
+                      <button
+                        onClick={() => toggleExpanded(artist.id)}
+                        className="text-text-subtle hover:text-accent-lime transition-colors shrink-0"
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                          className={clsx("transition-transform", state.expanded && "rotate-90")}
+                        >
+                          <path d="M4 2L8 6L4 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    )}
+                    <Link
+                      to={`/app/artists/${artist.slug}`}
+                      className="text-sm text-text-base hover:text-accent-lime transition-colors truncate"
+                    >
+                      {artist.name}
+                    </Link>
+                    <span className="text-[10px] font-mono text-text-subtle shrink-0">
+                      {ROLE_LABEL[artist.role] ?? artist.role}
+                    </span>
+                  </div>
 
-      {loaded && !error && !unavailable && !result && (
-        <p className="text-xs text-text-subtle font-mono italic">No setlist found for this show on setlist.fm.</p>
-      )}
-
-      {result && (
-        <div>
-          <p className="text-xs text-text-subtle font-mono mb-3">
-            {[result.venue, result.city, result.country].filter(Boolean).join(" · ")}
-          </p>
-          {result.sets.length === 0 ? (
-            <p className="text-xs text-text-subtle font-mono italic">Setlist not recorded yet.</p>
-          ) : (
-            <div className="space-y-4">
-              {result.sets.map((set, i) => (
-                <div key={i}>
-                  {(set.name ?? set.encore) && (
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-1.5">
-                      {set.encore ? `Encore${(set.encore ?? 1) > 1 ? ` ${set.encore}` : ""}` : set.name}
-                    </p>
-                  )}
-                  <ol className="space-y-1">
-                    {set.songs.map((song, j) => (
-                      <li key={j} className="flex items-baseline gap-2.5">
-                        <span className="text-[10px] font-mono text-text-subtle w-5 text-right tabular-nums shrink-0 leading-5">
-                          {j + 1}
-                        </span>
-                        <span className="text-sm text-text-base leading-5">{song}</span>
-                      </li>
-                    ))}
-                  </ol>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!state.loaded && !state.loading && !state.showUrlInput && (
+                      <>
+                        <button
+                          onClick={() => void handleLoad(artist)}
+                          className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                        >
+                          Load
+                        </button>
+                        <button
+                          onClick={() => toggleUrlInput(artist.id)}
+                          className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                          title="Paste setlist.fm URL"
+                        >
+                          URL
+                        </button>
+                      </>
+                    )}
+                    {state.loading && (
+                      <span className="text-xs font-mono text-text-subtle animate-pulse">Loading…</span>
+                    )}
+                    {state.loaded && !state.result && !state.error && !state.showUrlInput && !state.manualUrl && (
+                      <>
+                        <span className="text-xs font-mono text-text-subtle italic">Not found</span>
+                        <button
+                          onClick={() => toggleUrlInput(artist.id)}
+                          className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                          title="Paste setlist.fm URL"
+                        >
+                          URL
+                        </button>
+                      </>
+                    )}
+                    {state.error && !state.showUrlInput && (
+                      <>
+                        <span className="text-xs font-mono text-accent-pink">{state.error}</span>
+                        <button
+                          onClick={() => toggleUrlInput(artist.id)}
+                          className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                          title="Paste setlist.fm URL"
+                        >
+                          URL
+                        </button>
+                      </>
+                    )}
+                    {state.showUrlInput && (
+                      <button
+                        onClick={() => toggleUrlInput(artist.id)}
+                        className="text-xs font-mono text-accent-lime transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    {setlistUrl && (
+                      <a
+                        href={setlistUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                        title={state.manualUrl && !state.result ? "Linked (click to view on setlist.fm)" : undefined}
+                      >
+                        setlist.fm ↗
+                      </a>
+                    )}
+                    {state.manualUrl && !state.result && !state.showUrlInput && (
+                      <>
+                        <button
+                          onClick={() => handleEditSetlist(artist.id)}
+                          className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => void handleRemoveSetlist(artist.id)}
+                          className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+
+                {/* URL input row */}
+                {state.showUrlInput && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      type="text"
+                      value={state.urlInput}
+                      onChange={(e) => updateState(artist.id, { urlInput: e.target.value })}
+                      placeholder="Paste setlist.fm URL..."
+                      className="flex-1 text-xs font-mono px-2 py-1.5 rounded border border-border bg-surface-2 text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          void handleLoadFromUrl(artist.id, state.urlInput);
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => void handleLoadFromUrl(artist.id, state.urlInput)}
+                      disabled={!state.urlInput.trim() || state.loading}
+                      className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+                    >
+                      {state.loading ? "Loading…" : "Load"}
+                    </button>
+                  </div>
+                )}
+
+                {/* Expanded setlist content */}
+                {state.expanded && state.result && (
+                  <div className="mt-3 pl-5">
+                    {state.result.sets.length === 0 ? (
+                      <p className="text-xs text-text-subtle font-mono italic">Setlist not recorded yet.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {state.result.sets.map((set, i) => (
+                          <div key={i}>
+                            {(set.name ?? set.encore) && (
+                              <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-1.5">
+                                {set.encore ? `Encore${(set.encore ?? 1) > 1 ? ` ${set.encore}` : ""}` : set.name}
+                              </p>
+                            )}
+                            <ol className="space-y-0.5">
+                              {set.songs.map((song, j) => (
+                                <li key={j} className="flex items-baseline gap-2">
+                                  <span className="text-[10px] font-mono text-text-subtle w-4 text-right tabular-nums shrink-0">
+                                    {j + 1}
+                                  </span>
+                                  <span className="text-sm text-text-muted">{song}</span>
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
+      )}
+
+      {/* Hint when nothing loaded yet */}
+      {!anyLoaded && !unavailable && (
+        <p className="px-4 pb-3 text-xs text-text-subtle font-mono">
+          Click "Load" to search setlist.fm, or "URL" to paste a link directly.
+        </p>
       )}
     </div>
   );
@@ -2403,7 +2684,7 @@ export function ConcertDetailPage() {
     );
   }
 
-  const { concert } = concertQuery.data;
+  const { concert, setlists: savedSetlists } = concertQuery.data;
 
   // Sort artists: headliner first, then by role order, then by setOrder
   const sortedArtists = [...concert.artists].sort((a, b) => {
@@ -2490,7 +2771,7 @@ export function ConcertDetailPage() {
 
           {/* Setlist — attended shows only */}
           {concert.attendance?.status === "attended" && (
-            <SetlistSection concert={concert} />
+            <SetlistSection concert={concert} savedSetlists={savedSetlists} />
           )}
 
           {/* Photo gallery */}

@@ -9,7 +9,7 @@
  */
 
 import type { FastifyInstance } from "fastify";
-import { desc, eq, inArray, sql, ilike, and, ne, asc } from "drizzle-orm";
+import { desc, eq, inArray, sql, ilike, and, ne, asc, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { db, schema } from "../db/client.js";
@@ -259,6 +259,87 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
       .where(eq(schema.artists.id, artist.id));
 
     return reply.send({ imageUrl: mediaUrl(objectKey) });
+  });
+
+  // ── GET /artists/:slug/setlists ─────────────────────────────────────────────
+  // Returns all setlists for this artist from concerts the current user attended.
+
+  app.get("/artists/:slug/setlists", async (req, reply) => {
+    const { slug } = req.params as { slug: string };
+    const userId = req.user!.id;
+
+    const artist = await db.query.artists.findFirst({
+      where: eq(schema.artists.slug, slug),
+      columns: { id: true, name: true, slug: true, mbid: true },
+    });
+    if (!artist) return reply.code(404).send({ error: "Artist not found." });
+
+    // Subquery: concert IDs the current user has an attendee record for
+    const userConcertIds = db
+      .select({ id: schema.concertAttendees.concertId })
+      .from(schema.concertAttendees)
+      .where(eq(schema.concertAttendees.userId, userId));
+
+    // Get setlists for this artist from user's concerts
+    const setlistRows = await db
+      .select({
+        setlistId: schema.setlists.id,
+        setlistfmId: schema.setlists.setlistfmId,
+        concertId: schema.concerts.id,
+        concertDate: schema.concerts.date,
+        venueName: schema.venues.name,
+        venueCity: schema.venues.city,
+      })
+      .from(schema.setlists)
+      .innerJoin(schema.concerts, eq(schema.setlists.concertId, schema.concerts.id))
+      .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
+      .where(
+        and(
+          eq(schema.setlists.artistId, artist.id),
+          inArray(schema.setlists.concertId, userConcertIds),
+        ),
+      )
+      .orderBy(desc(schema.concerts.date));
+
+    if (setlistRows.length === 0) {
+      return reply.send({ artist, setlists: [], total: 0 });
+    }
+
+    // Get songs for each setlist
+    const setlistIds = setlistRows.map((r) => r.setlistId);
+    const songRows = await db
+      .select({
+        setlistId: schema.setlistSongs.setlistId,
+        position: schema.setlistSongs.position,
+        songName: schema.setlistSongs.songName,
+        isCover: schema.setlistSongs.isCover,
+      })
+      .from(schema.setlistSongs)
+      .where(inArray(schema.setlistSongs.setlistId, setlistIds))
+      .orderBy(schema.setlistSongs.position);
+
+    // Group songs by setlist
+    const songsBySetlist = new Map<string, typeof songRows>();
+    for (const row of songRows) {
+      const list = songsBySetlist.get(row.setlistId) ?? [];
+      list.push(row);
+      songsBySetlist.set(row.setlistId, list);
+    }
+
+    const setlists = setlistRows.map((r) => ({
+      id: r.setlistId,
+      setlistfmId: r.setlistfmId,
+      concertId: r.concertId,
+      concertDate: r.concertDate,
+      venue: r.venueName ? { name: r.venueName, city: r.venueCity } : null,
+      songs: (songsBySetlist.get(r.setlistId) ?? []).map((s) => ({
+        position: s.position,
+        name: s.songName,
+        isCover: s.isCover,
+      })),
+    }));
+
+    return reply.send({ artist, setlists, total: setlists.length });
   });
 
   // ── GET /artists/:slug/photos ───────────────────────────────────────────────

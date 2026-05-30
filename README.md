@@ -3,7 +3,7 @@
 A multi-user concert log for people who still believe the next show is worth the ringing.
 Self-hosted, invite-only, served directly from a personal Mac via Tailscale to a small group of friends.
 
-> **Current status:** Phase 12 complete — sequential photo/video upload with per-file process-wait (BullMQ polling), silent duplicate skip on batch drag, Swiper.js shared `PhotoCarousel` lightbox (keyboard/swipe/mouse), semi-transparent blurred modal overlays portalled to `<body>` to escape CSS stacking contexts, body scroll-lock while any modal is open, flyer repositioned below the header on mobile/tablet, entity cards unified to 16:9 aspect ratio across Artists/Venues/Festivals, background glow fixed to viewport, stats page 500 fix (`event_series_id` column).
+> **Current status:** Phase 13 complete — festival flyer inheritance (festival_day concerts inherit festival's flyer when they don't have their own), per-artist setlist lookups on concert detail (each artist in the lineup can have a separate setlist.fm lookup), manual URL paste for setlist.fm links (works even without API key), setlists section on artist page showing saved setlists grouped by concert.
 
 ---
 
@@ -257,11 +257,12 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │   │   │   ├── health.ts
 │   │   │   │   ├── auth.ts           signup, login, logout, me, verify-email
 │   │   │   │   ├── invites.ts        invite check + issue
-│   │   │   │   ├── concerts.ts       full concert CRUD + flyer + lineup + parse-url
+│   │   │   │   ├── concerts.ts       full concert CRUD + flyer + lineup + parse-url + setlists;
 │   │   │   │   │                     top-billing exclusivity enforcement (422 if headliner
-│   │   │   │   │                     + co_headliner roles coexist); headliner_hint sync
+│   │   │   │   │                     + co_headliner roles coexist); headliner_hint sync;
+│   │   │   │   │                     festival flyer inheritance for festival_day concerts
 │   │   │   │   ├── photos.ts         upload, list, reorder, delete, artist-tag endpoints
-│   │   │   │   ├── artists.ts        artist list, detail, PATCH, image upload, tagged photos
+│   │   │   │   ├── artists.ts        artist list, detail, PATCH, image upload, tagged photos, setlists
 │   │   │   │   ├── venues.ts         venue list, detail, PATCH, cover photo, aliases
 │   │   │   │   ├── parseurl.ts       POST /concerts/parse-url — JSON-LD → OG → Claude
 │   │   │   │   ├── series.ts         festival/series list + detail
@@ -271,7 +272,8 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │   │   │   │                     top artists/venues, rating dist, on-this-day,
 │   │   │   │   │                     ticket prices, milestones, first/last show
 │   │   │   │   ├── copy.ts           GET /public/copy (open); GET+PATCH /admin/copy (admin)
-│   │   │   │   ├── setlistfm.ts      setlist.fm proxy (optional API key)
+│   │   │   │   ├── setlistfm.ts      setlist.fm proxy: search by artist+date, by artist MBID/name,
+│   │   │   │   │                     fetch by setlist ID or URL (optional API key)
 │   │   │   │   └── admin/
 │   │   │   │       └── imports.ts    async CSV import queue
 │   │   │   ├── lib/          env validation (Zod), s3 client, mailer, BullMQ queues
@@ -314,6 +316,8 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   │                           XHR progress overlay (blocks UI, live %), reorder,
 │   │       │   │                           delete, SHA-256 dedup, lightbox with video playback,
 │   │       │   │                           "⊕ Tag artists" tagging mode
+│   │       │   │                         · Per-artist setlists: Load from setlist.fm or paste URL,
+│   │       │   │                           save/edit/remove links, works without API key
 │   │       │   ├── ConcertGridPage.tsx   AG-Grid batch editor — URL-synced status filter +
 │   │       │   │                         quick search; 1 000 rows; inline editing; undo/redo
 │   │       │   ├── StatsPage.tsx         personal analytics at /app/stats:
@@ -327,7 +331,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   │                         all custom CSS/SVG (no chart lib)
 │   │       │   ├── ArtistsPage.tsx       paginated artist card grid (EntityCard) with search
 │   │       │   ├── ArtistPage.tsx        artist detail: image, bio, stats, concert history,
-│   │       │   │                         tagged photos section; inline edit form
+│   │       │   │                         tagged photos section, setlists section; inline edit form
 │   │       │   ├── VenuesPage.tsx        paginated venue card grid (EntityCard) with search
 │   │       │   ├── VenuePage.tsx         venue detail: cover photo, stats, "Also known as"
 │   │       │   │                         aliases, full Google Maps embed, show history;
@@ -508,6 +512,8 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `POST`   | `/concerts/:id/flyer`         | Upload / replace concert flyer (JPEG/PNG/WebP ≤10 MB); SHA-256 dedup |
 | `DELETE` | `/concerts/:id/flyer`         | Remove the concert flyer                                            |
 | `POST`   | `/concerts/parse-url`         | Parse an event URL; returns date, venue, artists. Pipeline: JSON-LD → OG meta → Claude |
+| `PUT`    | `/concerts/:id/setlists/:artistId` | Save a setlist.fm link for an artist on this concert           |
+| `DELETE` | `/concerts/:id/setlists/:artistId` | Remove a setlist link for an artist                             |
 
 ### Photos
 
@@ -529,6 +535,7 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `PATCH`  | `/artists/:slug`          | Update name, genre, bio, MusicBrainz ID. Slug regenerates on name change |
 | `POST`   | `/artists/:slug/image`    | Upload / replace artist image (JPEG/PNG/WebP ≤10 MB)              |
 | `GET`    | `/artists/:slug/photos`   | All photos tagged with this artist (user's concerts only), newest concert first |
+| `GET`    | `/artists/:slug/setlists` | All saved setlists for this artist from user's attended concerts   |
 
 ### Venues
 
@@ -550,10 +557,12 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 
 ### Integrations & export
 
-| Method | Path                    | Description                                                        |
-| ------ | ----------------------- | ------------------------------------------------------------------ |
-| `GET`  | `/setlistfm/search`     | Proxy to setlist.fm API. Query: `artist`, `date`. Returns empty results gracefully when key absent |
-| `GET`  | `/users/me/export.csv`  | Full CSV export in the original import format                      |
+| Method | Path                          | Description                                                        |
+| ------ | ----------------------------- | ------------------------------------------------------------------ |
+| `GET`  | `/setlistfm/search`           | Proxy to setlist.fm API. Query: `artist`, `date`. Returns empty results gracefully when key absent |
+| `GET`  | `/setlistfm/artist/:mbidOrName` | Search setlist.fm for an artist's recent setlists by MBID or name |
+| `GET`  | `/setlistfm/setlist/:id`      | Fetch a specific setlist by ID or full setlist.fm URL              |
+| `GET`  | `/users/me/export.csv`        | Full CSV export in the original import format                      |
 
 ### Admin (requires `is_admin = true`)
 
@@ -647,7 +656,8 @@ docker compose exec api pnpm db:migrate
 | `photos` | Concert photos/videos: MinIO key, kind, dimensions, set_order, content_hash, processing variants |
 | `photo_artists` | Junction: which artists appear in which photos (`photo_id`, `artist_id`) |
 | `site_copy` | CMS key/value store for editable UI copy (key PK, value, description, section, updated_at) |
-| `setlists` / `setlist_songs` | Reserved for setlist.fm data (schema present, not yet populated) |
+| `setlists` | Saved setlist.fm links per artist per concert: concert FK, artist FK, setlistfm_id (full URL or ID) |
+| `setlist_songs` | Individual songs in a setlist: position, song_name, is_cover, cover_artist, notes |
 | `imports` | CSV import job queue: status, row counts, error samples |
 
 ---
@@ -780,6 +790,7 @@ crontab -e
 - Attendance statuses: `attended`, `attending`, `interested`, `missed`, `cancelled`, `dismissed`
 - Lineup roles: `headliner`, `co_headliner`, `support` — `headliner` and `co_headliner` are mutually exclusive (cannot coexist in one lineup)
 - Concert type: standard show vs. festival day (festival days link to a named series + year)
+- **Festival flyer inheritance** — `festival_day` concerts without their own flyer automatically display the festival's flyer; `flyerInherited` flag distinguishes inherited vs. direct flyers
 - Event notes (shared across all attendees) separate from personal notes (private per user)
 
 ### Public show log
@@ -804,6 +815,7 @@ crontab -e
 - **Attendance editor** — status, rating (1–10), personal notes, ticket price
 - **Photo gallery** — drag-and-drop or click upload; **sequential upload**: each file uploads, then polls BullMQ until `processing = false` before the next begins — photo appears in gallery immediately, no server overload; silent duplicate skip on batch drag (SHA-256 dedup, no error shown); reorder with ← → controls; delete with confirm overlay; Swiper lightbox (`PhotoCarousel`)
 - **"⊕ Tag artists" mode** — pick an artist from the lineup, tap photos to select (lime checkmark overlay), click "Tag N photos" to assign; existing tags shown as initials badges; click a badge to untag; multi-pass support
+- **Per-artist setlists** — each artist in the lineup has their own setlist lookup; "Load" button searches setlist.fm by artist name + concert date; "URL" button allows manual paste of a setlist.fm link (works even when API key is missing); saved links persist to DB and show Edit/Remove buttons; links display with "(linked)" indicator when song data isn't fetched
 
 ### Co-headliner support
 - Two or more artists with role `co_headliner` display as "Artist A & Artist B" in all page titles, card headlines, and the public log
@@ -829,6 +841,7 @@ crontab -e
 - Detail: image, genre, bio, MusicBrainz link, stats (total / attended / upcoming), full concert history
 - **Inline edit form** — name, genre, bio, MusicBrainz ID, image upload
 - **Photos section** — all photos tagged with this artist across all concerts, grouped by concert, with lightbox
+- **Setlists section** — all saved setlists for this artist from user's attended concerts, grouped by concert date with venue info; links to setlist.fm and concert detail page; displays song list when available
 
 ### Venue pages
 - Paginated card grid with search
@@ -914,6 +927,9 @@ crontab -e
 - **Entity cards 16:9 aspect ratio** — `EntityCard` unified to `aspect-video` across Artists, Venues, and Festivals index grids
 - **Background glow fixed to viewport** — `background-attachment: fixed` so the gradient stays pinned as content scrolls over it
 - **Stats 500 fix** — corrected `c.series_id` → `c.event_series_id` in two raw SQL joins in `stats.ts`; fixed all concert links from `/shows/` → `/app/concerts/`
+- **Festival flyer inheritance** — `festival_day` concerts without their own flyer automatically inherit the festival's flyer; `flyerInherited` field added to API responses
+- **Per-artist setlist lookups** — concert detail page shows each artist separately with individual "Load" and "URL" buttons; setlist.fm links can be saved per artist per concert; works with or without API key via manual URL paste
+- **Artist setlists section** — artist detail page shows all saved setlists grouped by concert with song lists and setlist.fm links
 
 ### ⏳ Planned
 - **Export CSV UI** — button in the app to trigger `GET /users/me/export.csv` download (endpoint exists, no UI yet)
@@ -921,7 +937,6 @@ crontab -e
 - **Multi-user social** — "shows we both went to" views, shared activity within the instance
 
 ### 💡 Wishlist
-- **Setlist.fm display** — after saving an attended show, fetch the setlist from setlist.fm and display songs played inline; link to the setlist page; optionally store in DB for personal annotation
 - **YouTube video embedding** — paste a YouTube URL on a concert page; embed it inline (trailer, live recording, etc.); may be per-concert or per-artist
 - **Auto poster / flyer collection with approval flow** — automatically scrape / find concert posters from public sources (Ticketmaster images, Last.fm, etc.) and present a batch approve/deny UI; approved images save as the concert flyer; reduces manual upload friction for historical shows
 

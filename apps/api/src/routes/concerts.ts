@@ -374,26 +374,69 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ concerts, total: concerts.length });
   });
 
-  // ── GET /concerts/:id ───────────────────────────────────────────────────────
+  // ── GET /concerts/:idOrSlug ─────────────────────────────────────────────────
+  // Supports both UUID and slug patterns like "osheaga-2025-2025-07-12"
 
-  app.get("/concerts/:id", async (req, reply) => {
-    const { id } = req.params as { id: string };
+  app.get("/concerts/:idOrSlug", async (req, reply) => {
+    const { idOrSlug } = req.params as { idOrSlug: string };
     const userId = req.user!.id;
 
-    const concert = await db.query.concerts.findFirst({
-      where: eq(schema.concerts.id, id),
-      with: {
-        venue: true,
-        eventSeries: true,
-        concertArtists: {
-          with: { artist: true },
-          orderBy: [schema.concertArtists.setOrder],
+    // Check if it's a UUID
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+
+    let concert;
+    if (isUuid) {
+      concert = await db.query.concerts.findFirst({
+        where: eq(schema.concerts.id, idOrSlug),
+        with: {
+          venue: true,
+          eventSeries: true,
+          concertArtists: {
+            with: { artist: true },
+            orderBy: [schema.concertArtists.setOrder],
+          },
+          concertAttendees: {
+            where: eq(schema.concertAttendees.userId, userId),
+          },
         },
-        concertAttendees: {
-          where: eq(schema.concertAttendees.userId, userId),
-        },
-      },
-    });
+      });
+    } else {
+      // Try to parse as slug: "series-slug-YYYY-MM-DD" or "venue-slug-YYYY-MM-DD"
+      const dateMatch = idOrSlug.match(/^(.+)-(\d{4}-\d{2}-\d{2})$/);
+      if (dateMatch) {
+        const [, slugPart, date] = dateMatch;
+        // Try series slug first, then venue slug
+        const rows = await db
+          .select({ concert: schema.concerts })
+          .from(schema.concerts)
+          .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
+          .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
+          .where(
+            and(
+              eq(schema.concerts.date, date!),
+              sql`(${schema.eventSeries.slug} = ${slugPart} OR ${schema.venues.slug} = ${slugPart})`,
+            ),
+          )
+          .limit(1);
+
+        if (rows[0]) {
+          concert = await db.query.concerts.findFirst({
+            where: eq(schema.concerts.id, rows[0].concert.id),
+            with: {
+              venue: true,
+              eventSeries: true,
+              concertArtists: {
+                with: { artist: true },
+                orderBy: [schema.concertArtists.setOrder],
+              },
+              concertAttendees: {
+                where: eq(schema.concertAttendees.userId, userId),
+              },
+            },
+          });
+        }
+      }
+    }
 
     if (!concert) {
       return reply.code(404).send({ error: "Concert not found." });

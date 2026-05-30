@@ -17,14 +17,12 @@ import type { CarouselItem } from "@/components/PhotoCarousel";
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS   = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
 function fmtDateLong(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return iso;
-  const date = new Date(Date.UTC(y, m - 1, d));
-  return `${WEEKDAYS[date.getUTCDay()]} ${MONTHS[date.getUTCMonth()]} ${d}, ${y}`;
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+  });
 }
 
 const STATUS_CHIP: Record<AttendanceStatus, { label: string; classes: string }> = {
@@ -1411,7 +1409,6 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
               </dt>
               <dd className="text-text-base">
                 {concert.eventSeries.name}
-                {concert.eventSeries.year && <span className="text-text-subtle"> {concert.eventSeries.year}</span>}
               </dd>
             </div>
           )}

@@ -15,5 +15,5 @@
     "declaration": false,
     "noEmit": false
   },
-  "include": ["src/**/*", "../api/src/db/schema.ts"]
+  "include": ["src/**/*", "src/types/**/*", "../api/src/db/schema.ts"]
 }

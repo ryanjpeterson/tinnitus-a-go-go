@@ -25,7 +25,7 @@ const PAGE_SIZE = 40;
 function fmtDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return iso;
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-CA", {
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",

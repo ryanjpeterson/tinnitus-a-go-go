@@ -308,7 +308,7 @@ export const api = {
   parseEventUrl: (url: string) =>
     request<ParsedEvent>("/concerts/parse-url", { method: "POST", body: JSON.stringify({ url }) }),
 
-  // Series / festivals
+  // Series (legacy - for backward compatibility with tour names)
   listSeries: (params?: { page?: number; limit?: number }) => {
     const qs = new URLSearchParams();
     if (params?.page) qs.set("page", String(params.page));
@@ -322,6 +322,118 @@ export const api = {
       `/series/${slug}`,
       { method: "PATCH", body: JSON.stringify(body) },
     ),
+
+  // Festivals (first-class entities)
+  listFestivals: (params?: {
+    status?: AttendanceStatus;
+    year?: number;
+    q?: string;
+    sort?: "date_desc" | "date_asc" | "name_asc";
+    page?: number;
+    limit?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set("status", params.status);
+    if (params?.year) qs.set("year", String(params.year));
+    if (params?.q) qs.set("q", params.q);
+    if (params?.sort) qs.set("sort", params.sort);
+    if (params?.page) qs.set("page", String(params.page));
+    if (params?.limit) qs.set("limit", String(params.limit));
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return request<FestivalListResponse>(`/festivals${query}`);
+  },
+  getFestival: (slug: string) => request<FestivalDetailResponse>(`/festivals/${slug}`),
+  createFestival: (body: {
+    name: string;
+    year?: number;
+    startDate?: string;
+    endDate?: string;
+    venueName?: string;
+    venueCity?: string;
+    venueRegion?: string;
+    eventNotes?: string;
+    sourceUrl?: string;
+    status?: AttendanceStatus;
+    personalNotes?: string;
+    ticketPricePaid?: number;
+    ticketPriceCurrency?: string;
+    artists?: Array<{
+      name: string;
+      performanceDate?: string;
+      stageName?: string;
+      setOrder?: number;
+      appearanceNotes?: string;
+    }>;
+  }) =>
+    request<{ festivalId: string; slug: string }>("/festivals", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  patchFestival: (
+    slug: string,
+    body: {
+      name?: string;
+      year?: number | null;
+      startDate?: string | null;
+      endDate?: string | null;
+      venueName?: string;
+      venueCity?: string | null;
+      venueRegion?: string | null;
+      eventNotes?: string | null;
+      sourceUrl?: string | null;
+    },
+  ) =>
+    request<{ festival: { id: string; name: string; slug: string; year: number | null } }>(
+      `/festivals/${slug}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  deleteFestival: (slug: string) =>
+    request<void>(`/festivals/${slug}`, { method: "DELETE" }),
+  patchFestivalAttendance: (
+    slug: string,
+    body: {
+      status?: AttendanceStatus;
+      rating?: number | null;
+      personalNotes?: string | null;
+      ticketPricePaid?: number | null;
+      ticketPriceCurrency?: string | null;
+    },
+  ) =>
+    request<{ ok: true }>(`/festivals/${slug}/attendance`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  putFestivalSets: (
+    slug: string,
+    sets: Array<{
+      artistId?: string;
+      artistName?: string;
+      performanceDate?: string | null;
+      stageName?: string | null;
+      setOrder?: number | null;
+      appearanceNotes?: string | null;
+    }>,
+  ) =>
+    request<{ ok: true; count: number }>(`/festivals/${slug}/sets`, {
+      method: "PUT",
+      body: JSON.stringify({ sets }),
+    }),
+  uploadFestivalFlyer: (slug: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    return request<{ flyerUrl: string }>(`/festivals/${slug}/flyer`, {
+      method: "POST",
+      body: form,
+      rawBody: true,
+    });
+  },
+  uploadFestivalFlyerFromUrl: (slug: string, url: string) =>
+    request<{ flyerUrl: string }>(`/festivals/${slug}/flyer/url`, {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
+  deleteFestivalFlyer: (slug: string) =>
+    request<void>(`/festivals/${slug}/flyer`, { method: "DELETE" }),
 
   // Flyer
   uploadFlyer: (concertId: string, file: File) => {
@@ -554,7 +666,7 @@ export interface ArtistDetailResponse {
     role: string;
     appearanceNotes: string | null;
     venue: { name: string; city: string | null; region: string | null } | null;
-    eventSeries: { name: string } | null;
+    eventSeries: { name: string; slug: string | null } | null;
     attendance: { status: AttendanceStatus; rating: number | null };
   }>;
   stats: {
@@ -675,6 +787,97 @@ export interface SeriesDetailResponse {
   stats: {
     daysAttended: number;
     uniqueArtists: number;
+  };
+}
+
+// ─── Festival types (first-class entities) ────────────────────────────────────
+
+export interface FestivalVenue {
+  id: string;
+  slug: string;
+  name: string;
+  city: string | null;
+  region: string | null;
+  country?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}
+
+export interface FestivalAttendance {
+  status: AttendanceStatus;
+  rating: number | null;
+  personalNotes?: string | null;
+  ticketPricePaid?: number | null;
+  ticketPriceCurrency?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface FestivalListItem {
+  id: string;
+  name: string;
+  slug: string;
+  year: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  flyerUrl: string | null;
+  venue: FestivalVenue | null;
+  artistCount: number;
+  attendance: {
+    status: AttendanceStatus;
+    rating: number | null;
+  };
+}
+
+export interface FestivalListResponse {
+  festivals: FestivalListItem[];
+  total: number;
+  page: number;
+  totalPages: number;
+  limit: number;
+}
+
+export interface FestivalSetArtist {
+  id: string;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+}
+
+export interface FestivalSet {
+  id: string;
+  performanceDate: string | null;
+  stageName: string | null;
+  setOrder: number | null;
+  appearanceNotes: string | null;
+  artist: FestivalSetArtist;
+}
+
+export interface FestivalDetail {
+  id: string;
+  name: string;
+  slug: string;
+  year: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  flyerUrl: string | null;
+  flyerHash: string | null;
+  eventNotes: string | null;
+  sourceUrl: string | null;
+  venue: FestivalVenue | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FestivalDetailResponse {
+  festival: FestivalDetail;
+  sets: FestivalSet[];
+  setsByDate: Record<string, FestivalSet[]>;
+  concertsByDate: Record<string, { id: string; slug: string | null }>;
+  attendance: FestivalAttendance | null;
+  stats: {
+    totalArtists: number;
+    totalDays: number;
   };
 }
 

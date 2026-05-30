@@ -112,6 +112,7 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
         venueCity: schema.venues.city,
         venueRegion: schema.venues.region,
         seriesName: schema.eventSeries.name,
+        seriesSlug: schema.eventSeries.slug,
         status: schema.concertAttendees.status,
         rating: schema.concertAttendees.rating,
         role: schema.concertArtists.role,
@@ -140,7 +141,7 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
       venue: r.venueName
         ? { name: r.venueName, city: r.venueCity, region: r.venueRegion }
         : null,
-      eventSeries: r.seriesName ? { name: r.seriesName } : null,
+      eventSeries: r.seriesName ? { name: r.seriesName, slug: r.seriesSlug } : null,
       attendance: { status: r.status, rating: r.rating },
     }));
 

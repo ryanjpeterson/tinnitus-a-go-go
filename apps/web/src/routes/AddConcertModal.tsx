@@ -41,12 +41,10 @@ interface ArtistRow {
 interface FormState {
   date: string;
   dateIsApproximate: boolean;
-  type: "concert" | "festival_day";
   venueName: string;
   venueCity: string;
   venueRegion: string;
-  eventSeriesName: string;
-  eventSeriesYear: string;
+  eventSeriesName: string; // Tour name (e.g., "The Eras Tour")
   artists: ArtistRow[];
   status: AttendanceStatus;
   personalNotes: string;
@@ -59,12 +57,10 @@ const CURRENCIES = ["CAD", "USD", "EUR"] as const;
 const DEFAULT_FORM: FormState = {
   date: "",
   dateIsApproximate: false,
-  type: "concert",
   venueName: "",
   venueCity: "",
   venueRegion: "",
-  eventSeriesName: "",
-  eventSeriesYear: "",
+  eventSeriesName: "", // Tour name
   artists: [{ name: "", role: "headliner" }],
   status: "interested",
   personalNotes: "",
@@ -441,12 +437,6 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
     }
   };
 
-  // When type changes, clear series year (only used for festival_day)
-  const handleTypeChange = (t: "concert" | "festival_day") => {
-    setField("type", t);
-    if (t === "concert") setField("eventSeriesYear", "");
-  };
-
   // Auto-fetch setlist.fm when artist[0] + date are both filled
   const firstArtistName = form.artists[0]?.name.trim() ?? "";
 
@@ -525,9 +515,6 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
     if (!form.venueName.trim()) return "Venue name is required.";
     if (form.artists.length === 0) return "At least one artist is required.";
     if (form.artists.some((a) => !a.name.trim())) return "All artist names must be filled in.";
-    if (form.type === "festival_day" && !form.eventSeriesName.trim()) {
-      return "Festival name is required for festival day entries.";
-    }
     return null;
   };
 
@@ -546,14 +533,11 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
       const { concertId } = await api.createConcert({
         date: form.date,
         dateIsApproximate: form.dateIsApproximate || undefined,
-        type: form.type,
+        type: "concert", // Always "concert" now; festivals are separate entities
         venueName: form.venueName.trim(),
         venueCity: form.venueCity.trim() || undefined,
         venueRegion: form.venueRegion.trim() || undefined,
-        eventSeriesName: form.eventSeriesName.trim() || undefined,
-        eventSeriesYear: (form.type === "festival_day" && form.eventSeriesYear)
-          ? parseInt(form.eventSeriesYear, 10)
-          : undefined,
+        eventSeriesName: form.eventSeriesName.trim() || undefined, // Tour name
         artists: form.artists.map((a, i) => ({
           name: a.name.trim(),
           role: a.role,
@@ -663,26 +647,6 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                 </p>
               )}
             </div>
-            <div>
-              <label className="block text-xs text-text-muted font-mono mb-1">Type</label>
-              <div className="flex rounded border border-border overflow-hidden">
-                {(["concert", "festival_day"] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => handleTypeChange(t)}
-                    className={clsx(
-                      "min-w-[64px] px-3 py-1 text-xs font-mono transition-colors text-center",
-                      form.type === t
-                        ? "bg-accent-lime text-bg font-bold"
-                        : "bg-surface-2 text-text-muted hover:text-text-base",
-                    )}
-                  >
-                    {t === "concert" ? "Concert" : "Festival"}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* Venue row: name (autocomplete) + city + state/province */}
@@ -724,34 +688,19 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          {/* Event name (concert) or Festival name + year (festival_day) */}
-          {form.type === "concert" ? (
-            <div>
-              <label className="block text-xs text-text-muted font-mono mb-1">
-                Event name <span className="text-text-subtle">(optional — e.g. The Eras Tour)</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Event name…"
-                value={form.eventSeriesName}
-                onChange={(e) => setField("eventSeriesName", e.target.value)}
-                className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
-              />
-            </div>
-          ) : (
-            <div>
-              <label className="block text-xs text-text-muted font-mono mb-1">
-                Festival name <span className="text-accent-pink">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Festival name…"
-                value={form.eventSeriesName}
-                onChange={(e) => setField("eventSeriesName", e.target.value)}
-                className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
-              />
-            </div>
-          )}
+          {/* Tour name (optional) */}
+          <div>
+            <label className="block text-xs text-text-muted font-mono mb-1">
+              Tour name <span className="text-text-subtle">(optional — e.g. The Eras Tour)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Tour name…"
+              value={form.eventSeriesName}
+              onChange={(e) => setField("eventSeriesName", e.target.value)}
+              className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+            />
+          </div>
 
           {/* Artists */}
           <div>

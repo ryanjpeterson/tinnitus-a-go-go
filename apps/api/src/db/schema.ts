@@ -192,10 +192,67 @@ export const eventSeries = pgTable(
     slug: text("slug").notNull().unique(),
     year: integer("year"),
     imageKey: text("image_key"),
+    // Festival-specific fields (nullable for backward compatibility with tour names)
+    venueId: uuid("venue_id").references(() => venues.id, { onDelete: "set null" }),
+    startDate: date("start_date"),
+    endDate: date("end_date"),
+    flyerKey: text("flyer_key"),
+    flyerHash: text("flyer_hash"),
+    eventNotes: text("event_notes"),
+    sourceUrl: text("source_url"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     nameYearUq: uniqueIndex("event_series_name_year_uq").on(t.name, t.year),
+    venueIdx: index("event_series_venue_idx").on(t.venueId),
+  }),
+);
+
+export const festivalAttendees = pgTable(
+  "festival_attendees",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    festivalId: uuid("festival_id")
+      .notNull()
+      .references(() => eventSeries.id, { onDelete: "cascade" }),
+    status: attendanceStatusEnum("status").notNull().default("interested"),
+    personalNotes: text("personal_notes"),
+    rating: integer("rating"),
+    ticketPricePaid: integer("ticket_price_paid"),
+    ticketPriceCurrency: text("ticket_price_currency"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.festivalId] }),
+    festivalStatusIdx: index("festival_attendees_festival_status_idx").on(t.festivalId, t.status),
+    userStatusIdx: index("festival_attendees_user_status_idx").on(t.userId, t.status),
+  }),
+);
+
+export const festivalSets = pgTable(
+  "festival_sets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    festivalId: uuid("festival_id")
+      .notNull()
+      .references(() => eventSeries.id, { onDelete: "cascade" }),
+    artistId: uuid("artist_id")
+      .notNull()
+      .references(() => artists.id, { onDelete: "cascade" }),
+    performanceDate: date("performance_date"),
+    stageName: text("stage_name"),
+    setOrder: integer("set_order"),
+    appearanceNotes: text("appearance_notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    festivalIdx: index("festival_sets_festival_idx").on(t.festivalId),
+    artistIdx: index("festival_sets_artist_idx").on(t.artistId),
+    festivalDateIdx: index("festival_sets_festival_date_idx").on(t.festivalId, t.performanceDate),
   }),
 );
 
@@ -387,6 +444,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   invites: many(invites),
   concertAttendees: many(concertAttendees),
+  festivalAttendees: many(festivalAttendees),
   imports: many(imports),
 }));
 
@@ -401,11 +459,15 @@ export const venueAliasesRelations = relations(venueAliases, ({ one }) => ({
 
 export const artistsRelations = relations(artists, ({ many }) => ({
   concertArtists: many(concertArtists),
+  festivalSets: many(festivalSets),
   taggedPhotos:   many(photoArtists),
 }));
 
-export const eventSeriesRelations = relations(eventSeries, ({ many }) => ({
+export const eventSeriesRelations = relations(eventSeries, ({ one, many }) => ({
   concerts: many(concerts),
+  venue: one(venues, { fields: [eventSeries.venueId], references: [venues.id] }),
+  festivalAttendees: many(festivalAttendees),
+  festivalSets: many(festivalSets),
 }));
 
 export const concertsRelations = relations(concerts, ({ one, many }) => ({
@@ -437,6 +499,25 @@ export const concertAttendeesRelations = relations(concertAttendees, ({ one }) =
   concert: one(concerts, {
     fields: [concertAttendees.concertId],
     references: [concerts.id],
+  }),
+}));
+
+export const festivalAttendeesRelations = relations(festivalAttendees, ({ one }) => ({
+  user: one(users, { fields: [festivalAttendees.userId], references: [users.id] }),
+  festival: one(eventSeries, {
+    fields: [festivalAttendees.festivalId],
+    references: [eventSeries.id],
+  }),
+}));
+
+export const festivalSetsRelations = relations(festivalSets, ({ one }) => ({
+  festival: one(eventSeries, {
+    fields: [festivalSets.festivalId],
+    references: [eventSeries.id],
+  }),
+  artist: one(artists, {
+    fields: [festivalSets.artistId],
+    references: [artists.id],
   }),
 }));
 

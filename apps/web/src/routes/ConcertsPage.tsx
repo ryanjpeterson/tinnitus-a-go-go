@@ -45,7 +45,7 @@ const PAGE_SIZE = 24;
 function fmtDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-").map(Number);
   if (!year || !month || !day) return isoDate;
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-CA", {
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
   });
 }

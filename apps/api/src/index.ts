@@ -16,6 +16,7 @@ import { photoRoutes } from "./routes/photos.js";
 import { artistRoutes } from "./routes/artists.js";
 import { venueRoutes } from "./routes/venues.js";
 import { seriesRoutes } from "./routes/series.js";
+import { festivalRoutes } from "./routes/festivals.js";
 import { setlistfmRoutes } from "./routes/setlistfm.js";
 import { parseUrlRoutes } from "./routes/parseurl.js";
 import { publicRoutes } from "./routes/public.js";
@@ -76,6 +77,7 @@ async function start(): Promise<void> {
   await app.register(artistRoutes);
   await app.register(venueRoutes);
   await app.register(seriesRoutes);
+  await app.register(festivalRoutes);
   await app.register(setlistfmRoutes);
   await app.register(parseUrlRoutes);
   await app.register(publicRoutes);

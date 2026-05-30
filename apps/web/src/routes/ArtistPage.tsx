@@ -11,7 +11,7 @@ import { PhotoCarousel } from "@/components/PhotoCarousel";
 function fmtDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return iso;
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-CA", {
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
   });
 }
@@ -328,32 +328,47 @@ export function ArtistPage() {
         {concerts.length === 0 ? (
           <p className="py-8 text-center text-xs text-text-subtle font-mono">No shows logged.</p>
         ) : (
-          concerts.map((c) => (
-            <Link
-              key={c.id}
-              to={`/app/concerts/${c.id}`}
-              className="flex items-start gap-4 py-3 px-4 border-b border-border last:border-b-0 hover:bg-surface-2 transition-colors"
-            >
-              <time className="w-28 shrink-0 text-right font-mono text-sm text-text-muted tabular-nums">
-                {fmtDate(c.date)}
-              </time>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm text-text-base truncate">
-                  {c.venue?.name ?? "Unknown venue"}
-                  {c.venue?.city && <span className="text-text-subtle"> · {c.venue.city}</span>}
+          concerts.map((c) => {
+            // Link to festival page for festival_day concerts, otherwise to concert page
+            const href = c.type === "festival_day" && c.eventSeries?.slug
+              ? `/app/festivals/${c.eventSeries.slug}#set-${slug}`
+              : `/app/concerts/${c.id}`;
+            return (
+              <Link
+                key={c.id}
+                to={href}
+                className="flex items-start gap-4 py-3 px-4 border-b border-border last:border-b-0 hover:bg-surface-2 transition-colors"
+              >
+                <time className="w-28 shrink-0 text-right font-mono text-sm text-text-muted tabular-nums">
+                  {fmtDate(c.date)}
+                </time>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-text-base truncate">
+                    {c.type === "festival_day" && c.eventSeries ? (
+                      <>
+                        {c.eventSeries.name}
+                        {c.venue?.city && <span className="text-text-subtle"> · {c.venue.city}</span>}
+                      </>
+                    ) : (
+                      <>
+                        {c.venue?.name ?? "Unknown venue"}
+                        {c.venue?.city && <span className="text-text-subtle"> · {c.venue.city}</span>}
+                      </>
+                    )}
+                  </div>
+                  {c.type !== "festival_day" && c.eventSeries && (
+                    <div className="text-xs text-text-subtle font-mono italic">{c.eventSeries.name}</div>
+                  )}
+                  {c.appearanceNotes && (
+                    <div className="text-xs text-text-subtle italic mt-0.5">{c.appearanceNotes}</div>
+                  )}
                 </div>
-                {c.eventSeries && (
-                  <div className="text-xs text-text-subtle font-mono italic">{c.eventSeries.name}</div>
-                )}
-                {c.appearanceNotes && (
-                  <div className="text-xs text-text-subtle italic mt-0.5">{c.appearanceNotes}</div>
-                )}
-              </div>
-              <span className={`shrink-0 text-xs font-mono ${(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).color}`}>
-                {(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).label}
-              </span>
-            </Link>
-          ))
+                <span className={`shrink-0 text-xs font-mono ${(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).color}`}>
+                  {(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).label}
+                </span>
+              </Link>
+            );
+          })
         )}
       </div>
 

@@ -14,7 +14,7 @@ import { ArtistPage } from "./ArtistPage";
 import { VenuesPage } from "./VenuesPage";
 import { VenuePage } from "./VenuePage";
 import { FestivalsPage } from "./FestivalsPage";
-import { SeriesPage } from "./SeriesPage";
+import { FestivalDetailPage } from "./FestivalDetailPage";
 import { FollowUpPrompt } from "./FollowUpPrompt";
 import { StatsPage } from "./StatsPage";
 
@@ -380,7 +380,7 @@ export function AppShell() {
           <Route path="venues" element={<VenuesPage />} />
           <Route path="venues/:slug" element={<VenuePage />} />
           <Route path="festivals" element={<FestivalsPage />} />
-          <Route path="festivals/:slug" element={<SeriesPage />} />
+          <Route path="festivals/:slug" element={<FestivalDetailPage />} />
           <Route path="stats" element={<StatsPage />} />
           <Route path="account" element={<AccountPage />} />
           <Route

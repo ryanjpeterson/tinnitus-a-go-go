@@ -19,14 +19,14 @@ import type { AttendanceStatus } from "@tagg/shared";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "tagg.followup.dismissed";
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const today = new Date().toISOString().slice(0, 10);
 
 function fmtDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return iso;
-  const date = new Date(Date.UTC(y, m - 1, d));
-  return `${MONTHS[date.getUTCMonth()]} ${d}, ${y}`;
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+  });
 }
 
 function concertLabel(c: ConcertListItem): string {

@@ -142,6 +142,8 @@ export async function runArtistEnrich(
 
   // Image
   const imageUrl = getBestImageUrl(info.image ?? []);
+  console.log(`[enrich] ${artistName}: imageUrl=${imageUrl ?? "none"} (has ${info.image?.length ?? 0} images from Last.fm)`);
+
   if (imageUrl && (overwrite || !artist.imageKey)) {
     try {
       const controller = new AbortController();
@@ -152,6 +154,8 @@ export async function runArtistEnrich(
       });
       clearTimeout(timer);
 
+      console.log(`[enrich] ${artistName}: image fetch status=${res.status}`);
+
       if (res.ok) {
         const arrayBuffer = await res.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
@@ -160,6 +164,8 @@ export async function runArtistEnrich(
         const isJpeg = magicBytes[0] === 0xff && magicBytes[1] === 0xd8;
         const isPng = magicBytes[0] === 0x89 && magicBytes[1] === 0x50;
         const isWebp = magicBytes[0] === 0x52 && magicBytes[1] === 0x49;
+
+        console.log(`[enrich] ${artistName}: image size=${buffer.length} isJpeg=${isJpeg} isPng=${isPng} isWebp=${isWebp}`);
 
         if (isJpeg || isPng || isWebp) {
           const ext = isPng ? ".png" : isWebp ? ".webp" : ".jpg";
@@ -182,11 +188,16 @@ export async function runArtistEnrich(
 
           updates.imageKey = objectKey;
           updated.push("image");
+          console.log(`[enrich] ${artistName}: image saved to ${objectKey}`);
+        } else {
+          console.log(`[enrich] ${artistName}: image not a valid format (magic bytes: ${magicBytes.toString("hex")})`);
         }
       }
-    } catch {
-      // Image download failed, continue without it
+    } catch (err) {
+      console.error(`[enrich] ${artistName}: image download failed:`, err);
     }
+  } else if (!imageUrl) {
+    console.log(`[enrich] ${artistName}: no usable image from Last.fm (all placeholders)`);
   }
 
   // Apply updates

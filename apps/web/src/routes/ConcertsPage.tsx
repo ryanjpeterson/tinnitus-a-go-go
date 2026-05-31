@@ -370,7 +370,7 @@ export function ConcertsPage() {
                   key={tab.label}
                   onClick={() => setFilter({ status: tab.value })}
                   className={clsx(
-                    "min-w-[72px] px-3 py-1 rounded text-xs font-mono transition-colors text-center",
+                    "min-w-[72px] px-3 py-1.5 rounded text-xs font-mono transition-colors text-center",
                     statusFilter === tab.value
                       ? tab.activeClass
                       : "text-text-muted hover:text-text-base",

@@ -15,6 +15,7 @@ import { redis } from "./redis.js";
 import { runCsvImport } from "./jobs/csv-import.js";
 import { runMediaProcess } from "./jobs/media-processing.js";
 import { runArtistEnrich } from "./jobs/artist-enrich.js";
+import { runArtistEnrichScheduler } from "./jobs/artist-enrich-scheduler.js";
 
 // ── CSV import ─────────────────────────────────────────────────────────────
 
@@ -90,10 +91,39 @@ enrichWorker.on("failed", (job, err) =>
   console.error(`[worker] artist-enrich failed  job=${job?.id} ${err.message}`),
 );
 
+// ── Scheduled artist enrichment ───────────────────────────────────────────
+// Runs every hour, queues up to 50 artists missing bio/image
+
+const ENRICH_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+
+let enrichSchedulerInterval: ReturnType<typeof setInterval> | null = null;
+
+const startEnrichScheduler = (): void => {
+  // Run immediately on startup, then every hour
+  console.log("[scheduler] artist-enrich scheduler starting (runs hourly)");
+
+  // Initial run after 10 seconds (let other services start)
+  setTimeout(() => {
+    void runArtistEnrichScheduler().catch((err) => {
+      console.error("[scheduler] artist-enrich error:", err);
+    });
+  }, 10_000);
+
+  // Then run every hour
+  enrichSchedulerInterval = setInterval(() => {
+    void runArtistEnrichScheduler().catch((err) => {
+      console.error("[scheduler] artist-enrich error:", err);
+    });
+  }, ENRICH_INTERVAL_MS);
+};
+
+startEnrichScheduler();
+
 // ── Graceful shutdown ──────────────────────────────────────────────────────
 
 const shutdown = async (signal: string): Promise<void> => {
   console.log(`[worker] ${signal} received, shutting down`);
+  if (enrichSchedulerInterval) clearInterval(enrichSchedulerInterval);
   await Promise.all([csvWorker.close(), mediaWorker.close(), enrichWorker.close()]);
   await redis.quit();
   process.exit(0);

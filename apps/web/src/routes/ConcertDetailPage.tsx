@@ -1589,23 +1589,24 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
 
 function AttendanceEditor({ concertId, attendance }: { concertId: string; attendance: ConcertDetail["attendance"] }) {
   const qc = useQueryClient();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(!attendance); // Start in edit mode if no attendance
   const [notes, setNotes] = useState(attendance?.personalNotes ?? "");
+  const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>(attendance?.status ?? "interested");
 
   const patch = useMutation({
     mutationFn: (body: Parameters<typeof api.patchConcert>[1]) => api.patchConcert(concertId, body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["concerts", concertId] }); qc.invalidateQueries({ queryKey: ["concerts/stats"] }); setEditing(false); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["concerts", concertId] }); qc.invalidateQueries({ queryKey: ["concerts/stats"] }); qc.invalidateQueries({ queryKey: ["concerts"] }); setEditing(false); },
   });
-
-  if (!attendance) return null;
 
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-mono uppercase tracking-wider text-text-muted">Your attendance</span>
-        <button onClick={() => setEditing((v) => !v)} className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
-          {editing ? "Cancel" : "Edit"}
-        </button>
+        <span className="text-xs font-mono uppercase tracking-wider text-text-muted">Attendance</span>
+        {attendance && (
+          <button onClick={() => setEditing((v) => !v)} className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
+            {editing ? "Cancel" : "Edit"}
+          </button>
+        )}
       </div>
 
       {editing ? (
@@ -1613,8 +1614,12 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
           <div>
             <label className="text-xs text-text-muted block mb-1">Status</label>
             <select
-              defaultValue={attendance.status}
-              onChange={(e) => patch.mutate({ status: e.target.value as AttendanceStatus })}
+              value={selectedStatus}
+              onChange={(e) => {
+                const newStatus = e.target.value as AttendanceStatus;
+                setSelectedStatus(newStatus);
+                patch.mutate({ status: newStatus });
+              }}
               className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime"
             >
               {(["attended","attending","interested","missed","cancelled","dismissed"] as AttendanceStatus[]).map(
@@ -1622,20 +1627,24 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
               )}
             </select>
           </div>
-          <div>
-            <label className="text-xs text-text-muted block mb-1">Personal notes</label>
-            <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}
-              className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime resize-none" />
-          </div>
-          <button
-            onClick={() => patch.mutate({ personalNotes: notes || null })}
-            disabled={patch.isPending}
-            className="text-xs font-mono px-4 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {patch.isPending ? "Saving…" : "Save"}
-          </button>
+          {attendance && (
+            <>
+              <div>
+                <label className="text-xs text-text-muted block mb-1">Personal notes</label>
+                <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}
+                  className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime resize-none" />
+              </div>
+              <button
+                onClick={() => patch.mutate({ personalNotes: notes || null })}
+                disabled={patch.isPending}
+                className="text-xs font-mono px-4 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {patch.isPending ? "Saving…" : "Save notes"}
+              </button>
+            </>
+          )}
         </div>
-      ) : (
+      ) : attendance ? (
         <div className="space-y-1.5">
           <span className={clsx("inline-block text-xs px-2 py-0.5 rounded border font-mono", STATUS_CHIP[attendance.status].classes)}>
             {STATUS_CHIP[attendance.status].label}
@@ -1649,7 +1658,7 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
             </div>
           )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

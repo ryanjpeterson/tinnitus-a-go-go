@@ -168,6 +168,11 @@ function ConcertCard({
               festival
             </span>
           )}
+          {chip && (
+            <span className={clsx("absolute top-2 right-2 text-xs font-mono px-2 py-0.5 rounded border", chip.classes)}>
+              {chip.label}
+            </span>
+          )}
         </div>
       </Link>
 

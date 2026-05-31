@@ -75,10 +75,10 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "Invalid query parameters.", details: parsed.error.flatten() });
     }
 
-    const { year, q, sort, page, limit } = parsed.data;
+    const { status, year, q, sort, page, limit } = parsed.data;
     const offset = (page - 1) * limit;
 
-    // Build WHERE clause conditions (no user filtering — all concerts are public)
+    // Build WHERE clause conditions
     type SQL = ReturnType<typeof eq>;
     const conditions: SQL[] = [];
 
@@ -86,30 +86,58 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       conditions.push(sql`extract(year from ${schema.concerts.date})::int = ${year}` as unknown as SQL);
     }
 
+    // When filtering by status, we need to join with concert_attendees
+    if (status) {
+      conditions.push(eq(schema.concertAttendees.status, status));
+    }
+
     const where = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0]! : and(...conditions);
 
-    // Build base query (no longer joining attendees for filtering)
-    const baseQuery = db
-      .select({
-        concertId: schema.concerts.id,
-        date: schema.concerts.date,
-        type: schema.concerts.type,
-        dateIsApproximate: schema.concerts.dateIsApproximate,
-        headlinerHint: schema.concerts.headlinerHint,
-        flyerKey: schema.concerts.flyerKey,
-        venueId: schema.venues.id,
-        venueName: schema.venues.name,
-        venueSlug: schema.venues.slug,
-        venueCity: schema.venues.city,
-        venueRegion: schema.venues.region,
-        seriesId: schema.eventSeries.id,
-        seriesName: schema.eventSeries.name,
-        seriesSlug: schema.eventSeries.slug,
-        seriesYear: schema.eventSeries.year,
-      })
-      .from(schema.concerts)
-      .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
-      .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id));
+    // Build base query - join with attendees when filtering by status
+    const baseQuery = status
+      ? db
+          .select({
+            concertId: schema.concerts.id,
+            date: schema.concerts.date,
+            type: schema.concerts.type,
+            dateIsApproximate: schema.concerts.dateIsApproximate,
+            headlinerHint: schema.concerts.headlinerHint,
+            flyerKey: schema.concerts.flyerKey,
+            venueId: schema.venues.id,
+            venueName: schema.venues.name,
+            venueSlug: schema.venues.slug,
+            venueCity: schema.venues.city,
+            venueRegion: schema.venues.region,
+            seriesId: schema.eventSeries.id,
+            seriesName: schema.eventSeries.name,
+            seriesSlug: schema.eventSeries.slug,
+            seriesYear: schema.eventSeries.year,
+          })
+          .from(schema.concerts)
+          .innerJoin(schema.concertAttendees, eq(schema.concertAttendees.concertId, schema.concerts.id))
+          .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
+          .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
+      : db
+          .select({
+            concertId: schema.concerts.id,
+            date: schema.concerts.date,
+            type: schema.concerts.type,
+            dateIsApproximate: schema.concerts.dateIsApproximate,
+            headlinerHint: schema.concerts.headlinerHint,
+            flyerKey: schema.concerts.flyerKey,
+            venueId: schema.venues.id,
+            venueName: schema.venues.name,
+            venueSlug: schema.venues.slug,
+            venueCity: schema.venues.city,
+            venueRegion: schema.venues.region,
+            seriesId: schema.eventSeries.id,
+            seriesName: schema.eventSeries.name,
+            seriesSlug: schema.eventSeries.slug,
+            seriesYear: schema.eventSeries.year,
+          })
+          .from(schema.concerts)
+          .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
+          .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id));
 
     // Apply text search — headliner hint, venue name, event series name
     let filteredQuery = where ? baseQuery.where(where) : baseQuery;
@@ -133,28 +161,36 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       filteredQuery = baseQuery.where(searchConditions!);
     }
 
-    // Count total
-    const countQuery = db
-      .select({ total: sql<number>`count(*)::int` })
-      .from(schema.concerts)
-      .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
-      .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
-      .where(q
-        ? where
-          ? and(
-              where,
-              or(
-                ilike(schema.concerts.headlinerHint, `%${q}%`),
-                ilike(schema.venues.name, `%${q}%`),
-                ilike(schema.eventSeries.name, `%${q}%`),
-              ),
-            )
-          : or(
+    // Count total - must match the same join structure as the base query
+    const countBaseQuery = status
+      ? db
+          .select({ total: sql<number>`count(*)::int` })
+          .from(schema.concerts)
+          .innerJoin(schema.concertAttendees, eq(schema.concertAttendees.concertId, schema.concerts.id))
+          .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
+          .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
+      : db
+          .select({ total: sql<number>`count(*)::int` })
+          .from(schema.concerts)
+          .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
+          .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id));
+
+    const countQuery = countBaseQuery.where(q
+      ? where
+        ? and(
+            where,
+            or(
               ilike(schema.concerts.headlinerHint, `%${q}%`),
               ilike(schema.venues.name, `%${q}%`),
               ilike(schema.eventSeries.name, `%${q}%`),
-            )
-        : where);
+            ),
+          )
+        : or(
+            ilike(schema.concerts.headlinerHint, `%${q}%`),
+            ilike(schema.venues.name, `%${q}%`),
+            ilike(schema.eventSeries.name, `%${q}%`),
+          )
+      : where);
 
     const orderCol = sort === "date_asc" ? asc(schema.concerts.date) : desc(schema.concerts.date);
 
@@ -196,6 +232,21 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       artistsByConcert.set(row.concertId, list);
     }
 
+    // Fetch attendance data for each concert
+    const attendanceRows = await db
+      .select({
+        concertId: schema.concertAttendees.concertId,
+        status: schema.concertAttendees.status,
+        rating: schema.concertAttendees.rating,
+      })
+      .from(schema.concertAttendees)
+      .where(inArray(schema.concertAttendees.concertId, concertIds));
+
+    const attendanceByConcert = new Map<string, { status: string; rating: number | null }>();
+    for (const row of attendanceRows) {
+      attendanceByConcert.set(row.concertId, { status: row.status, rating: row.rating });
+    }
+
     const concerts = concertRows.map((r) => {
       const artists = (artistsByConcert.get(r.concertId) ?? []).map((a) => ({
         id: a.artistId,
@@ -206,6 +257,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         appearanceNotes: a.appearanceNotes,
       }));
 
+      const attendance = attendanceByConcert.get(r.concertId);
       return {
         id: r.concertId,
         date: r.date,
@@ -220,6 +272,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
           ? { id: r.seriesId, slug: r.seriesSlug!, name: r.seriesName!, year: r.seriesYear }
           : null,
         artists,
+        attendance: attendance ?? null,
       };
     });
 

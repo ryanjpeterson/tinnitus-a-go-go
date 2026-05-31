@@ -26,13 +26,13 @@ const STATUS_TABS: { label: string; value: AttendanceStatus | undefined; activeC
   { label: "Missed",    value: "missed",     activeClass: "bg-red-950 text-red-400 font-bold"        },
 ];
 
-const STATUS_CHIP: Record<AttendanceStatus, { label: string; classes: string; dot: string }> = {
-  attended:  { label: "Attended",  classes: "bg-lime-950 text-accent-lime border-lime-700",    dot: "bg-accent-lime"  },
-  attending: { label: "Attending", classes: "bg-yellow-950 text-yellow-400 border-yellow-700", dot: "bg-yellow-400"   },
-  interested:{ label: "Interested",classes: "bg-purple-950 text-purple-400 border-purple-800", dot: "bg-purple-400"   },
-  missed:    { label: "Missed",    classes: "bg-red-950 text-red-400 border-red-800",          dot: "bg-red-400"      },
-  cancelled: { label: "Cancelled", classes: "bg-surface-2 text-text-subtle border-border",     dot: "bg-text-subtle"  },
-  dismissed: { label: "Dismissed", classes: "bg-surface-2 text-text-subtle border-border",     dot: "bg-text-subtle"  },
+const STATUS_CHIP: Record<AttendanceStatus, { label: string; classes: string; dot: string; border: string }> = {
+  attended:  { label: "Attended",  classes: "bg-lime-950 text-accent-lime border-lime-700",    dot: "bg-accent-lime",  border: "border-lime-700"   },
+  attending: { label: "Attending", classes: "bg-yellow-950 text-yellow-400 border-yellow-700", dot: "bg-yellow-400",   border: "border-yellow-600" },
+  interested:{ label: "Interested",classes: "bg-purple-950 text-purple-400 border-purple-800", dot: "bg-purple-400",   border: "border-purple-700" },
+  missed:    { label: "Missed",    classes: "bg-red-950 text-red-400 border-red-800",          dot: "bg-red-400",      border: "border-red-700"    },
+  cancelled: { label: "Cancelled", classes: "bg-surface-2 text-text-subtle border-border",     dot: "bg-text-subtle",  border: "border-border"     },
+  dismissed: { label: "Dismissed", classes: "bg-surface-2 text-text-subtle border-border",     dot: "bg-text-subtle",  border: "border-border"     },
 };
 
 type SortOrder = "newest" | "oldest";
@@ -133,8 +133,13 @@ function ConcertCard({
   const headliner = concertHeadliner(concert);
   const supports = supportingActs(concert);
 
+  const borderClass = chip ? chip.border : "border-border";
+
   return (
-    <div className="group relative flex flex-col rounded-lg border border-border bg-surface overflow-hidden hover:border-accent-lime transition-colors">
+    <div className={clsx(
+      "group relative flex flex-col rounded-lg border bg-surface overflow-hidden hover:border-accent-lime transition-colors",
+      borderClass
+    )}>
       {/* Flyer / header image */}
       <Link to={`/concerts/${concert.id}`} className="block">
         <div className="aspect-[3/2] overflow-hidden bg-surface-2 relative">

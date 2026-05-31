@@ -54,6 +54,16 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
   const [imageError, setImageError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Image URL import state
+  const [showImageUrlInput, setShowImageUrlInput] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [imageUrlImporting, setImageUrlImporting] = useState(false);
+
+  // Last.fm enrichment state
+  const [enriching, setEnriching] = useState(false);
+  const [enrichError, setEnrichError] = useState<string | null>(null);
+  const [enrichSuccess, setEnrichSuccess] = useState<string | null>(null);
+
   const qc = useQueryClient();
 
   const patchMutation = useMutation({
@@ -85,53 +95,176 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
     },
   });
 
+  const handleImageUrlImport = async () => {
+    if (!imageUrlInput.trim()) return;
+    setImageUrlImporting(true);
+    setImageError(null);
+    try {
+      const { imageUrl: url } = await api.uploadArtistImageFromUrl(artist.slug, imageUrlInput.trim());
+      setImageUrl(url);
+      setImageUrlInput("");
+      setShowImageUrlInput(false);
+      qc.invalidateQueries({ queryKey: ["artists", artist.slug] });
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "Failed to import image from URL.");
+    } finally {
+      setImageUrlImporting(false);
+    }
+  };
+
+  const handleDeleteImage = async () => {
+    if (!window.confirm("Remove this image?")) return;
+    try {
+      await api.deleteArtistImage(artist.slug);
+      setImageUrl(null);
+      qc.invalidateQueries({ queryKey: ["artists", artist.slug] });
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "Delete failed.");
+    }
+  };
+
+  const handleEnrichFromLastfm = async () => {
+    setEnriching(true);
+    setEnrichError(null);
+    setEnrichSuccess(null);
+    try {
+      const result = await api.enrichArtist(artist.slug, { overwrite: false });
+      if (result.updated.length > 0) {
+        // Update local state with fetched data
+        if (result.fetched.bio) setBio(result.fetched.bio);
+        if (result.fetched.genre) setGenre(result.fetched.genre);
+        if (result.fetched.mbid) setMbid(result.fetched.mbid);
+        if (result.fetched.imageUrl) setImageUrl(result.fetched.imageUrl);
+        setEnrichSuccess(`Updated: ${result.updated.join(", ")}`);
+        qc.invalidateQueries({ queryKey: ["artists", artist.slug] });
+      } else {
+        setEnrichSuccess("No new data found (fields already populated or not available on Last.fm)");
+      }
+    } catch (err) {
+      setEnrichError(err instanceof Error ? err.message : "Failed to fetch from Last.fm");
+    } finally {
+      setEnriching(false);
+    }
+  };
+
   return (
     <div className="rounded-lg border border-accent-lime/30 bg-surface p-5 mb-6">
       <h2 className="font-display uppercase text-sm text-accent-lime tracking-widest mb-4">
         Edit Artist
       </h2>
 
-      {/* Image section */}
-      <div className="flex items-start gap-4 mb-5">
-        <div
-          className="w-20 h-20 rounded-lg border border-border bg-surface-2 flex-shrink-0 overflow-hidden cursor-pointer hover:border-accent-lime transition-colors"
-          onClick={() => fileRef.current?.click()}
-          title="Click to upload image"
-        >
-          {imageUrl ? (
-            <img src={imageUrl} alt={artist.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-text-subtle">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
-                <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
+      {/* Last.fm enrichment */}
+      <div className="mb-5 p-3 rounded-lg border border-border bg-surface-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-mono text-text-muted">Auto-fill from Last.fm</p>
+            <p className="text-xs text-text-subtle mt-0.5">Fetches bio, genre, image, and MusicBrainz ID</p>
+          </div>
           <button
             type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={imageMutation.isPending}
-            className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors border border-border rounded px-3 py-1.5 disabled:opacity-50"
+            onClick={() => void handleEnrichFromLastfm()}
+            disabled={enriching}
+            className="text-xs font-mono px-3 py-1.5 rounded border border-purple-700 bg-purple-950 text-purple-400 hover:bg-purple-900 transition-colors disabled:opacity-50"
           >
-            {imageMutation.isPending ? "Uploading…" : "Upload image"}
+            {enriching ? "Fetching…" : "Fetch from Last.fm"}
           </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) imageMutation.mutate(f);
-              e.target.value = "";
-            }}
-          />
-          {imageError && <p className="text-xs text-accent-pink font-mono mt-1">{imageError}</p>}
-          <p className="text-xs text-text-subtle mt-1">JPEG, PNG or WebP · max 10 MB</p>
+        </div>
+        {enrichError && <p className="text-xs text-accent-pink font-mono mt-2">{enrichError}</p>}
+        {enrichSuccess && <p className="text-xs text-accent-lime font-mono mt-2">{enrichSuccess}</p>}
+      </div>
+
+      {/* Image section */}
+      <div className="mb-5">
+        <label className="block text-xs text-text-muted font-mono mb-2">Image</label>
+        <div className="flex items-start gap-4">
+          <div className="w-20 h-20 rounded-lg border border-border bg-surface-2 flex-shrink-0 overflow-hidden relative group">
+            {imageUrl ? (
+              <>
+                <img src={imageUrl} alt={artist.name} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteImage()}
+                  className="absolute top-1 right-1 w-5 h-5 rounded bg-black/60 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                  title="Remove image"
+                >×</button>
+              </>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-text-subtle">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                  <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
+                  <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+            )}
+            {(imageMutation.isPending || imageUrlImporting) && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <span className="text-xs font-mono text-white animate-pulse">
+                  {imageUrlImporting ? "…" : "…"}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex gap-1 flex-wrap">
+              <label className="text-xs font-mono text-text-muted hover:text-accent-lime cursor-pointer transition-colors border border-border rounded px-2 py-1">
+                {imageUrl ? "Replace" : "Upload"}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  disabled={imageMutation.isPending || imageUrlImporting}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) imageMutation.mutate(f);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowImageUrlInput((v) => !v)}
+                disabled={imageMutation.isPending || imageUrlImporting}
+                className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors border border-border rounded px-2 py-1"
+              >
+                URL
+              </button>
+              {imageUrl && (
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteImage()}
+                  disabled={imageMutation.isPending || imageUrlImporting}
+                  className="text-xs font-mono text-text-muted hover:text-accent-pink transition-colors border border-border rounded px-2 py-1"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            {showImageUrlInput && (
+              <div className="flex gap-1">
+                <input
+                  type="url"
+                  placeholder="Paste image URL…"
+                  value={imageUrlInput}
+                  onChange={(e) => setImageUrlInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void handleImageUrlImport()}
+                  disabled={imageUrlImporting}
+                  className="flex-1 rounded border border-border bg-surface px-2 py-1 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleImageUrlImport()}
+                  disabled={imageUrlImporting || !imageUrlInput.trim()}
+                  className="text-xs font-mono px-2 py-1 rounded bg-accent-lime text-bg font-bold disabled:opacity-50"
+                >
+                  {imageUrlImporting ? "…" : "Go"}
+                </button>
+              </div>
+            )}
+            {imageError && <p className="text-xs text-accent-pink font-mono">{imageError}</p>}
+            <p className="text-xs text-text-subtle">JPEG, PNG or WebP · max 10 MB</p>
+          </div>
         </div>
       </div>
 

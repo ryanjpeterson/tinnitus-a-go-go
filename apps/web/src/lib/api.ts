@@ -282,6 +282,41 @@ export const api = {
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as { error?: string }).error ?? "Upload failed"); }
     return res.json() as Promise<{ imageUrl: string }>;
   },
+  uploadArtistImageFromUrl: (slug: string, url: string) =>
+    request<{ imageUrl: string }>(`/artists/${slug}/image/url`, {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
+  deleteArtistImage: (slug: string) =>
+    request<void>(`/artists/${slug}/image`, { method: "DELETE" }),
+  enrichArtist: (
+    slug: string,
+    options?: {
+      updateBio?: boolean;
+      updateGenre?: boolean;
+      updateImage?: boolean;
+      updateMbid?: boolean;
+      overwrite?: boolean;
+    },
+  ) =>
+    request<ArtistEnrichmentResponse>(`/artists/${slug}/enrich`, {
+      method: "POST",
+      body: JSON.stringify(options ?? {}),
+    }),
+  queueArtistEnrich: (slug: string) =>
+    request<{ ok: boolean; queued: boolean }>(`/artists/${slug}/enrich/queue`, {
+      method: "POST",
+    }),
+  bulkEnrichArtists: (options?: {
+    missingBio?: boolean;
+    missingImage?: boolean;
+    missingGenre?: boolean;
+    limit?: number;
+  }) =>
+    request<{ ok: boolean; queued: number; total: number }>("/artists/enrich/bulk", {
+      method: "POST",
+      body: JSON.stringify(options ?? {}),
+    }),
 
   // Venues
   listVenues: (params?: { q?: string; page?: number; limit?: number }) => {
@@ -726,6 +761,19 @@ export interface ArtistDetailResponse {
     upcoming: number;
     firstSeen: string | null;
     lastSeen: string | null;
+  };
+}
+
+export interface ArtistEnrichmentResponse {
+  ok: boolean;
+  updated: string[];
+  fetched: {
+    bio?: string;
+    genre?: string;
+    mbid?: string;
+    imageUrl?: string;
+    listeners?: number;
+    playcount?: number;
   };
 }
 

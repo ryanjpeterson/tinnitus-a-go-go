@@ -33,6 +33,10 @@ const envSchema = z.object({
   // if no JSON-LD structured data is found on the target page.
   ANTHROPIC_API_KEY: z.string().optional(),
 
+  // Optional: Last.fm API key for artist data enrichment (bio, images, tags).
+  // Get a free key at https://www.last.fm/api/account/create
+  LASTFM_API_KEY: z.string().optional(),
+
   INVITES_PER_USER: z.coerce.number().int().nonnegative().default(3),
   INVITE_TTL_DAYS: z.coerce.number().int().positive().default(14),
 

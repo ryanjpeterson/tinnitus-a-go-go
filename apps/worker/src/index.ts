@@ -1,17 +1,20 @@
 /**
  * Worker entrypoint.
- * Registers BullMQ Workers for the csv-import and media-process queues.
+ * Registers BullMQ Workers for the csv-import, media-process, and artist-enrich queues.
  */
 import { Worker } from "bullmq";
 import {
   QUEUE_CSV_IMPORT,
   QUEUE_MEDIA_PROCESS,
+  QUEUE_ARTIST_ENRICH,
   type CsvImportJobData,
   type MediaProcessJobData,
+  type ArtistEnrichJobData,
 } from "@tagg/shared";
 import { redis } from "./redis.js";
 import { runCsvImport } from "./jobs/csv-import.js";
 import { runMediaProcess } from "./jobs/media-processing.js";
+import { runArtistEnrich } from "./jobs/artist-enrich.js";
 
 // ── CSV import ─────────────────────────────────────────────────────────────
 
@@ -59,11 +62,39 @@ mediaWorker.on("failed", (job, err) =>
   console.error(`[worker] media-process failed  job=${job?.id} ${err.message}`),
 );
 
+// ── Artist enrichment ─────────────────────────────────────────────────────
+
+const enrichWorker = new Worker<ArtistEnrichJobData>(
+  QUEUE_ARTIST_ENRICH,
+  async (job) => runArtistEnrich(job),
+  {
+    connection: redis,
+    // Rate limit to avoid hitting Last.fm API limits (30 req/min)
+    // Process one at a time with a small delay between jobs
+    concurrency: 1,
+    limiter: {
+      max: 20,
+      duration: 60_000, // 20 jobs per minute to stay well under limit
+    },
+  },
+);
+
+enrichWorker.on("ready", () => console.log(`[worker] listening on queue "${QUEUE_ARTIST_ENRICH}"`));
+enrichWorker.on("active", (job) =>
+  console.log(`[worker] artist-enrich started job=${job.id} artist=${job.data.artistName}`),
+);
+enrichWorker.on("completed", (job, result) =>
+  console.log(`[worker] artist-enrich done   job=${job.id} updated=${result.updated.join(",") || "none"}`),
+);
+enrichWorker.on("failed", (job, err) =>
+  console.error(`[worker] artist-enrich failed  job=${job?.id} ${err.message}`),
+);
+
 // ── Graceful shutdown ──────────────────────────────────────────────────────
 
 const shutdown = async (signal: string): Promise<void> => {
   console.log(`[worker] ${signal} received, shutting down`);
-  await Promise.all([csvWorker.close(), mediaWorker.close()]);
+  await Promise.all([csvWorker.close(), mediaWorker.close(), enrichWorker.close()]);
   await redis.quit();
   process.exit(0);
 };

@@ -6,6 +6,7 @@
 
 export const QUEUE_CSV_IMPORT = "csv-import";
 export const QUEUE_MEDIA_PROCESS = "media-process";
+export const QUEUE_ARTIST_ENRICH = "artist-enrich";
 
 export interface MediaProcessJobData {
   photoId: string;
@@ -34,4 +35,17 @@ export interface CsvImportJobResult {
   eventSeriesCreated: number;
   attendeesCreated: number;
   warningCount: number;
+}
+
+export interface ArtistEnrichJobData {
+  artistId: string;
+  artistName: string;
+  mbid: string | null;
+  overwrite: boolean;
+}
+
+export interface ArtistEnrichJobResult {
+  artistId: string;
+  updated: string[];
+  error: string | null;
 }

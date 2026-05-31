@@ -10,6 +10,8 @@ const envSchema = z.object({
   MINIO_ROOT_USER: z.string(),
   MINIO_ROOT_PASSWORD: z.string(),
   MINIO_BUCKET: z.string(),
+  // Optional: Last.fm API key for artist enrichment
+  LASTFM_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

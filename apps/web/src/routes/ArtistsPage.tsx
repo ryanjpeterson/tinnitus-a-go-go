@@ -54,7 +54,7 @@ export function ArtistsPage() {
             {artists.map((a) => (
               <EntityCard
                 key={a.id}
-                href={`/app/artists/${a.slug}`}
+                href={`/artists/${a.slug}`}
                 name={a.name}
                 imageUrl={a.imageKey}
                 sub1={a.genre}

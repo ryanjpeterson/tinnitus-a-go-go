@@ -54,7 +54,7 @@ export function VenuesPage() {
             {venues.map((v) => (
               <EntityCard
                 key={v.id}
-                href={`/app/venues/${v.slug}`}
+                href={`/venues/${v.slug}`}
                 name={v.name}
                 imageUrl={v.imageUrl}
                 sub1={[v.city, v.region].filter(Boolean).join(", ") || null}

@@ -24,7 +24,7 @@ import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { db, schema } from "../db/client.js";
 import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
-import { requireUser } from "../auth/middleware.js";
+import { requireUser, requireAdmin } from "../auth/middleware.js";
 import { slugify } from "@tagg/shared";
 
 /** Direct public URL for a MinIO object */
@@ -43,13 +43,12 @@ const attendanceStatuses = [
 ] as const;
 
 export async function festivalRoutes(app: FastifyInstance): Promise<void> {
-  app.addHook("preHandler", requireUser);
+  // NOTE: Per-route auth now. GET endpoints are public, write endpoints require admin.
 
   // ── GET /festivals ─────────────────────────────────────────────────────────
-  // List festivals the user has attendance records for
+  // Public endpoint: list all festivals
 
   const listQuerySchema = z.object({
-    status: z.enum(attendanceStatuses).optional(),
     year: z.coerce.number().int().min(1900).max(2100).optional(),
     q: z.string().max(128).optional(),
     sort: z.enum(["date_desc", "date_asc", "name_asc"]).optional().default("date_desc"),
@@ -63,16 +62,13 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "Invalid query parameters.", details: parsed.error.flatten() });
     }
 
-    const { status, year, q, sort, page, limit } = parsed.data;
-    const userId = req.user!.id;
+    const { year, q, sort, page, limit } = parsed.data;
     const offset = (page - 1) * limit;
 
+    // Show all festivals (no user filtering)
     type SQL = ReturnType<typeof eq>;
-    const conditions: SQL[] = [eq(schema.festivalAttendees.userId, userId)];
+    const conditions: SQL[] = [];
 
-    if (status) {
-      conditions.push(eq(schema.festivalAttendees.status, status));
-    }
     if (year) {
       conditions.push(eq(schema.eventSeries.year, year));
     }
@@ -80,7 +76,7 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       conditions.push(ilike(schema.eventSeries.name, `%${q}%`));
     }
 
-    const where = conditions.length === 1 ? conditions[0]! : and(...conditions);
+    const where = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0]! : and(...conditions);
 
     const orderCol =
       sort === "date_asc" ? asc(schema.eventSeries.startDate) :
@@ -102,21 +98,17 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
           venueSlug: schema.venues.slug,
           venueCity: schema.venues.city,
           venueRegion: schema.venues.region,
-          status: schema.festivalAttendees.status,
-          rating: schema.festivalAttendees.rating,
         })
-        .from(schema.festivalAttendees)
-        .innerJoin(schema.eventSeries, eq(schema.festivalAttendees.festivalId, schema.eventSeries.id))
+        .from(schema.eventSeries)
         .leftJoin(schema.venues, eq(schema.eventSeries.venueId, schema.venues.id))
-        .where(where!)
+        .where(where)
         .orderBy(orderCol)
         .limit(limit)
         .offset(offset),
       db
         .select({ total: sql<number>`count(*)::int` })
-        .from(schema.festivalAttendees)
-        .innerJoin(schema.eventSeries, eq(schema.festivalAttendees.festivalId, schema.eventSeries.id))
-        .where(where!),
+        .from(schema.eventSeries)
+        .where(where),
     ]);
 
     const total = countRows[0]?.total ?? 0;
@@ -148,10 +140,6 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
         ? { id: r.venueId, slug: r.venueSlug!, name: r.venueName!, city: r.venueCity, region: r.venueRegion }
         : null,
       artistCount: artistCountMap.get(r.id) ?? 0,
-      attendance: {
-        status: r.status,
-        rating: r.rating,
-      },
     }));
 
     return reply.send({
@@ -164,11 +152,10 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── GET /festivals/:slug ───────────────────────────────────────────────────
-  // Festival detail with sets and user's attendance
+  // Public endpoint: festival detail with sets
 
   app.get("/festivals/:slug", async (req, reply) => {
     const { slug } = req.params as { slug: string };
-    const userId = req.user!.id;
 
     const festival = await db.query.eventSeries.findFirst({
       where: eq(schema.eventSeries.slug, slug),
@@ -180,14 +167,6 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
     if (!festival) {
       return reply.code(404).send({ error: "Festival not found." });
     }
-
-    // Get user's attendance
-    const attendee = await db.query.festivalAttendees.findFirst({
-      where: and(
-        eq(schema.festivalAttendees.festivalId, festival.id),
-        eq(schema.festivalAttendees.userId, userId),
-      ),
-    });
 
     // Get sets with artist info
     const setsRows = await db
@@ -292,17 +271,6 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       sets,
       setsByDate: Object.fromEntries(setsByDate),
       concertsByDate: Object.fromEntries(concertsByDate),
-      attendance: attendee
-        ? {
-            status: attendee.status,
-            personalNotes: attendee.personalNotes,
-            rating: attendee.rating,
-            ticketPricePaid: attendee.ticketPricePaid,
-            ticketPriceCurrency: attendee.ticketPriceCurrency,
-            createdAt: attendee.createdAt,
-            updatedAt: attendee.updatedAt,
-          }
-        : null,
       stats: {
         totalArtists: new Set(sets.map((s) => s.artist.id)).size,
         totalDays: setsByDate.size,
@@ -341,7 +309,7 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       .optional(),
   });
 
-  app.post("/festivals", async (req, reply) => {
+  app.post("/festivals", { preHandler: [requireAdmin] }, async (req, reply) => {
     const parsed = createBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "Invalid input.", details: parsed.error.flatten() });
@@ -470,32 +438,21 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
     sourceUrl: z.string().url().max(2048).nullable().optional(),
   }).refine((d) => Object.keys(d).length > 0, "Provide at least one field to update.");
 
-  app.patch("/festivals/:slug", async (req, reply) => {
+  app.patch("/festivals/:slug", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
     const parsed = patchBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "Invalid input.", details: parsed.error.flatten() });
     }
 
-    const userId = req.user!.id;
     const body = parsed.data;
 
-    // Verify user has attendance (is allowed to edit)
+    // Verify festival exists
     const festival = await db.query.eventSeries.findFirst({
       where: eq(schema.eventSeries.slug, slug),
     });
     if (!festival) {
       return reply.code(404).send({ error: "Festival not found." });
-    }
-
-    const attendee = await db.query.festivalAttendees.findFirst({
-      where: and(
-        eq(schema.festivalAttendees.festivalId, festival.id),
-        eq(schema.festivalAttendees.userId, userId),
-      ),
-    });
-    if (!attendee) {
-      return reply.code(403).send({ error: "Not attending this festival." });
     }
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -550,11 +507,10 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── DELETE /festivals/:slug ────────────────────────────────────────────────
-  // Remove user's attendance from festival
+  // Delete festival (admin only)
 
-  app.delete("/festivals/:slug", async (req, reply) => {
+  app.delete("/festivals/:slug", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
-    const userId = req.user!.id;
 
     const festival = await db.query.eventSeries.findFirst({
       where: eq(schema.eventSeries.slug, slug),
@@ -563,19 +519,10 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(404).send({ error: "Festival not found." });
     }
 
-    const result = await db
-      .delete(schema.festivalAttendees)
-      .where(
-        and(
-          eq(schema.festivalAttendees.userId, userId),
-          eq(schema.festivalAttendees.festivalId, festival.id),
-        ),
-      )
-      .returning({ userId: schema.festivalAttendees.userId });
-
-    if (result.length === 0) {
-      return reply.code(404).send({ error: "Not attending this festival." });
-    }
+    // Delete attendees, sets, and the festival itself
+    await db.delete(schema.festivalAttendees).where(eq(schema.festivalAttendees.festivalId, festival.id));
+    await db.delete(schema.festivalSets).where(eq(schema.festivalSets.festivalId, festival.id));
+    await db.delete(schema.eventSeries).where(eq(schema.eventSeries.id, festival.id));
 
     return reply.code(204).send();
   });
@@ -591,7 +538,7 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
     ticketPriceCurrency: z.string().length(3).nullable().optional(),
   }).refine((d) => Object.keys(d).length > 0, "Provide at least one field to update.");
 
-  app.patch("/festivals/:slug/attendance", async (req, reply) => {
+  app.patch("/festivals/:slug/attendance", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
     const parsed = attendanceBody.safeParse(req.body);
     if (!parsed.success) {
@@ -651,31 +598,18 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       .max(200),
   });
 
-  app.put("/festivals/:slug/sets", async (req, reply) => {
+  app.put("/festivals/:slug/sets", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
     const parsed = putSetsBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "Invalid body.", details: parsed.error.flatten() });
     }
 
-    const userId = req.user!.id;
-
     const festival = await db.query.eventSeries.findFirst({
       where: eq(schema.eventSeries.slug, slug),
     });
     if (!festival) {
       return reply.code(404).send({ error: "Festival not found." });
-    }
-
-    // Verify user has attendance
-    const attendee = await db.query.festivalAttendees.findFirst({
-      where: and(
-        eq(schema.festivalAttendees.festivalId, festival.id),
-        eq(schema.festivalAttendees.userId, userId),
-      ),
-    });
-    if (!attendee) {
-      return reply.code(403).send({ error: "Not attending this festival." });
     }
 
     const { sets } = parsed.data;
@@ -737,7 +671,7 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
 
   const FLYER_ALLOWED = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 
-  app.post("/festivals/:slug/flyer", async (req, reply) => {
+  app.post("/festivals/:slug/flyer", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
 
     const festival = await db.query.eventSeries.findFirst({
@@ -799,7 +733,7 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
     url: z.string().url().max(2048),
   });
 
-  app.post("/festivals/:slug/flyer/url", async (req, reply) => {
+  app.post("/festivals/:slug/flyer/url", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
 
     const festival = await db.query.eventSeries.findFirst({
@@ -916,7 +850,7 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
 
   // ── DELETE /festivals/:slug/flyer ──────────────────────────────────────────
 
-  app.delete("/festivals/:slug/flyer", async (req, reply) => {
+  app.delete("/festivals/:slug/flyer", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
 
     const festival = await db.query.eventSeries.findFirst({

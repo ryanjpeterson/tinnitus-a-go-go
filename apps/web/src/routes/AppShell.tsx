@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, Routes, Route, NavLink, useLocation } from "react-router-dom";
+import { Link, Routes, Route, NavLink, useLocation, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -141,10 +141,6 @@ function ServicesPanel() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AppShell
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Mobile nav overlay
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -154,13 +150,15 @@ function MobileMenu({
   navLinks,
   followupCount,
   username,
+  isAdmin,
   onSignOut,
 }: {
   open: boolean;
   onClose: () => void;
   navLinks: { to: string; label: string }[];
   followupCount: number;
-  username: string;
+  username: string | null;
+  isAdmin: boolean;
   onSignOut: () => void;
 }) {
   // Close on Escape
@@ -183,7 +181,7 @@ function MobileMenu({
     <div className="fixed inset-0 z-50 flex flex-col bg-bg sm:hidden">
       {/* Header row */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <Link to="/app" onClick={onClose}>
+        <Link to="/" onClick={onClose}>
           <Wordmark size="sm" svg />
         </Link>
         <button
@@ -215,7 +213,7 @@ function MobileMenu({
             }
           >
             {link.label}
-            {link.to === "/app/concerts" && followupCount > 0 && (
+            {link.to === "/concerts" && followupCount > 0 && isAdmin && (
               <span className="min-w-[22px] h-5 rounded-full bg-accent-pink text-white text-[11px] font-mono font-bold flex items-center justify-center px-1.5 leading-none">
                 {followupCount}
               </span>
@@ -224,25 +222,35 @@ function MobileMenu({
         ))}
       </nav>
 
-      {/* Footer — username + account + sign out */}
+      {/* Footer */}
       <div className="px-5 py-5 border-t border-border flex items-center justify-between gap-3">
-        <Link
-          to="/app/account"
-          onClick={onClose}
-          className="text-sm text-text-muted hover:text-accent-lime transition-colors font-mono"
-        >
-          @<span>{username}</span>
-        </Link>
-        <Button variant="secondary" size="sm" onClick={() => { onSignOut(); onClose(); }}>
-          Sign out
-        </Button>
+        {isAdmin && username ? (
+          <>
+            <Link
+              to="/account"
+              onClick={onClose}
+              className="text-sm text-text-muted hover:text-accent-lime transition-colors font-mono"
+            >
+              @<span>{username}</span>
+            </Link>
+            <Button variant="secondary" size="sm" onClick={() => { onSignOut(); onClose(); }}>
+              Sign out
+            </Button>
+          </>
+        ) : (
+          <Link to="/login" onClick={onClose} className="ml-auto">
+            <Button variant="secondary" size="sm">
+              Log in
+            </Button>
+          </Link>
+        )}
       </div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AppShell
+// AppShell — main layout for public content with optional auth
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function AppShell() {
@@ -251,8 +259,11 @@ export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [globalAddOpen, setGlobalAddOpen] = useState(false);
 
-  // "n" anywhere outside an input opens the Add Show modal
+  const isAdmin = user?.isAdmin ?? false;
+
+  // "n" anywhere outside an input opens the Add Show modal (admin only)
   useEffect(() => {
+    if (!isAdmin) return;
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -264,43 +275,47 @@ export function AppShell() {
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, []);
+  }, [isAdmin]);
 
   // Close mobile menu on route change
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
+  // Stats query - only fetch if logged in (for dashboard)
   const statsQuery = useQuery({
     queryKey: ["concerts/stats"],
     queryFn: () => api.concertStats(),
     staleTime: 60_000,
+    enabled: !!user,
   });
 
   const stats = statsQuery.data;
   const totalShows = stats?.total ?? 0;
   const attended = stats?.stats.attended ?? 0;
 
+  // Followup query - only for admin
   const followupQuery = useQuery({
     queryKey: ["concerts/followup"],
     queryFn: () => api.listFollowup(),
     staleTime: 60_000,
+    enabled: isAdmin,
   });
   const followupCount = followupQuery.data?.total ?? 0;
 
+  // New root-level nav links
   const navLinks = [
-    { to: "/app/concerts", label: "Shows" },
-    { to: "/app/artists",  label: "Artists" },
-    { to: "/app/venues",   label: "Venues" },
-    { to: "/app/festivals",label: "Festivals" },
-    { to: "/app/stats",    label: "Stats" },
+    { to: "/concerts", label: "Shows" },
+    { to: "/artists",  label: "Artists" },
+    { to: "/venues",   label: "Venues" },
+    { to: "/festivals",label: "Festivals" },
   ];
 
   return (
     <div className="min-h-full">
-      {/* Global "Add show" modal — triggered by N shortcut from any page */}
-      {globalAddOpen && <AddConcertModal onClose={() => setGlobalAddOpen(false)} />}
+      {/* Global "Add show" modal — triggered by N shortcut from any page (admin only) */}
+      {isAdmin && globalAddOpen && <AddConcertModal onClose={() => setGlobalAddOpen(false)} />}
 
-      {/* Daily follow-up prompt — floats over all pages, shown once per day */}
-      <FollowUpPrompt />
+      {/* Daily follow-up prompt — floats over all pages, shown once per day (admin only) */}
+      {isAdmin && <FollowUpPrompt />}
 
       {/* Mobile full-screen nav overlay */}
       <MobileMenu
@@ -308,13 +323,14 @@ export function AppShell() {
         onClose={() => setMenuOpen(false)}
         navLinks={navLinks}
         followupCount={followupCount}
-        username={user?.username ?? ""}
+        username={user?.username ?? null}
+        isAdmin={isAdmin}
         onSignOut={signOut}
       />
 
       <header className="flex items-center justify-between border-b border-border px-5 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center gap-6">
-          <Link to="/app">
+          <Link to="/">
             <Wordmark size="sm" svg />
           </Link>
           {/* Desktop nav */}
@@ -332,7 +348,7 @@ export function AppShell() {
                 }
               >
                 {link.label}
-                {link.to === "/app/concerts" && followupCount > 0 && (
+                {link.to === "/concerts" && followupCount > 0 && isAdmin && (
                   <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full bg-accent-pink text-white text-[10px] font-mono font-bold flex items-center justify-center px-1 leading-none">
                     {followupCount}
                   </span>
@@ -344,12 +360,22 @@ export function AppShell() {
 
         {/* Desktop right side */}
         <div className="hidden sm:flex items-center gap-3 text-sm">
-          <Link to="/app/account" className="text-text-muted hover:text-accent-lime transition-colors">
-            @<span>{user?.username}</span>
-          </Link>
-          <Button variant="secondary" size="sm" onClick={signOut}>
-            Sign out
-          </Button>
+          {isAdmin ? (
+            <>
+              <Link to="/account" className="text-text-muted hover:text-accent-lime transition-colors">
+                @<span>{user?.username}</span>
+              </Link>
+              <Button variant="secondary" size="sm" onClick={signOut}>
+                Sign out
+              </Button>
+            </>
+          ) : (
+            <Link to="/login">
+              <Button variant="secondary" size="sm">
+                Log in
+              </Button>
+            </Link>
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -364,8 +390,8 @@ export function AppShell() {
             <line x1="3" y1="11" x2="19" y2="11"/>
             <line x1="3" y1="16" x2="19" y2="16"/>
           </svg>
-          {/* Follow-up dot badge on hamburger */}
-          {followupCount > 0 && (
+          {/* Follow-up dot badge on hamburger (admin only) */}
+          {followupCount > 0 && isAdmin && (
             <span className="absolute top-1.5 right-1 w-2 h-2 rounded-full bg-accent-pink" />
           )}
         </button>
@@ -373,29 +399,34 @@ export function AppShell() {
 
       <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <Routes>
-          <Route path="concerts" element={<ConcertsPage />} />
-          <Route path="concerts/:id" element={<ConcertDetailPage />} />
-          <Route path="artists" element={<ArtistsPage />} />
-          <Route path="artists/:slug" element={<ArtistPage />} />
-          <Route path="venues" element={<VenuesPage />} />
-          <Route path="venues/:slug" element={<VenuePage />} />
-          <Route path="festivals" element={<FestivalsPage />} />
-          <Route path="festivals/:slug" element={<FestivalDetailPage />} />
-          <Route path="stats" element={<StatsPage />} />
-          <Route path="account" element={<AccountPage />} />
-          <Route
-            path="*"
-            element={
-              <Dashboard
-                username={user?.username ?? ""}
-                isAdmin={user?.isAdmin ?? false}
-                totalShows={totalShows}
-                attended={attended}
-                upcoming={stats?.stats.attending ?? 0}
-                interested={stats?.stats.interested ?? 0}
-              />
-            }
-          />
+          {/* Handle legacy /app/* routes with redirects */}
+          <Route path="/app/concerts" element={<Navigate to="/concerts" replace />} />
+          <Route path="/app/concerts/:id" element={<Navigate to={location.pathname.replace("/app", "")} replace />} />
+          <Route path="/app/artists" element={<Navigate to="/artists" replace />} />
+          <Route path="/app/artists/:slug" element={<Navigate to={location.pathname.replace("/app", "")} replace />} />
+          <Route path="/app/venues" element={<Navigate to="/venues" replace />} />
+          <Route path="/app/venues/:slug" element={<Navigate to={location.pathname.replace("/app", "")} replace />} />
+          <Route path="/app/festivals" element={<Navigate to="/festivals" replace />} />
+          <Route path="/app/festivals/:slug" element={<Navigate to={location.pathname.replace("/app", "")} replace />} />
+          <Route path="/app/stats" element={<Navigate to="/" replace />} />
+          <Route path="/app/account" element={<Navigate to="/account" replace />} />
+          <Route path="/app/*" element={<Navigate to="/concerts" replace />} />
+
+          {/* Main content routes */}
+          <Route path="/" element={<StatsPage />} />
+          <Route path="/concerts" element={<ConcertsPage />} />
+          <Route path="/concerts/:id" element={<ConcertDetailPage />} />
+          <Route path="/artists" element={<ArtistsPage />} />
+          <Route path="/artists/:slug" element={<ArtistPage />} />
+          <Route path="/venues" element={<VenuesPage />} />
+          <Route path="/venues/:slug" element={<VenuePage />} />
+          <Route path="/festivals" element={<FestivalsPage />} />
+          <Route path="/festivals/:slug" element={<FestivalDetailPage />} />
+          <Route path="/stats" element={<Navigate to="/" replace />} />
+          <Route path="/account" element={user ? <AccountPage /> : <Navigate to="/login" replace />} />
+
+          {/* Fallback for unmatched paths */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>
@@ -403,7 +434,7 @@ export function AppShell() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Dashboard
+// Dashboard (admin-only)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Dashboard({
@@ -429,13 +460,13 @@ function Dashboard({
       </p>
 
       <div className="grid gap-4 sm:grid-cols-3 mb-10">
-        <Link to="/app/concerts?status=attended" className="group">
+        <Link to="/concerts?status=attended" className="group">
           <Tile title="Attended" value={String(attended)} sub={`${totalShows} logged total`} accent="lime" />
         </Link>
-        <Link to="/app/concerts?status=attending" className="group">
+        <Link to="/concerts?status=attending" className="group">
           <Tile title="Upcoming" value={String(upcoming)} sub="on the books" accent="yellow" />
         </Link>
-        <Link to="/app/concerts?status=interested" className="group">
+        <Link to="/concerts?status=interested" className="group">
           <Tile title="Watchlist" value={String(interested)} sub="interested · not committed" accent="purple" />
         </Link>
       </div>
@@ -443,13 +474,13 @@ function Dashboard({
       <div className="rounded-lg border border-border bg-surface p-6 mb-6">
         <div className="text-xs uppercase tracking-wider text-text-muted mb-3 font-mono">Quick actions</div>
         <div className="flex flex-wrap gap-3">
-          <Link to="/app/concerts" className="text-sm text-accent-lime hover:underline font-mono">
+          <Link to="/concerts" className="text-sm text-accent-lime hover:underline font-mono">
             → Browse Shows
           </Link>
-          <Link to="/app/concerts?sort=date_asc&status=attending" className="text-sm text-text-muted hover:text-text-base font-mono">
+          <Link to="/concerts?sort=date_asc&status=attending" className="text-sm text-text-muted hover:text-text-base font-mono">
             → Upcoming shows
           </Link>
-          <Link to="/app/stats" className="text-sm text-text-muted hover:text-text-base font-mono">
+          <Link to="/stats" className="text-sm text-text-muted hover:text-text-base font-mono">
             → Stats
           </Link>
         </div>
@@ -459,10 +490,10 @@ function Dashboard({
         <div className="rounded-lg border border-border bg-surface p-6 mb-6">
           <div className="text-xs uppercase tracking-wider text-text-muted mb-3 font-mono">Admin</div>
           <div className="flex flex-wrap gap-3">
-            <Link to="/app/admin/imports" className="text-accent-lime hover:underline font-mono text-sm">
+            <Link to="/admin/imports" className="text-accent-lime hover:underline font-mono text-sm">
               → CSV imports
             </Link>
-            <Link to="/app/admin/copy" className="text-accent-lime hover:underline font-mono text-sm">
+            <Link to="/admin/copy" className="text-accent-lime hover:underline font-mono text-sm">
               → Copy editor
             </Link>
           </div>

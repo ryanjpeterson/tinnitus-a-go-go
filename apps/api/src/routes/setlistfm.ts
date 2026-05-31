@@ -1,5 +1,5 @@
 /**
- * Setlist.fm proxy routes.
+ * Setlist.fm proxy routes (public).
  *
  *   GET /setlistfm/search?artist=...&date=YYYY-MM-DD
  *     Returns simplified setlist results for the given artist + date.
@@ -13,13 +13,10 @@
  *     "upstream_error" — setlist.fm returned a 5xx or unexpected status
  *     "network_error"  — fetch timed out or DNS/TCP failure
  *     "parse_error"    — response body was not valid JSON
- *
- * All routes require an authenticated session.
  */
 
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { requireUser } from "../auth/middleware.js";
 import { env } from "../lib/env.js";
 
 type SetlistfmError =
@@ -117,7 +114,7 @@ function mapSetlists(setlists: SetlistFmSetlist[]) {
 }
 
 export async function setlistfmRoutes(app: FastifyInstance): Promise<void> {
-  app.addHook("preHandler", requireUser);
+  // GET endpoints are public - they just search setlist.fm
 
   const searchQuerySchema = z.object({
     artist: z.string().min(1).max(256),

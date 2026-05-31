@@ -27,6 +27,12 @@ function fmtDateRange(start: string | null, end: string | null): string {
 
   const [sy, sm, sd] = start!.split("-").map(Number);
   const [ey, em, ed] = end!.split("-").map(Number);
+
+  // Same day: just show the single date
+  if (sy === ey && sm === em && sd === ed) {
+    return fmtDate(start);
+  }
+
   const startDate = new Date(Date.UTC(sy!, sm! - 1, sd!));
   const endDate = new Date(Date.UTC(ey!, em! - 1, ed!));
 
@@ -53,12 +59,14 @@ const STATUS_COLORS: Record<string, string> = {
 
 // New-style festival card (when using new API)
 function NewFestivalCard({ festival }: { festival: FestivalListItem }) {
-  const statusColor = STATUS_COLORS[festival.attendance.status] ?? "bg-surface border-border text-text-muted";
+  const statusColor = festival.attendance
+    ? (STATUS_COLORS[festival.attendance.status] ?? "bg-surface border-border text-text-muted")
+    : null;
   const dateRange = fmtDateRange(festival.startDate, festival.endDate);
 
   return (
     <Link
-      to={`/app/festivals/${festival.slug}`}
+      to={`/festivals/${festival.slug}`}
       className="group relative rounded-lg border border-border bg-surface overflow-hidden hover:border-accent-lime transition-colors"
     >
       <div className="aspect-[4/3] relative overflow-hidden bg-surface-2">
@@ -81,9 +89,11 @@ function NewFestivalCard({ festival }: { festival: FestivalListItem }) {
             </span>
           </div>
         )}
-        <div className={`absolute top-2 right-2 text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border ${statusColor}`}>
-          {festival.attendance.status}
-        </div>
+        {statusColor && festival.attendance && (
+          <div className={`absolute top-2 right-2 text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border ${statusColor}`}>
+            {festival.attendance.status}
+          </div>
+        )}
       </div>
       <div className="p-3">
         <h3 className="font-display uppercase text-sm truncate group-hover:text-accent-lime transition-colors">
@@ -102,7 +112,7 @@ function NewFestivalCard({ festival }: { festival: FestivalListItem }) {
           <span className="text-xs font-mono text-text-muted">
             {festival.artistCount} artist{festival.artistCount !== 1 ? "s" : ""}
           </span>
-          {festival.attendance.rating && (
+          {festival.attendance?.rating && (
             <span className="text-xs font-mono text-accent-lime">
               {festival.attendance.rating}/10
             </span>
@@ -117,7 +127,7 @@ function NewFestivalCard({ festival }: { festival: FestivalListItem }) {
 function LegacyFestivalCard({ series }: { series: SeriesListItem }) {
   return (
     <Link
-      to={`/app/festivals/${series.slug}`}
+      to={`/festivals/${series.slug}`}
       className="group relative rounded-lg border border-border bg-surface overflow-hidden hover:border-accent-lime transition-colors"
     >
       <div className="aspect-[4/3] relative overflow-hidden bg-surface-2">

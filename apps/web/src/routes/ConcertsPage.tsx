@@ -11,6 +11,7 @@ import { AddConcertModal } from "./AddConcertModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { api, type ConcertListItem } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import type { AttendanceStatus } from "@tagg/shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -125,17 +126,17 @@ function ConcertCard({
   onStatusChange,
 }: {
   concert: ConcertListItem;
-  onStatusChange: (id: string, status: AttendanceStatus) => void;
+  onStatusChange?: (id: string, status: AttendanceStatus) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const chip = STATUS_CHIP[concert.attendance.status];
+  const chip = concert.attendance ? STATUS_CHIP[concert.attendance.status] : null;
   const headliner = concertHeadliner(concert);
   const supports = supportingActs(concert);
 
   return (
     <div className="group relative flex flex-col rounded-lg border border-border bg-surface overflow-hidden hover:border-accent-lime transition-colors">
       {/* Flyer / header image */}
-      <Link to={`/app/concerts/${concert.id}`} className="block">
+      <Link to={`/concerts/${concert.id}`} className="block">
         <div className="aspect-[3/2] overflow-hidden bg-surface-2 relative">
           {concert.flyerUrl ? (
             <>
@@ -155,7 +156,7 @@ function ConcertCard({
               />
             </>
           ) : (
-            <FlyerPlaceholder title={headliner} status={concert.attendance.status} />
+            <FlyerPlaceholder title={headliner} status={concert.attendance?.status} />
           )}
           {concert.type === "festival_day" && (
             <span className="absolute top-2 left-2 text-xs font-mono bg-black/70 text-yellow-300 px-2 py-0.5 rounded">
@@ -168,7 +169,7 @@ function ConcertCard({
       {/* Card body */}
       <div className="flex-1 flex flex-col p-3 gap-1">
         <Link
-          to={`/app/concerts/${concert.id}`}
+          to={`/concerts/${concert.id}`}
           className="font-display uppercase tracking-wide text-sm text-text-base hover:text-accent-lime transition-colors line-clamp-1"
         >
           {headliner}
@@ -184,7 +185,7 @@ function ConcertCard({
 
         {concert.eventSeries && (
           <div className="text-xs text-yellow-600 font-mono truncate" title={concert.eventSeries.name}>
-            {concert.eventSeries.name}{concert.eventSeries.year ? ` ${concert.eventSeries.year}` : ""}
+            {concert.eventSeries.name}
           </div>
         )}
 
@@ -194,42 +195,44 @@ function ConcertCard({
           </div>
         )}
 
-        {concert.attendance.personalNotes && (
+        {concert.attendance?.personalNotes && (
           <p className="text-xs text-text-subtle italic line-clamp-1 mt-0.5">
             {concert.attendance.personalNotes}
           </p>
         )}
 
-        {/* Footer row */}
-        <div className="flex items-center justify-between mt-auto pt-2">
-          <div className="ml-auto relative">
-            <button
-              onClick={() => setMenuOpen((o) => !o)}
-              className={clsx("text-xs px-2 py-0.5 rounded border font-mono transition-opacity", chip.classes)}
-            >
-              {chip.label}
-            </button>
-            {menuOpen && (
-              <div
-                className="absolute right-0 bottom-7 z-20 bg-surface border border-border rounded shadow-xl py-1 w-36"
-                onBlur={() => setMenuOpen(false)}
+        {/* Footer row - only show status when attendance data exists */}
+        {chip && onStatusChange && (
+          <div className="flex items-center justify-between mt-auto pt-2">
+            <div className="ml-auto relative">
+              <button
+                onClick={() => setMenuOpen((o) => !o)}
+                className={clsx("text-xs px-2 py-0.5 rounded border font-mono transition-opacity", chip.classes)}
               >
-                {(["attended","attending","interested","missed","cancelled","dismissed"] as AttendanceStatus[]).map(
-                  (s) => (
-                    <button
-                      key={s}
-                      className="w-full text-left px-3 py-1.5 text-xs text-text-muted hover:text-text-base hover:bg-surface-2 font-mono flex items-center gap-2"
-                      onClick={() => { onStatusChange(concert.id, s); setMenuOpen(false); }}
-                    >
-                      <span className={clsx("w-1.5 h-1.5 rounded-full shrink-0", STATUS_CHIP[s].dot)} />
-                      {STATUS_CHIP[s].label}
-                    </button>
-                  ),
-                )}
-              </div>
-            )}
+                {chip.label}
+              </button>
+              {menuOpen && (
+                <div
+                  className="absolute right-0 bottom-7 z-20 bg-surface border border-border rounded shadow-xl py-1 w-36"
+                  onBlur={() => setMenuOpen(false)}
+                >
+                  {(["attended","attending","interested","missed","cancelled","dismissed"] as AttendanceStatus[]).map(
+                    (s) => (
+                      <button
+                        key={s}
+                        className="w-full text-left px-3 py-1.5 text-xs text-text-muted hover:text-text-base hover:bg-surface-2 font-mono flex items-center gap-2"
+                        onClick={() => { onStatusChange(concert.id, s); setMenuOpen(false); }}
+                      >
+                        <span className={clsx("w-1.5 h-1.5 rounded-full shrink-0", STATUS_CHIP[s].dot)} />
+                        {STATUS_CHIP[s].label}
+                      </button>
+                    ),
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -240,6 +243,8 @@ function ConcertCard({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function ConcertsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin ?? false;
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [addOpen, setAddOpen] = useState(false);
@@ -328,38 +333,44 @@ export function ConcertsPage() {
             onChange={(e) => handleSearch(e.target.value)}
             className="flex-1 rounded border border-border bg-surface px-3 py-1.5 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
           />
-          <button
-            onClick={() => setAddOpen(true)}
-            className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity shrink-0"
-          >
-            + Add show
-          </button>
-          <button
-            onClick={() => void handleExport()}
-            className="hidden sm:block text-xs font-mono text-text-muted hover:text-accent-lime transition-colors border border-border rounded px-3 py-1.5 shrink-0"
-          >
-            Export ↓
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setAddOpen(true)}
+              className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity shrink-0"
+            >
+              + Add show
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              onClick={() => void handleExport()}
+              className="hidden sm:block text-xs font-mono text-text-muted hover:text-accent-lime transition-colors border border-border rounded px-3 py-1.5 shrink-0"
+            >
+              Export ↓
+            </button>
+          )}
         </div>
 
-        {/* Row 2: status filter + sort */}
+        {/* Row 2: status filter (admin only) + sort */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex gap-1 rounded border border-border p-0.5 bg-surface">
-            {STATUS_TABS.map((tab) => (
-              <button
-                key={tab.label}
-                onClick={() => setFilter({ status: tab.value })}
-                className={clsx(
-                  "min-w-[72px] px-3 py-1 rounded text-xs font-mono transition-colors text-center",
-                  statusFilter === tab.value
-                    ? tab.activeClass
-                    : "text-text-muted hover:text-text-base",
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          {isAdmin && (
+            <div className="flex gap-1 rounded border border-border p-0.5 bg-surface">
+              {STATUS_TABS.map((tab) => (
+                <button
+                  key={tab.label}
+                  onClick={() => setFilter({ status: tab.value })}
+                  className={clsx(
+                    "min-w-[72px] px-3 py-1 rounded text-xs font-mono transition-colors text-center",
+                    statusFilter === tab.value
+                      ? tab.activeClass
+                      : "text-text-muted hover:text-text-base",
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="ml-auto flex gap-1">
             <button
               onClick={() => setFilter({ sort: "newest" })}
@@ -399,7 +410,7 @@ export function ConcertsPage() {
               <ConcertCard
                 key={c.id}
                 concert={c}
-                onStatusChange={(id, status) => patchMutation.mutate({ id, status })}
+                onStatusChange={isAdmin ? (id, status) => patchMutation.mutate({ id, status }) : undefined}
               />
             ))}
           </div>

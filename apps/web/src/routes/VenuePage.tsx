@@ -7,6 +7,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type VenueAlias } from "@/lib/api";
 import { VenueMap } from "@/components/VenueMap";
+import { useAuth } from "@/lib/auth-context";
 
 function fmtDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -147,9 +148,11 @@ function VenueEditForm({ venue, onCancel, onSaved }: VenueEditFormProps) {
 function AliasesSection({
   venueSlug,
   aliases,
+  isAdmin = false,
 }: {
   venueSlug: string;
   aliases: VenueAlias[];
+  isAdmin?: boolean;
 }) {
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
@@ -190,7 +193,7 @@ function AliasesSection({
         <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted">
           Also known as
         </h2>
-        {!adding && (
+        {isAdmin && !adding && (
           <button onClick={() => setAdding(true)}
             className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
             + Add alias
@@ -217,7 +220,7 @@ function AliasesSection({
                   <p className="text-xs text-text-subtle italic mt-0.5">{a.notes}</p>
                 )}
               </div>
-              {deletingId === a.id ? (
+              {isAdmin && (deletingId === a.id ? (
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => deleteMutation.mutate(a.id)} disabled={deleteMutation.isPending}
                     className="text-xs font-mono px-2 py-0.5 rounded bg-accent-pink text-white hover:opacity-90 disabled:opacity-50">
@@ -233,13 +236,13 @@ function AliasesSection({
                   className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors shrink-0">
                   ✕
                 </button>
-              )}
+              ))}
             </li>
           ))}
         </ul>
       )}
 
-      {adding && (
+      {isAdmin && adding && (
         <div className="border-t border-border pt-3 mt-2 space-y-2">
           <div>
             <label className="block text-xs text-text-muted font-mono mb-1">Alias name</label>
@@ -293,6 +296,8 @@ export function VenuePage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin ?? false;
   const fileRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
 
@@ -308,7 +313,7 @@ export function VenuePage() {
   if (q.isError || !q.data) {
     return (
       <div className="py-16 text-center font-mono text-sm text-accent-pink">
-        Venue not found. <Link to="/app/venues" className="underline text-text-muted">Back to venues</Link>
+        Venue not found. <Link to="/venues" className="underline text-text-muted">Back to venues</Link>
       </div>
     );
   }
@@ -331,7 +336,7 @@ export function VenuePage() {
 
   return (
     <div className="max-w-2xl">
-      <Link to="/app/venues" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
+      <Link to="/venues" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
         ← Venues
       </Link>
 
@@ -347,11 +352,13 @@ export function VenuePage() {
               </span>
             </div>
           )}
-          <label className="absolute bottom-2 right-2 text-xs font-mono px-2 py-1 rounded border border-white/30 text-white/60 bg-black/40 hover:border-accent-lime hover:text-accent-lime cursor-pointer transition-colors">
-            {venue.imageUrl ? "Change photo" : "Add photo"}
-            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
-              onChange={(e) => void handlePhotoUpload(e.target.files)} />
-          </label>
+          {isAdmin && (
+            <label className="absolute bottom-2 right-2 text-xs font-mono px-2 py-1 rounded border border-white/30 text-white/60 bg-black/40 hover:border-accent-lime hover:text-accent-lime cursor-pointer transition-colors">
+              {venue.imageUrl ? "Change photo" : "Add photo"}
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
+                onChange={(e) => void handlePhotoUpload(e.target.files)} />
+            </label>
+          )}
         </div>
       </div>
 
@@ -379,7 +386,7 @@ export function VenuePage() {
               )}
             </div>
           </div>
-          {!editing && (
+          {isAdmin && !editing && (
             <button onClick={() => setEditing(true)}
               className="mt-1 flex-shrink-0 text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors border border-border rounded px-2.5 py-1">
               Edit
@@ -388,15 +395,15 @@ export function VenuePage() {
         </div>
       </div>
 
-      {/* Edit form */}
-      {editing && (
+      {/* Edit form (admin only) */}
+      {isAdmin && editing && (
         <VenueEditForm
           venue={venue}
           onCancel={() => setEditing(false)}
           onSaved={(newSlug) => {
             setEditing(false);
             if (newSlug !== slug) {
-              navigate(`/app/venues/${newSlug}`, { replace: true });
+              navigate(`/venues/${newSlug}`, { replace: true });
             } else {
               qc.invalidateQueries({ queryKey: ["venues", slug] });
             }
@@ -407,9 +414,9 @@ export function VenuePage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         {[
-          { label: "Total shows", value: stats.total },
-          { label: "Attended",    value: stats.attended },
-          { label: "First visit", value: stats.firstVisit ? fmtDate(stats.firstVisit) : "–" },
+          { label: "Events",       value: stats.total },
+          { label: "Artists seen", value: stats.uniqueArtists },
+          { label: "First visit",  value: stats.firstVisit ? fmtDate(stats.firstVisit) : "–" },
         ].map(({ label, value }) => (
           <div key={label} className="rounded-lg border border-border bg-surface p-4 text-center">
             <div className="font-mono text-lg text-text-base leading-tight">{value}</div>
@@ -419,7 +426,7 @@ export function VenuePage() {
       </div>
 
       {/* Aliases */}
-      <AliasesSection venueSlug={slug!} aliases={venue.aliases} />
+      <AliasesSection venueSlug={slug!} aliases={venue.aliases} isAdmin={isAdmin} />
 
       {/* Map */}
       {hasCoords && (
@@ -437,7 +444,7 @@ export function VenuePage() {
           {concerts.map((c) => (
             <Link
               key={c.id}
-              to={`/app/concerts/${c.id}`}
+              to={`/concerts/${c.id}`}
               className="group flex items-start gap-3 rounded-lg border border-border bg-surface p-3 hover:border-accent-lime transition-colors"
             >
               <div className="flex-1 min-w-0">
@@ -451,9 +458,11 @@ export function VenuePage() {
                   <div className="text-xs text-text-subtle font-mono mt-0.5 italic">{c.eventSeries.name}</div>
                 )}
               </div>
-              <span className={`shrink-0 text-xs font-mono mt-0.5 ${(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).color}`}>
-                {(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).label}
-              </span>
+              {c.attendance && (
+                <span className={`shrink-0 text-xs font-mono mt-0.5 ${(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).color}`}>
+                  {(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).label}
+                </span>
+              )}
             </Link>
           ))}
         </div>

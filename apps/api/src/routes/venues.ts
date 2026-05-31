@@ -17,7 +17,7 @@ import { db, schema } from "../db/client.js";
 import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
 import { slugify } from "@tagg/shared";
-import { requireUser } from "../auth/middleware.js";
+import { requireUser, requireAdmin } from "../auth/middleware.js";
 
 /** Return a browser-accessible URL for a MinIO object key (no presign needed — bucket is public). */
 function mediaUrl(key: string): string {
@@ -26,7 +26,7 @@ function mediaUrl(key: string): string {
 }
 
 export async function venueRoutes(app: FastifyInstance): Promise<void> {
-  app.addHook("preHandler", requireUser);
+  // NOTE: Per-route auth now. GET endpoints are public, write endpoints require admin.
 
   const listQuery = z.object({
     q: z.string().max(128).optional(),
@@ -35,6 +35,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── GET /venues ────────────────────────────────────────────────────────────
+  // Public endpoint: lists all venues with show counts
 
   app.get("/venues", async (req, reply) => {
     const parsed = listQuery.safeParse(req.query);
@@ -42,20 +43,10 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "Invalid query.", details: parsed.error.flatten() });
     }
     const { q, page, limit } = parsed.data;
-    const userId = req.user!.id;
     const offset = (page - 1) * limit;
 
-    const userConcertIds = db
-      .select({ id: schema.concertAttendees.concertId })
-      .from(schema.concertAttendees)
-      .where(eq(schema.concertAttendees.userId, userId));
-
-    const conditions = q
-      ? and(
-          inArray(schema.concerts.id, userConcertIds),
-          ilike(schema.venues.name, `%${q}%`),
-        )
-      : inArray(schema.concerts.id, userConcertIds);
+    // Show all venues (no user filtering)
+    const conditions = q ? ilike(schema.venues.name, `%${q}%`) : undefined;
 
     const [rows, countRows] = await Promise.all([
       db
@@ -69,8 +60,8 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
           showCount: sql<number>`count(distinct ${schema.concerts.id})::int`,
         })
         .from(schema.venues)
-        .innerJoin(schema.concerts, eq(schema.concerts.venueId, schema.venues.id))
-        .where(conditions!)
+        .leftJoin(schema.concerts, eq(schema.concerts.venueId, schema.venues.id))
+        .where(conditions)
         .groupBy(schema.venues.id)
         .orderBy(desc(sql`count(distinct ${schema.concerts.id})`))
         .limit(limit)
@@ -78,8 +69,8 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
       db
         .select({ total: sql<number>`count(distinct ${schema.venues.id})::int` })
         .from(schema.venues)
-        .innerJoin(schema.concerts, eq(schema.concerts.venueId, schema.venues.id))
-        .where(conditions!),
+        .leftJoin(schema.concerts, eq(schema.concerts.venueId, schema.venues.id))
+        .where(conditions),
     ]);
 
     const total = countRows[0]?.total ?? 0;
@@ -96,10 +87,10 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── GET /venues/:slug ──────────────────────────────────────────────────────
+  // Public endpoint: venue detail + all concerts at this venue
 
   app.get("/venues/:slug", async (req, reply) => {
     const { slug } = req.params as { slug: string };
-    const userId = req.user!.id;
 
     // Try direct slug first, then alias slug
     let venue = await db.query.venues.findFirst({
@@ -120,6 +111,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(404).send({ error: "Venue not found." });
     }
 
+    // All concerts at this venue (no user filtering)
     const concertRows = await db
       .select({
         concertId: schema.concerts.id,
@@ -127,17 +119,8 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
         type: schema.concerts.type,
         headlinerHint: schema.concerts.headlinerHint,
         seriesName: schema.eventSeries.name,
-        status: schema.concertAttendees.status,
-        rating: schema.concertAttendees.rating,
       })
       .from(schema.concerts)
-      .innerJoin(
-        schema.concertAttendees,
-        and(
-          eq(schema.concertAttendees.concertId, schema.concerts.id),
-          eq(schema.concertAttendees.userId, userId),
-        ),
-      )
       .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
       .where(eq(schema.concerts.venueId, venue.id))
       .orderBy(desc(schema.concerts.date));
@@ -163,6 +146,15 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
 
     const headlinerByConcert = new Map(headlinerRows.map((r) => [r.concertId, r]));
 
+    // Count unique artists across all concerts at this venue
+    const uniqueArtistsResult = concertIds.length > 0
+      ? await db
+          .select({ count: sql<number>`count(distinct ${schema.concertArtists.artistId})::int` })
+          .from(schema.concertArtists)
+          .where(inArray(schema.concertArtists.concertId, concertIds))
+      : [{ count: 0 }];
+    const uniqueArtists = uniqueArtistsResult[0]?.count ?? 0;
+
     const concerts = concertRows.map((r) => {
       const headliner = headlinerByConcert.get(r.concertId);
       return {
@@ -174,7 +166,6 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
         headlinerName: headliner?.name ?? r.headlinerHint ?? null,
         headlinerSlug: headliner?.slug ?? null,
         eventSeries: r.seriesName ? { name: r.seriesName } : null,
-        attendance: { status: r.status, rating: r.rating },
       };
     });
 
@@ -208,7 +199,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
       concerts,
       stats: {
         total: concerts.length,
-        attended: concerts.filter((c) => c.attendance.status === "attended").length,
+        uniqueArtists,
         firstVisit: concerts.at(-1)?.date ?? null,
         lastVisit: concerts[0]?.date ?? null,
       },
@@ -216,6 +207,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── PATCH /venues/:slug ────────────────────────────────────────────────────
+  // Admin only
 
   const venuePatchBody = z.object({
     name:     z.string().min(1).max(255).optional(),
@@ -227,7 +219,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
     capacity: z.number().int().positive().nullable().optional(),
   });
 
-  app.patch("/venues/:slug", async (req, reply) => {
+  app.patch("/venues/:slug", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
 
     const venue = await db.query.venues.findFirst({
@@ -277,7 +269,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
     notes:       z.string().max(500).nullable().optional(),
   });
 
-  app.post("/venues/:slug/aliases", async (req, reply) => {
+  app.post("/venues/:slug/aliases", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
 
     const venue = await db.query.venues.findFirst({
@@ -315,7 +307,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
 
   // ── DELETE /venues/:slug/aliases/:aliasId ──────────────────────────────────
 
-  app.delete("/venues/:slug/aliases/:aliasId", async (req, reply) => {
+  app.delete("/venues/:slug/aliases/:aliasId", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug, aliasId } = req.params as { slug: string; aliasId: string };
 
     const venue = await db.query.venues.findFirst({
@@ -335,7 +327,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
 
   // ── POST /venues/:slug/photo ───────────────────────────────────────────────
 
-  app.post("/venues/:slug/photo", async (req, reply) => {
+  app.post("/venues/:slug/photo", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
 
     const venue = await db.query.venues.findFirst({

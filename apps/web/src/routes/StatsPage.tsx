@@ -9,6 +9,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, type DeepStatsResponse } from "@/lib/api";
+import { Wordmark } from "@/components/Wordmark";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -280,7 +281,7 @@ function OnThisDay({ shows }: { shows: DeepStatsResponse["onThisDay"] }) {
             </div>
             <div className="min-w-0">
               <Link
-                to={`/app/concerts/${s.concertId}`}
+                to={`/concerts/${s.concertId}`}
                 className="text-sm font-medium text-text-base hover:text-accent-lime transition-colors truncate block"
               >
                 {showName(s.headlinerHint, s.seriesName)}
@@ -329,7 +330,7 @@ function Milestones({ milestones }: { milestones: DeepStatsResponse["milestones"
             </div>
             <div className="min-w-0 pt-0.5">
               <Link
-                to={`/app/concerts/${m.concertId}`}
+                to={`/concerts/${m.concertId}`}
                 className="text-sm font-medium text-text-base hover:text-accent-lime transition-colors block truncate"
               >
                 {showName(m.headlinerHint, m.seriesName)}
@@ -390,10 +391,6 @@ export function StatsPage() {
     );
   }
 
-  const firstYear  = d.byYear.length > 0 ? d.byYear[d.byYear.length - 1]!.year : "—";
-  const latestYear = d.byYear.length > 0 ? d.byYear[0]!.year : "—";
-  const yearSpan   = firstYear === latestYear ? firstYear : `${firstYear}–${latestYear}`;
-
   const topArtistItems: RankedItem[] = d.topArtists.map((a) => ({
     id: a.artistId,
     name: a.name,
@@ -401,7 +398,7 @@ export function StatsPage() {
       ? `${a.firstSeen.slice(0,4)}${a.firstSeen.slice(0,4) !== a.lastSeen.slice(0,4) ? `–${a.lastSeen.slice(0,4)}` : ""}`
       : undefined,
     count: a.count,
-    href: `/app/artists/${a.slug}`,
+    href: `/artists/${a.slug}`,
   }));
 
   const topVenueItems: RankedItem[] = d.topVenues.map((v) => ({
@@ -409,28 +406,26 @@ export function StatsPage() {
     name: v.name,
     sub: v.city ?? undefined,
     count: v.count,
-    href: `/app/venues/${v.slug}`,
+    href: `/venues/${v.slug}`,
   }));
 
   return (
     <div className="space-y-4">
 
       {/* Page header */}
-      <div className="mb-2">
-        <h1 className="font-display uppercase text-3xl mb-1">By the numbers</h1>
-        <p className="text-text-muted text-sm">{yearSpan} · everything your ears have been through</p>
+      <div className="mb-4">
+        <Wordmark size="lg" svg />
       </div>
 
       {/* On This Day — shown prominently when applicable */}
       {d.onThisDay.length > 0 && <OnThisDay shows={d.onThisDay} />}
 
       {/* ── Overview tiles ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <StatTile label="Shows logged"   value={d.totalShows}    sub="all statuses"       accent="lime" />
-        <StatTile label="Attended"       value={d.totalAttended} sub="actually showed up"  accent="lime" />
-        <StatTile label="Artists seen"   value={d.totalArtists}  sub="at attended shows"   accent="muted" />
-        <StatTile label="Venues visited" value={d.totalVenues}   sub="attended shows"      accent="muted" />
-        <StatTile label="Years active"   value={d.yearsActive}   sub="with logged shows"   accent="muted" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatTile label="Shows attended" value={d.totalShows}   sub="concerts"           accent="lime" />
+        <StatTile label="Artists seen"   value={d.totalArtists} sub="unique"             accent="muted" />
+        <StatTile label="Venues visited" value={d.totalVenues}  sub="unique"             accent="muted" />
+        <StatTile label="Years active"   value={d.yearsActive}  sub="span"               accent="muted" />
       </div>
 
       {/* First / latest show */}
@@ -438,8 +433,8 @@ export function StatsPage() {
         <div className="grid sm:grid-cols-2 gap-3">
           {d.firstShow && (
             <div className="rounded-lg border border-border bg-surface p-4">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-1">First logged show</p>
-              <Link to={`/app/concerts/${d.firstShow.concertId}`} className="text-sm font-medium hover:text-accent-lime transition-colors block truncate">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-1">First show</p>
+              <Link to={`/concerts/${d.firstShow.concertId}`} className="text-sm font-medium hover:text-accent-lime transition-colors block truncate">
                 {showName(d.firstShow.headlinerHint)}
               </Link>
               <p className="text-xs font-mono text-text-subtle">{fmtDate(d.firstShow.date)}</p>
@@ -448,7 +443,7 @@ export function StatsPage() {
           {d.latestShow && (
             <div className="rounded-lg border border-border bg-surface p-4">
               <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-1">Most recent</p>
-              <Link to={`/app/concerts/${d.latestShow.concertId}`} className="text-sm font-medium hover:text-accent-lime transition-colors block truncate">
+              <Link to={`/concerts/${d.latestShow.concertId}`} className="text-sm font-medium hover:text-accent-lime transition-colors block truncate">
                 {showName(d.latestShow.headlinerHint)}
               </Link>
               <p className="text-xs font-mono text-text-subtle">{fmtDate(d.latestShow.date)}</p>
@@ -504,7 +499,7 @@ export function StatsPage() {
                 <span className="text-xs font-normal text-text-subtle">{d.mostExpensiveShow.currency}</span>
               </p>
               <Link
-                to={`/app/concerts/${d.mostExpensiveShow.concertId}`}
+                to={`/concerts/${d.mostExpensiveShow.concertId}`}
                 className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors"
               >
                 {showName(d.mostExpensiveShow.headlinerHint)} · {fmtDate(d.mostExpensiveShow.date)} ↗

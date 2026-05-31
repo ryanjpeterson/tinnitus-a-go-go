@@ -29,7 +29,7 @@ import { z } from "zod";
 import { db, schema } from "../db/client.js";
 import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
-import { requireUser } from "../auth/middleware.js";
+import { requireUser, requireAdmin } from "../auth/middleware.js";
 import { mediaProcessQueue } from "../lib/queues.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -116,23 +116,21 @@ function resolveUrls(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function photoRoutes(app: FastifyInstance): Promise<void> {
-  app.addHook("preHandler", requireUser);
+  // NOTE: Per-route auth now. GET endpoints are public, write endpoints require admin.
 
   // ── POST /concerts/:id/photos ───────────────────────────────────────────────
+  // Admin only
 
-  app.post("/concerts/:id/photos", async (req, reply) => {
+  app.post("/concerts/:id/photos", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id: concertId } = req.params as { id: string };
     const userId = req.user!.id;
 
-    // Verify the user has an attendee record for this concert
-    const attendee = await db.query.concertAttendees.findFirst({
-      where: and(
-        eq(schema.concertAttendees.userId, userId),
-        eq(schema.concertAttendees.concertId, concertId),
-      ),
+    // Verify the concert exists
+    const concert = await db.query.concerts.findFirst({
+      where: eq(schema.concerts.id, concertId),
     });
-    if (!attendee) {
-      return reply.code(403).send({ error: "You're not on the attendee list for this concert." });
+    if (!concert) {
+      return reply.code(404).send({ error: "Concert not found." });
     }
 
     // Use video limit as the upper bound; we'll enforce the per-type limit after buffering.
@@ -239,11 +237,12 @@ export async function photoRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── GET /concerts/:id/photos ────────────────────────────────────────────────
+  // Public endpoint
 
   app.get("/concerts/:id/photos", async (req, reply) => {
     const { id: concertId } = req.params as { id: string };
 
-    // Any authenticated user can see photos for any concert.
+    // Public — anyone can see photos for any concert.
     // Order: explicit set_order first (nulls last), then by createdAt for unordered ones.
     const photos = await db
       .select()
@@ -278,7 +277,7 @@ export async function photoRoutes(app: FastifyInstance): Promise<void> {
   // Reorders photos by assigning set_order = array index for each ID.
   // Only photos that belong to this concert are updated (safe against spoofing).
 
-  app.put("/concerts/:id/photos/order", async (req, reply) => {
+  app.put("/concerts/:id/photos/order", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id: concertId } = req.params as { id: string };
     const parsed = z
       .object({ order: z.array(z.string().uuid()).min(1).max(200) })
@@ -321,20 +320,15 @@ export async function photoRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── DELETE /photos/:id ──────────────────────────────────────────────────────
+  // Admin only
 
-  app.delete("/photos/:id", async (req, reply) => {
+  app.delete("/photos/:id", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id } = req.params as { id: string };
-    const userId = req.user!.id;
-    const isAdmin = req.user!.isAdmin;
 
     const photo = await db.query.photos.findFirst({
       where: eq(schema.photos.id, id),
     });
     if (!photo) return reply.code(404).send({ error: "Photo not found." });
-
-    if (!isAdmin && photo.uploadedByUserId !== userId) {
-      return reply.code(403).send({ error: "You can only delete your own photos." });
-    }
 
     // Delete from MinIO (original + variants)
     const keysToDelete = [photo.objectKey];
@@ -354,12 +348,10 @@ export async function photoRoutes(app: FastifyInstance): Promise<void> {
 
   // ── PUT /photos/:id/artists ─────────────────────────────────────────────────
   // Replace the artist-tag set for a photo. Pass an empty array to remove all tags.
-  // Caller must be an attendee of the concert the photo belongs to (or admin).
+  // Admin only
 
-  app.put("/photos/:id/artists", async (req, reply) => {
+  app.put("/photos/:id/artists", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id: photoId } = req.params as { id: string };
-    const userId = req.user!.id;
-    const isAdmin = req.user!.isAdmin;
 
     const parsed = z
       .object({ artistIds: z.array(z.string().uuid()).max(50) })
@@ -369,26 +361,12 @@ export async function photoRoutes(app: FastifyInstance): Promise<void> {
     }
     const { artistIds } = parsed.data;
 
-    // Load the photo so we know which concert it belongs to
+    // Load the photo
     const photo = await db.query.photos.findFirst({
       where: eq(schema.photos.id, photoId),
       columns: { id: true, concertId: true },
     });
     if (!photo) return reply.code(404).send({ error: "Photo not found." });
-
-    // Only attendees (or admins) of the concert may tag photos
-    if (!isAdmin) {
-      const attendee = await db.query.concertAttendees.findFirst({
-        where: and(
-          eq(schema.concertAttendees.concertId, photo.concertId),
-          eq(schema.concertAttendees.userId, userId),
-        ),
-        columns: { userId: true },
-      });
-      if (!attendee) {
-        return reply.code(403).send({ error: "You must be an attendee of this concert to tag photos." });
-      }
-    }
 
     // If any artistIds provided, verify they exist (so we don't silently insert garbage)
     if (artistIds.length > 0) {

@@ -581,7 +581,7 @@ export interface ConcertListItem {
   flyerInherited?: boolean;
   venue: ConcertVenue | null;
   eventSeries: ConcertSeries | null;
-  attendance: ConcertAttendance;
+  attendance?: ConcertAttendance;  // Optional for public endpoints
   artists: ConcertArtist[];
 }
 
@@ -711,7 +711,7 @@ export interface ArtistDetailResponse {
     appearanceNotes: string | null;
     venue: { name: string; city: string | null; region: string | null } | null;
     eventSeries: { name: string; slug: string | null } | null;
-    attendance: { status: AttendanceStatus; rating: number | null };
+    attendance?: { status: AttendanceStatus; rating: number | null };
   }>;
   stats: {
     total: number;
@@ -773,11 +773,11 @@ export interface VenueDetailResponse {
     headlinerName: string | null;
     headlinerSlug: string | null;
     eventSeries: { name: string } | null;
-    attendance: { status: AttendanceStatus; rating: number | null };
+    attendance?: { status: AttendanceStatus; rating: number | null };
   }>;
   stats: {
     total: number;
-    attended: number;
+    uniqueArtists: number;
     firstVisit: string | null;
     lastVisit: string | null;
   };
@@ -825,7 +825,7 @@ export interface SeriesDetailResponse {
     id: string;
     date: string;
     venue: { name: string; city: string | null } | null;
-    attendance: { status: AttendanceStatus };
+    attendance?: { status: AttendanceStatus };
     artists: Array<{ name: string; slug: string }>;
   }>;
   stats: {
@@ -867,7 +867,7 @@ export interface FestivalListItem {
   flyerUrl: string | null;
   venue: FestivalVenue | null;
   artistCount: number;
-  attendance: {
+  attendance?: {
     status: AttendanceStatus;
     rating: number | null;
   };

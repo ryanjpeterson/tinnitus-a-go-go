@@ -50,7 +50,7 @@ function ConcertRow({
   resolving: boolean;
 }) {
   const label = concertLabel(concert);
-  const wasAttending = concert.attendance.status === "attending";
+  const wasAttending = concert.attendance?.status === "attending";
 
   return (
     <div className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
@@ -69,7 +69,7 @@ function ConcertRow({
           </span>
         </div>
         <Link
-          to={`/app/concerts/${concert.id}`}
+          to={`/concerts/${concert.id}`}
           className="block mt-0.5 text-sm font-display uppercase tracking-wide text-text-base hover:text-accent-lime transition-colors truncate"
         >
           {label}

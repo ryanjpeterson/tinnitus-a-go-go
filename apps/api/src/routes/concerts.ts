@@ -23,7 +23,7 @@ import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { db, schema } from "../db/client.js";
 import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
-import { requireUser } from "../auth/middleware.js";
+import { requireUser, requireAdmin } from "../auth/middleware.js";
 import { slugify } from "@tagg/shared";
 
 /** Direct public URL for a MinIO object (bucket is set to anonymous download). */
@@ -56,7 +56,7 @@ const concertArtistRoles = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function concertRoutes(app: FastifyInstance): Promise<void> {
-  app.addHook("preHandler", requireUser);
+  // NOTE: Per-route auth now. GET endpoints are public, write endpoints require admin.
 
   // ── GET /concerts ───────────────────────────────────────────────────────────
 
@@ -75,25 +75,21 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "Invalid query parameters.", details: parsed.error.flatten() });
     }
 
-    const { status, year, q, sort, page, limit } = parsed.data;
-    const userId = req.user!.id;
+    const { year, q, sort, page, limit } = parsed.data;
     const offset = (page - 1) * limit;
 
-    // Build WHERE clause conditions
+    // Build WHERE clause conditions (no user filtering — all concerts are public)
     type SQL = ReturnType<typeof eq>;
-    const conditions: SQL[] = [eq(schema.concertAttendees.userId, userId)];
+    const conditions: SQL[] = [];
 
-    if (status) {
-      conditions.push(eq(schema.concertAttendees.status, status));
-    }
     if (year) {
       conditions.push(sql`extract(year from ${schema.concerts.date})::int = ${year}` as unknown as SQL);
     }
 
-    const where = conditions.length === 1 ? conditions[0]! : and(...conditions);
+    const where = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0]! : and(...conditions);
 
-    // Build base join
-    const baseJoin = db
+    // Build base query (no longer joining attendees for filtering)
+    const baseQuery = db
       .select({
         concertId: schema.concerts.id,
         date: schema.concerts.date,
@@ -110,57 +106,60 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         seriesName: schema.eventSeries.name,
         seriesSlug: schema.eventSeries.slug,
         seriesYear: schema.eventSeries.year,
-        status: schema.concertAttendees.status,
-        rating: schema.concertAttendees.rating,
-        personalNotes: schema.concertAttendees.personalNotes,
-        ticketPricePaid: schema.concertAttendees.ticketPricePaid,
-        ticketPriceCurrency: schema.concertAttendees.ticketPriceCurrency,
-        rsvpAt: schema.concertAttendees.rsvpAt,
-        attendedConfirmedAt: schema.concertAttendees.attendedConfirmedAt,
       })
-      .from(schema.concertAttendees)
-      .innerJoin(schema.concerts, eq(schema.concertAttendees.concertId, schema.concerts.id))
+      .from(schema.concerts)
       .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
       .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id));
 
     // Apply text search — headliner hint, venue name, event series name
-    let filteredJoin = baseJoin.where(where!);
+    let filteredQuery = where ? baseQuery.where(where) : baseQuery;
 
     if (q) {
       const like = `%${q}%`;
-      const searchConditions = and(
-        where!,
-        or(
-          ilike(schema.concerts.headlinerHint, like),
-          ilike(schema.venues.name, like),
-          ilike(schema.eventSeries.name, like),
-        ),
-      );
-      filteredJoin = baseJoin.where(searchConditions!);
+      const searchConditions = where
+        ? and(
+            where,
+            or(
+              ilike(schema.concerts.headlinerHint, like),
+              ilike(schema.venues.name, like),
+              ilike(schema.eventSeries.name, like),
+            ),
+          )
+        : or(
+            ilike(schema.concerts.headlinerHint, like),
+            ilike(schema.venues.name, like),
+            ilike(schema.eventSeries.name, like),
+          );
+      filteredQuery = baseQuery.where(searchConditions!);
     }
 
     // Count total
     const countQuery = db
       .select({ total: sql<number>`count(*)::int` })
-      .from(schema.concertAttendees)
-      .innerJoin(schema.concerts, eq(schema.concertAttendees.concertId, schema.concerts.id))
+      .from(schema.concerts)
       .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
       .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
       .where(q
-        ? and(
-            where!,
-            or(
+        ? where
+          ? and(
+              where,
+              or(
+                ilike(schema.concerts.headlinerHint, `%${q}%`),
+                ilike(schema.venues.name, `%${q}%`),
+                ilike(schema.eventSeries.name, `%${q}%`),
+              ),
+            )
+          : or(
               ilike(schema.concerts.headlinerHint, `%${q}%`),
               ilike(schema.venues.name, `%${q}%`),
               ilike(schema.eventSeries.name, `%${q}%`),
-            ),
-          )
-        : where!);
+            )
+        : where);
 
     const orderCol = sort === "date_asc" ? asc(schema.concerts.date) : desc(schema.concerts.date);
 
     const [concertRows, countRows] = await Promise.all([
-      filteredJoin
+      filteredQuery
         .orderBy(orderCol)
         .limit(limit)
         .offset(offset),
@@ -220,15 +219,6 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         eventSeries: r.seriesId
           ? { id: r.seriesId, slug: r.seriesSlug!, name: r.seriesName!, year: r.seriesYear }
           : null,
-        attendance: {
-          status: r.status,
-          rating: r.rating,
-          personalNotes: r.personalNotes,
-          ticketPricePaid: r.ticketPricePaid,
-          ticketPriceCurrency: r.ticketPriceCurrency,
-          rsvpAt: r.rsvpAt,
-          attendedConfirmedAt: r.attendedConfirmedAt,
-        },
         artists,
       };
     });
@@ -271,8 +261,9 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── GET /concerts/stats ─────────────────────────────────────────────────────
+  // User-specific stats — requires auth
 
-  app.get("/concerts/stats", async (req, reply) => {
+  app.get("/concerts/stats", { preHandler: [requireUser] }, async (req, reply) => {
     const userId = req.user!.id;
 
     const rows = await db
@@ -296,9 +287,9 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
 
   // ── GET /concerts/followup ──────────────────────────────────────────────────
   // Returns past concerts (date < today) with actionable status (attending/interested).
-  // Used by the daily follow-up prompt.
+  // Used by the daily follow-up prompt. User-specific — requires auth.
 
-  app.get("/concerts/followup", async (req, reply) => {
+  app.get("/concerts/followup", { preHandler: [requireUser] }, async (req, reply) => {
     const userId = req.user!.id;
 
     type SQL = ReturnType<typeof eq>;
@@ -431,10 +422,10 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
 
   // ── GET /concerts/:idOrSlug ─────────────────────────────────────────────────
   // Supports both UUID and slug patterns like "osheaga-2025-2025-07-12"
+  // Public endpoint — no auth required
 
   app.get("/concerts/:idOrSlug", async (req, reply) => {
     const { idOrSlug } = req.params as { idOrSlug: string };
-    const userId = req.user!.id;
 
     // Check if it's a UUID
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
@@ -449,9 +440,6 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
           concertArtists: {
             with: { artist: true },
             orderBy: [schema.concertArtists.setOrder],
-          },
-          concertAttendees: {
-            where: eq(schema.concertAttendees.userId, userId),
           },
         },
       });
@@ -484,9 +472,6 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
                 with: { artist: true },
                 orderBy: [schema.concertArtists.setOrder],
               },
-              concertAttendees: {
-                where: eq(schema.concertAttendees.userId, userId),
-              },
             },
           });
         }
@@ -496,8 +481,6 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
     if (!concert) {
       return reply.code(404).send({ error: "Concert not found." });
     }
-
-    const attendee = concert.concertAttendees[0] ?? null;
 
     // Flyer inheritance: festival_day concerts can inherit the festival's flyer
     let flyerUrl: string | null = concert.flyerKey ? mediaUrl(concert.flyerKey) : null;
@@ -558,17 +541,6 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
           setOrder: ca.setOrder,
           appearanceNotes: ca.appearanceNotes,
         })),
-        attendance: attendee
-          ? {
-              status: attendee.status,
-              rating: attendee.rating,
-              personalNotes: attendee.personalNotes,
-              ticketPricePaid: attendee.ticketPricePaid,
-              ticketPriceCurrency: attendee.ticketPriceCurrency,
-              rsvpAt: attendee.rsvpAt,
-              attendedConfirmedAt: attendee.attendedConfirmedAt,
-            }
-          : null,
         createdAt: concert.createdAt,
         updatedAt: concert.updatedAt,
       },
@@ -577,6 +549,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── POST /concerts ──────────────────────────────────────────────────────────
+  // Admin only
 
   const createBody = z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"),
@@ -605,7 +578,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
     sourceUrl: z.string().url().optional(),
   });
 
-  app.post("/concerts", async (req, reply) => {
+  app.post("/concerts", { preHandler: [requireAdmin] }, async (req, reply) => {
     const parsed = createBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "Invalid input.", details: parsed.error.flatten() });
@@ -737,7 +710,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
     sourceUrl: z.string().url("Must be a valid URL").max(500).nullable().optional(),
   }).refine((d) => Object.keys(d).length > 0, "Provide at least one field to update.");
 
-  app.patch("/concerts/:id", async (req, reply) => {
+  app.patch("/concerts/:id", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parsed = patchBody.safeParse(req.body);
     if (!parsed.success) {
@@ -747,22 +720,39 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
     const userId = req.user!.id;
     const body = parsed.data;
 
-    // Verify the attendee row exists (gates both attendance + concert-level edits)
-    const existing = await db.query.concertAttendees.findFirst({
+    // Verify concert exists
+    const concert = await db.query.concerts.findFirst({
+      where: eq(schema.concerts.id, id),
+    });
+    if (!concert) {
+      return reply.code(404).send({ error: "Concert not found." });
+    }
+
+    // Get or create attendee row for the admin user
+    let existing = await db.query.concertAttendees.findFirst({
       where: and(
         eq(schema.concertAttendees.userId, userId),
         eq(schema.concertAttendees.concertId, id),
       ),
     });
     if (!existing) {
-      return reply.code(404).send({ error: "Concert not in your list." });
+      // Create an attendee record for the admin
+      const [newAttendee] = await db.insert(schema.concertAttendees).values({
+        userId,
+        concertId: id,
+        status: "attended",
+      }).returning();
+      if (!newAttendee) {
+        return reply.code(500).send({ error: "Failed to create attendee record." });
+      }
+      existing = newAttendee;
     }
 
     // ── Attendance updates ────────────────────────────────────────────────────
     const attendeeUpdates: Record<string, unknown> = { updatedAt: new Date() };
     if (body.status !== undefined) {
       attendeeUpdates.status = body.status;
-      if (body.status === "attended" && !existing.attendedConfirmedAt) {
+      if (body.status === "attended" && !existing!.attendedConfirmedAt) {
         attendeeUpdates.attendedConfirmedAt = new Date();
       }
     }
@@ -883,7 +873,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       .max(200),
   });
 
-  app.patch("/concerts/batch", async (req, reply) => {
+  app.patch("/concerts/batch", { preHandler: [requireAdmin] }, async (req, reply) => {
     const parsed = batchPatchBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "Invalid input.", details: parsed.error.flatten() });
@@ -970,23 +960,23 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
   // ── DELETE /concerts/:id ────────────────────────────────────────────────────
   // Removes the user from the concert's attendee list. Does NOT delete the concert itself.
 
-  app.delete("/concerts/:id", async (req, reply) => {
+  app.delete("/concerts/:id", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id } = req.params as { id: string };
-    const userId = req.user!.id;
 
-    const result = await db
-      .delete(schema.concertAttendees)
-      .where(
-        and(
-          eq(schema.concertAttendees.userId, userId),
-          eq(schema.concertAttendees.concertId, id),
-        ),
-      )
-      .returning({ userId: schema.concertAttendees.userId });
-
-    if (result.length === 0) {
-      return reply.code(404).send({ error: "Concert not in your list." });
+    // Delete the concert entirely (admin action)
+    const concert = await db.query.concerts.findFirst({
+      where: eq(schema.concerts.id, id),
+    });
+    if (!concert) {
+      return reply.code(404).send({ error: "Concert not found." });
     }
+
+    // Delete all related attendee records first
+    await db.delete(schema.concertAttendees).where(eq(schema.concertAttendees.concertId, id));
+    // Delete all related artist links
+    await db.delete(schema.concertArtists).where(eq(schema.concertArtists.concertId, id));
+    // Delete the concert
+    await db.delete(schema.concerts).where(eq(schema.concerts.id, id));
 
     return reply.code(204).send();
   });
@@ -995,7 +985,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
 
   const FLYER_ALLOWED = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 
-  app.post("/concerts/:id/flyer", async (req, reply) => {
+  app.post("/concerts/:id/flyer", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id } = req.params as { id: string };
 
     const concert = await db.query.concerts.findFirst({
@@ -1058,7 +1048,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
     url: z.string().url().max(2048),
   });
 
-  app.post("/concerts/:id/flyer/url", async (req, reply) => {
+  app.post("/concerts/:id/flyer/url", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id } = req.params as { id: string };
 
     const concert = await db.query.concerts.findFirst({
@@ -1188,7 +1178,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
 
   // ── DELETE /concerts/:id/flyer ──────────────────────────────────────────────
 
-  app.delete("/concerts/:id/flyer", async (req, reply) => {
+  app.delete("/concerts/:id/flyer", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id } = req.params as { id: string };
 
     const concert = await db.query.concerts.findFirst({
@@ -1203,8 +1193,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── PUT /concerts/:id/artists ───────────────────────────────────────────────
-  // Atomically replaces the entire lineup for a concert.
-  // Any attendee of the concert may edit the shared lineup.
+  // Atomically replaces the entire lineup for a concert. Admin only.
 
   const putArtistsBody = z.object({
     artists: z
@@ -1221,7 +1210,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       .max(50),
   });
 
-  app.put("/concerts/:id/artists", async (req, reply) => {
+  app.put("/concerts/:id/artists", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id: concertId } = req.params as { id: string };
     const parsed = putArtistsBody.safeParse(req.body);
     if (!parsed.success) {
@@ -1229,16 +1218,11 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "Invalid body.", details: parsed.error.flatten() });
     }
 
-    const userId = req.user!.id;
-
-    // Verify user is an attendee (has access to this concert)
-    const attendee = await db.query.concertAttendees.findFirst({
-      where: and(
-        eq(schema.concertAttendees.concertId, concertId),
-        eq(schema.concertAttendees.userId, userId),
-      ),
+    // Verify concert exists
+    const concert = await db.query.concerts.findFirst({
+      where: eq(schema.concerts.id, concertId),
     });
-    if (!attendee) return reply.code(404).send({ error: "Concert not found." });
+    if (!concert) return reply.code(404).send({ error: "Concert not found." });
 
     const { artists } = parsed.data;
 
@@ -1345,23 +1329,19 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
     setlistfmId: z.string().min(1).max(512), // Can be full URL or just ID
   });
 
-  app.put("/concerts/:id/setlists/:artistId", async (req, reply) => {
+  app.put("/concerts/:id/setlists/:artistId", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id: concertId, artistId } = req.params as { id: string; artistId: string };
-    const userId = req.user!.id;
 
     const parsed = putSetlistBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "Invalid body.", details: parsed.error.flatten() });
     }
 
-    // Verify user is an attendee
-    const attendee = await db.query.concertAttendees.findFirst({
-      where: and(
-        eq(schema.concertAttendees.concertId, concertId),
-        eq(schema.concertAttendees.userId, userId),
-      ),
+    // Verify concert exists
+    const concert = await db.query.concerts.findFirst({
+      where: eq(schema.concerts.id, concertId),
     });
-    if (!attendee) return reply.code(404).send({ error: "Concert not found." });
+    if (!concert) return reply.code(404).send({ error: "Concert not found." });
 
     // Verify artist exists
     const artist = await db.query.artists.findFirst({
@@ -1392,18 +1372,14 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
   // ── DELETE /concerts/:id/setlists/:artistId ────────────────────────────────
   // Remove a setlist link for an artist on this concert.
 
-  app.delete("/concerts/:id/setlists/:artistId", async (req, reply) => {
+  app.delete("/concerts/:id/setlists/:artistId", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id: concertId, artistId } = req.params as { id: string; artistId: string };
-    const userId = req.user!.id;
 
-    // Verify user is an attendee
-    const attendee = await db.query.concertAttendees.findFirst({
-      where: and(
-        eq(schema.concertAttendees.concertId, concertId),
-        eq(schema.concertAttendees.userId, userId),
-      ),
+    // Verify concert exists
+    const concert = await db.query.concerts.findFirst({
+      where: eq(schema.concerts.id, concertId),
     });
-    if (!attendee) return reply.code(404).send({ error: "Concert not found." });
+    if (!concert) return reply.code(404).send({ error: "Concert not found." });
 
     await db
       .delete(schema.setlists)

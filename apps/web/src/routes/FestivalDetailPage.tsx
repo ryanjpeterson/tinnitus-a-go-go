@@ -8,6 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { api, type FestivalSet, type ArtistListItem } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
+import { useAuth } from "@/lib/auth-context";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
@@ -105,6 +106,8 @@ export function FestivalDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin ?? false;
 
   const q = useQuery({
     queryKey: ["festivals", slug],
@@ -164,7 +167,7 @@ export function FestivalDetailPage() {
   if (q.isError || !q.data) {
     return (
       <div className="py-16 text-center font-mono text-sm text-accent-pink">
-        Festival not found. <Link to="/app/festivals" className="underline text-text-muted">Back to festivals</Link>
+        Festival not found. <Link to="/festivals" className="underline text-text-muted">Back to festivals</Link>
       </div>
     );
   }
@@ -193,7 +196,7 @@ export function FestivalDetailPage() {
       await qc.invalidateQueries({ queryKey: ["festivals"] });
       setEditing(false);
       if (res.festival.slug !== slug) {
-        navigate(`/app/festivals/${res.festival.slug}`, { replace: true });
+        navigate(`/festivals/${res.festival.slug}`, { replace: true });
       }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Save failed.");
@@ -306,7 +309,7 @@ export function FestivalDetailPage() {
     try {
       await api.deleteFestival(festival.slug);
       await qc.invalidateQueries({ queryKey: ["festivals"] });
-      navigate("/app/festivals");
+      navigate("/festivals");
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to remove.");
     }
@@ -316,7 +319,7 @@ export function FestivalDetailPage() {
 
   return (
     <div className="max-w-3xl">
-      <Link to="/app/festivals" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
+      <Link to="/festivals" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
         ← Festivals
       </Link>
 
@@ -336,27 +339,31 @@ export function FestivalDetailPage() {
                   alt=""
                   className="absolute inset-0 w-full h-full object-contain"
                 />
-                <button
-                  onClick={handleDeleteFlyer}
-                  className="absolute top-1 right-1 w-6 h-6 rounded bg-black/60 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                  title="Remove flyer"
-                >×</button>
+                {isAdmin && (
+                  <button
+                    onClick={handleDeleteFlyer}
+                    className="absolute top-1 right-1 w-6 h-6 rounded bg-black/60 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                    title="Remove flyer"
+                  >×</button>
+                )}
               </>
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-text-subtle">
                 <span className="text-3xl font-display text-yellow-400/30 uppercase mb-2">
                   {festival.name.slice(0, 2)}
                 </span>
-                <label className="text-xs font-mono text-text-subtle hover:text-accent-lime cursor-pointer transition-colors">
-                  + Add flyer
-                  <input
-                    ref={flyerFileRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="sr-only"
-                    onChange={(e) => void handleFlyerUpload(e)}
-                  />
-                </label>
+                {isAdmin && (
+                  <label className="text-xs font-mono text-text-subtle hover:text-accent-lime cursor-pointer transition-colors">
+                    + Add flyer
+                    <input
+                      ref={flyerFileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      onChange={(e) => void handleFlyerUpload(e)}
+                    />
+                  </label>
+                )}
               </div>
             )}
             {uploadingFlyer && (
@@ -365,7 +372,7 @@ export function FestivalDetailPage() {
               </div>
             )}
           </div>
-          {festival.flyerUrl && (
+          {isAdmin && festival.flyerUrl && (
             <label className="block mt-2 text-xs font-mono text-text-subtle hover:text-accent-lime cursor-pointer text-center transition-colors">
               Change flyer
               <input
@@ -380,7 +387,7 @@ export function FestivalDetailPage() {
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          {editing ? (
+          {isAdmin && editing ? (
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-mono text-text-muted mb-1">Name</label>
@@ -435,12 +442,14 @@ export function FestivalDetailPage() {
                 <div>
                   <h1 className="font-display uppercase text-3xl mb-1">{festival.name}</h1>
                 </div>
-                <button
-                  onClick={startEdit}
-                  className="mt-1 text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors shrink-0"
-                >
-                  Edit
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={startEdit}
+                    className="mt-1 text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors shrink-0"
+                  >
+                    Edit
+                  </button>
+                )}
               </div>
 
               {(festival.startDate || festival.endDate) && (
@@ -452,7 +461,7 @@ export function FestivalDetailPage() {
 
               {festival.venue && (
                 <Link
-                  to={`/app/venues/${festival.venue.slug}`}
+                  to={`/venues/${festival.venue.slug}`}
                   className="block text-sm text-text-subtle hover:text-accent-lime transition-colors mt-1"
                 >
                   {festival.venue.name}
@@ -496,21 +505,22 @@ export function FestivalDetailPage() {
         </div>
       </div>
 
-      {/* Attendance section */}
-      <div className="rounded-lg border border-border bg-surface p-4 mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-mono text-text-muted uppercase">Your attendance</h2>
-          {!editingAttendance && attendance && (
-            <button
-              onClick={startEditAttendance}
-              className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
-            >
-              Edit
-            </button>
-          )}
-        </div>
+      {/* Attendance section (admin only) */}
+      {isAdmin && (
+        <div className="rounded-lg border border-border bg-surface p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-mono text-text-muted uppercase">Attendance</h2>
+            {!editingAttendance && attendance && (
+              <button
+                onClick={startEditAttendance}
+                className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+              >
+                Edit
+              </button>
+            )}
+          </div>
 
-        {editingAttendance ? (
+          {editingAttendance ? (
           <div className="space-y-3">
             <div className="flex gap-1 flex-wrap">
               {STATUSES.map((s) => (
@@ -582,10 +592,11 @@ export function FestivalDetailPage() {
               </p>
             )}
           </div>
-        ) : (
-          <p className="text-sm text-text-subtle">Not tracked yet</p>
-        )}
-      </div>
+          ) : (
+            <p className="text-sm text-text-subtle">Not tracked yet</p>
+          )}
+        </div>
+      )}
 
       {/* Event notes */}
       {festival.eventNotes && (
@@ -599,7 +610,7 @@ export function FestivalDetailPage() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-mono text-text-muted uppercase">Lineup</h2>
-          {!editingLineup && (
+          {isAdmin && !editingLineup && (
             <button
               onClick={startEditLineup}
               className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
@@ -609,7 +620,7 @@ export function FestivalDetailPage() {
           )}
         </div>
 
-        {editingLineup ? (
+        {isAdmin && editingLineup ? (
           <div className="space-y-3">
             {lineupSets.map((set, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -665,9 +676,9 @@ export function FestivalDetailPage() {
             {Object.entries(setsByDate).map(([date, dateSets]) => {
               const concert = concertsByDate[date];
               const concertUrl = concert?.slug
-                ? `/app/concerts/${concert.slug}`
+                ? `/concerts/${concert.slug}`
                 : concert?.id
-                ? `/app/concerts/${concert.id}`
+                ? `/concerts/${concert.id}`
                 : null;
 
               return (
@@ -697,7 +708,7 @@ export function FestivalDetailPage() {
                       <Link
                         key={set.id}
                         id={`set-${set.artist.slug}`}
-                        to={`/app/artists/${set.artist.slug}`}
+                        to={`/artists/${set.artist.slug}`}
                         className={clsx(
                           "text-xs px-2 py-1 rounded border font-mono transition-all scroll-mt-4",
                           highlightedSet === `set-${set.artist.slug}`
@@ -718,14 +729,14 @@ export function FestivalDetailPage() {
         )}
       </div>
 
-      {/* Danger zone */}
-      {attendance && (
+      {/* Danger zone (admin only) */}
+      {isAdmin && (
         <div className="border-t border-border pt-6 mt-8">
           <button
             onClick={() => void handleRemoveAttendance()}
             className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors"
           >
-            Remove from my festivals
+            Delete festival
           </button>
         </div>
       )}

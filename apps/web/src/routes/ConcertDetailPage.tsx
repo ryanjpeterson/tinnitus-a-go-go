@@ -12,6 +12,7 @@ import type { AttendanceStatus } from "@tagg/shared";
 import { VenueMap } from "@/components/VenueMap";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
 import type { CarouselItem } from "@/components/PhotoCarousel";
+import { useAuth } from "@/lib/auth-context";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -78,7 +79,7 @@ function localUid(): string {
 // Flyer section
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FlyerSection({ concert }: { concert: ConcertDetail }) {
+function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; isAdmin?: boolean }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -252,73 +253,75 @@ function FlyerSection({ concert }: { concert: ConcertDetail }) {
         document.body
       )}
 
-      {/* Controls below image */}
-      <div className="px-3 py-2.5 border-t border-border space-y-2">
-        <div className="flex items-center gap-2">
-          <label className={clsx(
-            "flex-1 text-center text-xs font-mono px-2 py-1.5 rounded border cursor-pointer transition-colors",
-            uploading || urlImporting
-              ? "border-border text-text-subtle cursor-not-allowed"
-              : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
-          )}>
-            {uploading ? "Uploading…" : currentUrl ? "Replace" : "Set flyer"}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="sr-only"
-              disabled={uploading || urlImporting}
-              onChange={(e) => void handleUpload(e.target.files)}
-            />
-          </label>
-          <button
-            onClick={() => setShowUrlInput((v) => !v)}
-            disabled={uploading || urlImporting}
-            className={clsx(
-              "text-xs font-mono px-2 py-1.5 rounded border transition-colors",
-              showUrlInput
-                ? "border-accent-lime text-accent-lime"
+      {/* Controls below image (admin only) */}
+      {isAdmin && (
+        <div className="px-3 py-2.5 border-t border-border space-y-2">
+          <div className="flex items-center gap-2">
+            <label className={clsx(
+              "flex-1 text-center text-xs font-mono px-2 py-1.5 rounded border cursor-pointer transition-colors",
+              uploading || urlImporting
+                ? "border-border text-text-subtle cursor-not-allowed"
                 : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
-              (uploading || urlImporting) && "opacity-50 cursor-not-allowed",
-            )}
-            title="Import from URL"
-          >
-            URL
-          </button>
-          {currentUrl && !uploading && !urlImporting && (
+            )}>
+              {uploading ? "Uploading…" : currentUrl ? "Replace" : "Set flyer"}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                disabled={uploading || urlImporting}
+                onChange={(e) => void handleUpload(e.target.files)}
+              />
+            </label>
             <button
-              onClick={() => void handleRemove()}
-              className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors px-2 py-1.5"
+              onClick={() => setShowUrlInput((v) => !v)}
+              disabled={uploading || urlImporting}
+              className={clsx(
+                "text-xs font-mono px-2 py-1.5 rounded border transition-colors",
+                showUrlInput
+                  ? "border-accent-lime text-accent-lime"
+                  : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
+                (uploading || urlImporting) && "opacity-50 cursor-not-allowed",
+              )}
+              title="Import from URL"
             >
-              Remove
+              URL
             </button>
+            {currentUrl && !uploading && !urlImporting && (
+              <button
+                onClick={() => void handleRemove()}
+                className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors px-2 py-1.5"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+
+          {/* URL input */}
+          {showUrlInput && (
+            <div className="flex gap-2">
+              <input
+                type="url"
+                placeholder="Paste image URL…"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleUrlImport(); } }}
+                disabled={urlImporting}
+                className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime disabled:opacity-50"
+              />
+              <button
+                onClick={() => void handleUrlImport()}
+                disabled={urlImporting || !urlInput.trim()}
+                className="text-xs font-mono px-2 py-1 rounded bg-surface-2 border border-border text-text-muted hover:text-accent-lime hover:border-accent-lime transition-colors disabled:opacity-40"
+              >
+                {urlImporting ? "Importing…" : "Import"}
+              </button>
+            </div>
           )}
         </div>
+      )}
 
-        {/* URL input */}
-        {showUrlInput && (
-          <div className="flex gap-2">
-            <input
-              type="url"
-              placeholder="Paste image URL…"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleUrlImport(); } }}
-              disabled={urlImporting}
-              className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime disabled:opacity-50"
-            />
-            <button
-              onClick={() => void handleUrlImport()}
-              disabled={urlImporting || !urlInput.trim()}
-              className="text-xs font-mono px-2 py-1 rounded bg-surface-2 border border-border text-text-muted hover:text-accent-lime hover:border-accent-lime transition-colors disabled:opacity-40"
-            >
-              {urlImporting ? "Importing…" : "Import"}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {error && <p className="text-xs text-accent-pink px-3 pb-2 font-mono">{error}</p>}
+      {isAdmin && error && <p className="text-xs text-accent-pink px-3 pb-2 font-mono">{error}</p>}
     </div>
   );
 }
@@ -351,10 +354,12 @@ function PhotoGallery({
   concertId,
   concertDate,
   concertArtists,
+  isAdmin = false,
 }: {
   concertId: string;
   concertDate: string;
   concertArtists: ConcertArtist[];
+  isAdmin?: boolean;
 }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -758,85 +763,87 @@ function PhotoGallery({
       {/* Toolbar */}
       <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted">Media</h2>
-        <div className="flex items-center gap-2 ml-auto">
-          {!reordering && !tagging ? (
-            <>
-              {photos.length > 0 && concertArtists.length > 0 && (
+        {isAdmin && (
+          <div className="flex items-center gap-2 ml-auto">
+            {!reordering && !tagging ? (
+              <>
+                {photos.length > 0 && concertArtists.length > 0 && (
+                  <button
+                    onClick={() => void enterTagging()}
+                    disabled={loadingTags}
+                    className="text-xs font-mono text-text-subtle hover:text-accent-lime border border-border rounded px-2.5 py-1.5 transition-colors disabled:opacity-50"
+                  >
+                    {loadingTags ? "Loading…" : "⊕ Tag artists"}
+                  </button>
+                )}
+                {photos.length > 1 && (
+                  <button
+                    onClick={enterReorder}
+                    className="text-xs font-mono text-text-subtle hover:text-accent-lime border border-border rounded px-2.5 py-1.5 transition-colors"
+                  >
+                    ⇄ Reorder
+                  </button>
+                )}
+                {isFutureEvent ? (
+                  <span
+                    className="text-xs font-mono text-text-subtle border border-dashed border-border rounded px-3 py-1.5 cursor-not-allowed"
+                    title="Media can be added on or after the event date"
+                  >
+                    + Add media
+                  </span>
+                ) : (
+                  <label className={clsx(
+                    "text-xs font-mono px-3 py-1.5 rounded border cursor-pointer transition-colors",
+                    uploading
+                      ? "border-border text-text-subtle cursor-not-allowed"
+                      : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
+                  )}>
+                    {uploading
+                      ? uploadPercent !== null ? `${uploadPercent}%` : "Uploading…"
+                      : "+ Add media"}
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm"
+                      multiple
+                      className="sr-only"
+                      disabled={uploading}
+                      onChange={(e) => void handleUpload(e.target.files)}
+                    />
+                  </label>
+                )}
+              </>
+            ) : reordering ? (
+              <>
                 <button
-                  onClick={() => void enterTagging()}
-                  disabled={loadingTags}
-                  className="text-xs font-mono text-text-subtle hover:text-accent-lime border border-border rounded px-2.5 py-1.5 transition-colors disabled:opacity-50"
+                  onClick={cancelReorder}
+                  className="text-xs font-mono text-text-subtle hover:text-text-base border border-border rounded px-2.5 py-1.5 transition-colors"
                 >
-                  {loadingTags ? "Loading…" : "⊕ Tag artists"}
+                  Cancel
                 </button>
-              )}
-              {photos.length > 1 && (
                 <button
-                  onClick={enterReorder}
-                  className="text-xs font-mono text-text-subtle hover:text-accent-lime border border-border rounded px-2.5 py-1.5 transition-colors"
+                  onClick={() => void saveOrder()}
+                  disabled={savingOrder}
+                  className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                  ⇄ Reorder
+                  {savingOrder ? "Saving…" : "Save order"}
                 </button>
-              )}
-              {isFutureEvent ? (
-                <span
-                  className="text-xs font-mono text-text-subtle border border-dashed border-border rounded px-3 py-1.5 cursor-not-allowed"
-                  title="Media can be added on or after the event date"
-                >
-                  + Add media
-                </span>
-              ) : (
-                <label className={clsx(
-                  "text-xs font-mono px-3 py-1.5 rounded border cursor-pointer transition-colors",
-                  uploading
-                    ? "border-border text-text-subtle cursor-not-allowed"
-                    : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
-                )}>
-                  {uploading
-                    ? uploadPercent !== null ? `${uploadPercent}%` : "Uploading…"
-                    : "+ Add media"}
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm"
-                    multiple
-                    className="sr-only"
-                    disabled={uploading}
-                    onChange={(e) => void handleUpload(e.target.files)}
-                  />
-                </label>
-              )}
-            </>
-          ) : reordering ? (
-            <>
+              </>
+            ) : (
+              /* tagging mode header controls */
               <button
-                onClick={cancelReorder}
+                onClick={exitTagging}
                 className="text-xs font-mono text-text-subtle hover:text-text-base border border-border rounded px-2.5 py-1.5 transition-colors"
               >
-                Cancel
+                Done tagging
               </button>
-              <button
-                onClick={() => void saveOrder()}
-                disabled={savingOrder}
-                className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {savingOrder ? "Saving…" : "Save order"}
-              </button>
-            </>
-          ) : (
-            /* tagging mode header controls */
-            <button
-              onClick={exitTagging}
-              className="text-xs font-mono text-text-subtle hover:text-text-base border border-border rounded px-2.5 py-1.5 transition-colors"
-            >
-              Done tagging
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Tagging mode: artist selector + assign controls */}
-      {tagging && (
+      {/* Tagging mode: artist selector + assign controls (admin only) */}
+      {isAdmin && tagging && (
         <div className="mb-4 rounded-lg border border-accent-lime/30 bg-surface-2 p-3 space-y-3">
           <p className="text-xs font-mono text-text-muted uppercase tracking-wider">Tag artists in photos</p>
           <div className="flex gap-2 items-center flex-wrap">
@@ -1698,7 +1705,7 @@ interface LocalArtist {
   appearanceNotes: string | null;
 }
 
-function LineupEditor({ concert }: { concert: ConcertDetail }) {
+function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; isAdmin?: boolean }) {
   const qc = useQueryClient();
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1994,27 +2001,29 @@ function LineupEditor({ concert }: { concert: ConcertDetail }) {
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted">Lineup</h2>
-        {!editing ? (
-          <button
-            onClick={enterEdit}
-            className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
-          >
-            Edit
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            {saveError && <span className="text-xs text-accent-pink font-mono">{saveError}</span>}
-            <button onClick={cancelEdit} className="text-xs font-mono text-text-subtle hover:text-text-base transition-colors">
-              Cancel
-            </button>
+        {isAdmin && (
+          !editing ? (
             <button
-              onClick={() => void handleSave()}
-              disabled={saving}
-              className="text-xs font-mono px-3 py-1 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+              onClick={enterEdit}
+              className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
             >
-              {saving ? "Saving…" : "Save changes"}
+              Edit
             </button>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {saveError && <span className="text-xs text-accent-pink font-mono">{saveError}</span>}
+              <button onClick={cancelEdit} className="text-xs font-mono text-text-subtle hover:text-text-base transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleSave()}
+                disabled={saving}
+                className="text-xs font-mono px-3 py-1 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          )
         )}
       </div>
 
@@ -2032,7 +2041,7 @@ function LineupEditor({ concert }: { concert: ConcertDetail }) {
                       <span className="text-accent-lime text-xs font-mono shrink-0">★</span>
                     )}
                     <Link
-                      to={`/app/artists/${a.slug}`}
+                      to={`/artists/${a.slug}`}
                       className="text-sm text-text-base hover:text-accent-lime transition-colors truncate"
                     >
                       {a.name}
@@ -2053,7 +2062,7 @@ function LineupEditor({ concert }: { concert: ConcertDetail }) {
           )}
         </>
       ) : (
-        /* ── Edit mode ── */
+        /* ── Edit mode (admin only, but this branch only reached when editing is true) ── */
         <div>
           {localArtists.length === 0 ? (
             <p className="text-xs text-text-subtle mb-3">No artists yet — add one below.</p>
@@ -2493,7 +2502,7 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                       </button>
                     )}
                     <Link
-                      to={`/app/artists/${artist.slug}`}
+                      to={`/artists/${artist.slug}`}
                       className="text-sm text-text-base hover:text-accent-lime transition-colors truncate"
                     >
                       {artist.name}
@@ -2665,6 +2674,8 @@ export function ConcertDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin ?? false;
 
   const concertQuery = useQuery({
     queryKey: ["concerts", id],
@@ -2679,7 +2690,7 @@ export function ConcertDetailPage() {
     return (
       <div className="py-16 text-center font-mono text-sm text-accent-pink">
         Concert not found.{" "}
-        <Link to="/app/concerts" className="underline text-text-muted">Back to Shows</Link>
+        <Link to="/concerts" className="underline text-text-muted">Back to Shows</Link>
       </div>
     );
   }
@@ -2707,7 +2718,7 @@ export function ConcertDetailPage() {
   return (
     <div>
       {/* Breadcrumb */}
-      <Link to="/app/concerts" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
+      <Link to="/concerts" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
         ← Shows
       </Link>
 
@@ -2716,7 +2727,7 @@ export function ConcertDetailPage() {
         {/* ── Left column: flyer (desktop only) ── */}
         <div className="hidden lg:block sticky top-6 self-start">
           <p className="text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Flyer</p>
-          <FlyerSection concert={concert} />
+          <FlyerSection concert={concert} isAdmin={isAdmin} />
         </div>
 
         {/* ── Right column (full width on mobile/tablet) ── */}
@@ -2725,7 +2736,7 @@ export function ConcertDetailPage() {
           <div>
             <h1 className="font-display uppercase text-3xl mb-1">{title}</h1>
             {concert.eventSeries && (
-              <Link to={`/app/festivals/${concert.eventSeries.slug}`} className="inline-block text-accent-pink hover:underline font-mono text-sm mb-1">
+              <Link to={`/festivals/${concert.eventSeries.slug}`} className="inline-block text-accent-pink hover:underline font-mono text-sm mb-1">
                 {concert.eventSeries.name}
               </Link>
             )}
@@ -2735,7 +2746,7 @@ export function ConcertDetailPage() {
             </div>
             {concert.venue && (
               <div className="text-text-muted text-sm mt-0.5">
-                <Link to={`/app/venues/${concert.venue.slug}`} className="hover:text-accent-lime transition-colors">
+                <Link to={`/venues/${concert.venue.slug}`} className="hover:text-accent-lime transition-colors">
                   {concert.venue.name}
                 </Link>
                 {concert.venue.city && <span className="text-text-subtle"> · {concert.venue.city}</span>}
@@ -2757,20 +2768,20 @@ export function ConcertDetailPage() {
           {/* Flyer — mobile/tablet only, between header and concert info */}
           <div className="lg:hidden">
             <p className="text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Flyer</p>
-            <FlyerSection concert={concert} />
+            <FlyerSection concert={concert} isAdmin={isAdmin} />
           </div>
 
-          {/* Concert info */}
-          <ConcertMetaEditor concert={concert} />
+          {/* Concert info (admin only) */}
+          {isAdmin && <ConcertMetaEditor concert={concert} />}
 
           {/* Lineup */}
-          <LineupEditor concert={concert} />
+          <LineupEditor concert={concert} isAdmin={isAdmin} />
 
-          {/* Attendance */}
-          <AttendanceEditor concertId={concert.id} attendance={concert.attendance} />
+          {/* Attendance (admin only) */}
+          {isAdmin && <AttendanceEditor concertId={concert.id} attendance={concert.attendance} />}
 
-          {/* Setlist — attended shows only */}
-          {concert.attendance?.status === "attended" && (
+          {/* Setlist (admin only) */}
+          {isAdmin && (
             <SetlistSection concert={concert} savedSetlists={savedSetlists} />
           )}
 
@@ -2780,6 +2791,7 @@ export function ConcertDetailPage() {
               concertId={concert.id}
               concertDate={concert.date}
               concertArtists={concert.artists}
+              isAdmin={isAdmin}
             />
           </div>
 
@@ -2790,25 +2802,27 @@ export function ConcertDetailPage() {
             </a>
           )}
 
-          {/* Remove from log */}
-          <div className="pt-4 border-t border-border">
-            <button
-              disabled={deleting}
-              onClick={async () => {
-                if (!window.confirm("Remove this show from your log? This can't be undone.")) return;
-                setDeleting(true);
-                try {
-                  await api.deleteConcert(concert.id);
-                  navigate("/app/concerts");
-                } catch {
-                  setDeleting(false);
-                }
-              }}
-              className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors disabled:opacity-50"
-            >
-              {deleting ? "Removing…" : "Remove from log"}
-            </button>
-          </div>
+          {/* Delete concert (admin only) */}
+          {isAdmin && (
+            <div className="pt-4 border-t border-border">
+              <button
+                disabled={deleting}
+                onClick={async () => {
+                  if (!window.confirm("Delete this concert permanently? This can't be undone.")) return;
+                  setDeleting(true);
+                  try {
+                    await api.deleteConcert(concert.id);
+                    navigate("/concerts");
+                  } catch {
+                    setDeleting(false);
+                  }
+                }}
+                className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete concert"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

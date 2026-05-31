@@ -566,7 +566,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
 
       void qc.invalidateQueries({ queryKey: ["concerts"] });
       void qc.invalidateQueries({ queryKey: ["concerts/stats"] });
-      navigate(`/app/concerts/${concertId}`);
+      navigate(`/concerts/${concertId}`);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create concert.");

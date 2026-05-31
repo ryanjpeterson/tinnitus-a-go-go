@@ -7,6 +7,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type ArtistPhoto, type ArtistSetlist, type SetlistfmResult } from "@/lib/api";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
+import { useAuth } from "@/lib/auth-context";
 
 function fmtDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -213,6 +214,8 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
 export function ArtistPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin ?? false;
   const [editing, setEditing] = useState(false);
   const [photoLightbox, setPhotoLightbox] = useState<{ photos: ArtistPhoto[]; index: number } | null>(null);
 
@@ -243,7 +246,7 @@ export function ArtistPage() {
     return (
       <div className="py-16 text-center font-mono text-sm text-accent-pink">
         Artist not found.{" "}
-        <Link to="/app/artists" className="underline text-text-muted">Back to artists</Link>
+        <Link to="/artists" className="underline text-text-muted">Back to artists</Link>
       </div>
     );
   }
@@ -252,48 +255,60 @@ export function ArtistPage() {
 
   return (
     <div className="max-w-2xl">
-      <Link to="/app/artists" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
+      <Link to="/artists" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
         ← Artists
       </Link>
 
-      {/* Header */}
-      <div className="mt-4 mb-6 flex items-start gap-4">
-        {artist.imageUrl && !editing && (
-          <img
-            src={artist.imageUrl}
-            alt={artist.name}
-            className="w-20 h-20 rounded-lg object-cover border border-border flex-shrink-0"
-          />
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start gap-3">
-            <h1 className="font-display uppercase text-3xl leading-tight flex-1 min-w-0">{artist.name}</h1>
-            {!editing && (
-              <button
-                onClick={() => setEditing(true)}
-                className="mt-1 flex-shrink-0 text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors border border-border rounded px-2.5 py-1"
-              >
-                Edit
-              </button>
+      {/* Artist photo */}
+      {!editing && (
+        <div className="mt-4 mb-5 rounded-lg border border-border bg-surface overflow-hidden">
+          <div className="relative aspect-video bg-surface-2">
+            {artist.imageUrl ? (
+              <img src={artist.imageUrl} alt={artist.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <span className="font-display uppercase text-4xl text-text-subtle opacity-20 tracking-widest">
+                  {artist.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")}
+                </span>
+              </div>
             )}
           </div>
-          {artist.genre && <p className="text-sm text-text-muted mt-1">{artist.genre}</p>}
-          {artist.bio && <p className="text-sm text-text-muted mt-2">{artist.bio}</p>}
-          {artist.mbid && (
-            <a
-              href={`https://musicbrainz.org/artist/${artist.mbid}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors mt-1 inline-block"
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="mb-5">
+        <div className="flex items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display uppercase text-3xl mb-1">{artist.name}</h1>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-text-muted">
+              {artist.genre && <span>{artist.genre}</span>}
+              {artist.mbid && (
+                <a
+                  href={`https://musicbrainz.org/artist/${artist.mbid}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                >
+                  MusicBrainz ↗
+                </a>
+              )}
+            </div>
+            {artist.bio && <p className="text-sm text-text-muted mt-2">{artist.bio}</p>}
+          </div>
+          {isAdmin && !editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="mt-1 flex-shrink-0 text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors border border-border rounded px-2.5 py-1"
             >
-              MusicBrainz ↗
-            </a>
+              Edit
+            </button>
           )}
         </div>
       </div>
 
-      {/* Edit form */}
-      {editing && (
+      {/* Edit form (admin only) */}
+      {isAdmin && editing && (
         <ArtistEditForm
           artist={artist}
           onCancel={() => setEditing(false)}
@@ -301,26 +316,13 @@ export function ArtistPage() {
             setEditing(false);
             if (newSlug !== slug) {
               // Name changed — navigate to new slug
-              navigate(`/app/artists/${newSlug}`, { replace: true });
+              navigate(`/artists/${newSlug}`, { replace: true });
             }
           }}
         />
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {[
-          { label: "Total shows", value: stats.total },
-          { label: "Attended",    value: stats.attended },
-          { label: "Upcoming",    value: stats.upcoming },
-        ].map(({ label, value }) => (
-          <div key={label} className="rounded-lg border border-border bg-surface p-4 text-center">
-            <div className="font-mono text-2xl text-text-base">{value}</div>
-            <div className="text-xs text-text-muted mt-1">{label}</div>
-          </div>
-        ))}
-      </div>
-
+      {/* First/last seen */}
       {stats.firstSeen && (
         <p className="text-xs text-text-subtle font-mono mb-4">
           First seen {fmtDate(stats.firstSeen)}
@@ -338,8 +340,8 @@ export function ArtistPage() {
           concerts.map((c) => {
             // Link to festival page for festival_day concerts, otherwise to concert page
             const href = c.type === "festival_day" && c.eventSeries?.slug
-              ? `/app/festivals/${c.eventSeries.slug}#set-${slug}`
-              : `/app/concerts/${c.id}`;
+              ? `/festivals/${c.eventSeries.slug}#set-${slug}`
+              : `/concerts/${c.id}`;
             return (
               <Link
                 key={c.id}
@@ -370,9 +372,11 @@ export function ArtistPage() {
                     <div className="text-xs text-text-subtle italic mt-0.5">{c.appearanceNotes}</div>
                   )}
                 </div>
-                <span className={`shrink-0 text-xs font-mono ${(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).color}`}>
-                  {(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).label}
-                </span>
+                {c.attendance && (
+                  <span className={`shrink-0 text-xs font-mono ${(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).color}`}>
+                    {(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).label}
+                  </span>
+                )}
               </Link>
             );
           })
@@ -395,7 +399,7 @@ export function ArtistPage() {
               >
                 <div className="flex items-baseline gap-2 mb-2">
                   <Link
-                    to={`/app/concerts/${setlist.concertId}`}
+                    to={`/concerts/${setlist.concertId}`}
                     className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors"
                   >
                     {fmtDate(setlist.concertDate)}
@@ -471,7 +475,7 @@ export function ArtistPage() {
               <div key={concertId} className="mb-5">
                 <div className="flex items-baseline gap-2 mb-2">
                   <Link
-                    to={`/app/concerts/${concertId}`}
+                    to={`/concerts/${concertId}`}
                     className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors"
                   >
                     {fmtDate(group.date)}
@@ -510,7 +514,7 @@ export function ArtistPage() {
             srcLarge: p.urls.large,
             caption: (
               <Link
-                to={`/app/concerts/${p.concert.id}`}
+                to={`/concerts/${p.concert.id}`}
                 className="hover:text-accent-lime transition-colors"
               >
                 {fmtDate(p.concert.date)}

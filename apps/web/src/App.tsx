@@ -1,16 +1,13 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth-context";
-import { LandingPage } from "@/routes/LandingPage";
 import { LoginPage } from "@/routes/LoginPage";
 import { SignupPage } from "@/routes/SignupPage";
 import { AppShell } from "@/routes/AppShell";
-import { RequireAuth } from "@/routes/RequireAuth";
 import { RequireAdmin } from "@/routes/RequireAdmin";
 import { ImportsPage } from "@/routes/ImportsPage";
 import { CopyEditorPage } from "@/routes/CopyEditorPage";
 import { VerifyEmailPage } from "@/routes/VerifyEmailPage";
-import { PublicConcertPage } from "@/routes/PublicConcertPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,47 +25,31 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/shows/:id" element={<PublicConcertPage />} />
+            {/* Auth routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+            {/* Admin-only routes */}
             <Route
-              path="/app/admin/imports"
+              path="/admin/imports"
               element={
-                <RequireAuth>
-                  <RequireAdmin>
-                    <ImportsPage />
-                  </RequireAdmin>
-                </RequireAuth>
+                <RequireAdmin>
+                  <ImportsPage />
+                </RequireAdmin>
               }
             />
             <Route
-              path="/app/admin/copy"
+              path="/admin/copy"
               element={
-                <RequireAuth>
-                  <RequireAdmin>
-                    <CopyEditorPage />
-                  </RequireAdmin>
-                </RequireAuth>
+                <RequireAdmin>
+                  <CopyEditorPage />
+                </RequireAdmin>
               }
             />
-            <Route
-              path="/app/*"
-              element={
-                <RequireAuth>
-                  <AppShell />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="*"
-              element={
-                <div className="flex h-full items-center justify-center p-10 text-text-muted font-mono text-sm">
-                  Wrong venue, pal.
-                </div>
-              }
-            />
+
+            {/* All routes go through AppShell (including /) */}
+            <Route path="/*" element={<AppShell />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

@@ -16,7 +16,7 @@ import { db, schema } from "../db/client.js";
 import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
 import { slugify } from "@tagg/shared";
-import { requireUser } from "../auth/middleware.js";
+import { requireUser, requireAdmin } from "../auth/middleware.js";
 
 /** Return a browser-accessible URL for a MinIO object key. */
 function mediaUrl(key: string): string {
@@ -25,9 +25,10 @@ function mediaUrl(key: string): string {
 }
 
 export async function artistRoutes(app: FastifyInstance): Promise<void> {
-  app.addHook("preHandler", requireUser);
+  // NOTE: Per-route auth now. GET endpoints are public, write endpoints require admin.
 
   // ── GET /artists ────────────────────────────────────────────────────────────
+  // Public endpoint: lists all artists with show counts
 
   const listQuery = z.object({
     q: z.string().max(128).optional(),
@@ -41,21 +42,12 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "Invalid query.", details: parsed.error.flatten() });
     }
     const { q, page, limit } = parsed.data;
-    const userId = req.user!.id;
     const offset = (page - 1) * limit;
 
-    // Subquery: concert IDs this user has an attendance record for
-    const userConcertIds = db
-      .select({ id: schema.concertAttendees.concertId })
-      .from(schema.concertAttendees)
-      .where(eq(schema.concertAttendees.userId, userId));
-
+    // Show all artists (no user filtering)
     const conditions = q
-      ? and(
-          inArray(schema.concertArtists.concertId, userConcertIds),
-          ilike(schema.artists.name, `%${q}%`),
-        )
-      : inArray(schema.concertArtists.concertId, userConcertIds);
+      ? ilike(schema.artists.name, `%${q}%`)
+      : undefined;
 
     const [rows, countRows] = await Promise.all([
       db
@@ -68,8 +60,8 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
           showCount: sql<number>`count(distinct ${schema.concertArtists.concertId})::int`,
         })
         .from(schema.artists)
-        .innerJoin(schema.concertArtists, eq(schema.concertArtists.artistId, schema.artists.id))
-        .where(conditions!)
+        .leftJoin(schema.concertArtists, eq(schema.concertArtists.artistId, schema.artists.id))
+        .where(conditions)
         .groupBy(schema.artists.id)
         .orderBy(desc(sql`count(distinct ${schema.concertArtists.concertId})`))
         .limit(limit)
@@ -77,7 +69,7 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
       db
         .select({ total: sql<number>`count(distinct ${schema.artists.id})::int` })
         .from(schema.artists)
-        .innerJoin(schema.concertArtists, eq(schema.concertArtists.artistId, schema.artists.id))
+        .leftJoin(schema.concertArtists, eq(schema.concertArtists.artistId, schema.artists.id))
         .where(conditions!),
     ]);
 
@@ -92,17 +84,17 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── GET /artists/:slug ──────────────────────────────────────────────────────
+  // Public endpoint: artist detail + all concerts featuring this artist
 
   app.get("/artists/:slug", async (req, reply) => {
     const { slug } = req.params as { slug: string };
-    const userId = req.user!.id;
 
     const artist = await db.query.artists.findFirst({
       where: eq(schema.artists.slug, slug),
     });
     if (!artist) return reply.code(404).send({ error: "Artist not found." });
 
-    // Concerts this user has that feature this artist, newest first
+    // All concerts featuring this artist, newest first
     const concertRows = await db
       .select({
         concertId: schema.concerts.id,
@@ -113,20 +105,11 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
         venueRegion: schema.venues.region,
         seriesName: schema.eventSeries.name,
         seriesSlug: schema.eventSeries.slug,
-        status: schema.concertAttendees.status,
-        rating: schema.concertAttendees.rating,
         role: schema.concertArtists.role,
         appearanceNotes: schema.concertArtists.appearanceNotes,
       })
       .from(schema.concertArtists)
       .innerJoin(schema.concerts, eq(schema.concertArtists.concertId, schema.concerts.id))
-      .innerJoin(
-        schema.concertAttendees,
-        and(
-          eq(schema.concertAttendees.concertId, schema.concerts.id),
-          eq(schema.concertAttendees.userId, userId),
-        ),
-      )
       .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
       .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
       .where(eq(schema.concertArtists.artistId, artist.id))
@@ -142,7 +125,6 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
         ? { name: r.venueName, city: r.venueCity, region: r.venueRegion }
         : null,
       eventSeries: r.seriesName ? { name: r.seriesName, slug: r.seriesSlug } : null,
-      attendance: { status: r.status, rating: r.rating },
     }));
 
     return reply.send({
@@ -159,15 +141,14 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
       concerts,
       stats: {
         total: concerts.length,
-        attended: concerts.filter((c) => c.attendance.status === "attended").length,
-        upcoming: concerts.filter((c) => c.attendance.status === "attending").length,
         firstSeen: concerts.at(-1)?.date ?? null,
-        lastSeen: concerts.find((c) => c.attendance.status === "attended")?.date ?? null,
+        lastSeen: concerts.at(0)?.date ?? null,
       },
     });
   });
 
   // ── PATCH /artists/:slug ────────────────────────────────────────────────────
+  // Admin only
 
   const patchBody = z.object({
     name:  z.string().min(1).max(255).optional(),
@@ -176,7 +157,7 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
     mbid:  z.string().uuid().nullable().optional(),
   });
 
-  app.patch("/artists/:slug", async (req, reply) => {
+  app.patch("/artists/:slug", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
 
     const artist = await db.query.artists.findFirst({
@@ -215,8 +196,9 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── POST /artists/:slug/image ───────────────────────────────────────────────
+  // Admin only
 
-  app.post("/artists/:slug/image", async (req, reply) => {
+  app.post("/artists/:slug/image", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
 
     const artist = await db.query.artists.findFirst({
@@ -262,11 +244,10 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── GET /artists/:slug/setlists ─────────────────────────────────────────────
-  // Returns all setlists for this artist from concerts the current user attended.
+  // Returns all setlists for this artist. Public endpoint.
 
   app.get("/artists/:slug/setlists", async (req, reply) => {
     const { slug } = req.params as { slug: string };
-    const userId = req.user!.id;
 
     const artist = await db.query.artists.findFirst({
       where: eq(schema.artists.slug, slug),
@@ -274,13 +255,7 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
     });
     if (!artist) return reply.code(404).send({ error: "Artist not found." });
 
-    // Subquery: concert IDs the current user has an attendee record for
-    const userConcertIds = db
-      .select({ id: schema.concertAttendees.concertId })
-      .from(schema.concertAttendees)
-      .where(eq(schema.concertAttendees.userId, userId));
-
-    // Get setlists for this artist from user's concerts
+    // Get all setlists for this artist
     const setlistRows = await db
       .select({
         setlistId: schema.setlists.id,
@@ -293,12 +268,7 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
       .from(schema.setlists)
       .innerJoin(schema.concerts, eq(schema.setlists.concertId, schema.concerts.id))
       .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
-      .where(
-        and(
-          eq(schema.setlists.artistId, artist.id),
-          inArray(schema.setlists.concertId, userConcertIds),
-        ),
-      )
+      .where(eq(schema.setlists.artistId, artist.id))
       .orderBy(desc(schema.concerts.date));
 
     if (setlistRows.length === 0) {
@@ -343,24 +313,16 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── GET /artists/:slug/photos ───────────────────────────────────────────────
-  // Returns all photos tagged with this artist that belong to concerts the
-  // current user attended. Includes concert + venue context for grouping.
+  // Returns all photos tagged with this artist. Public endpoint.
 
   app.get("/artists/:slug/photos", async (req, reply) => {
     const { slug } = req.params as { slug: string };
-    const userId = req.user!.id;
 
     const artist = await db.query.artists.findFirst({
       where: eq(schema.artists.slug, slug),
       columns: { id: true, name: true, slug: true },
     });
     if (!artist) return reply.code(404).send({ error: "Artist not found." });
-
-    // Subquery: concert IDs the current user has an attendee record for
-    const userConcertIds = db
-      .select({ id: schema.concertAttendees.concertId })
-      .from(schema.concertAttendees)
-      .where(eq(schema.concertAttendees.userId, userId));
 
     const rows = await db
       .select({
@@ -381,12 +343,7 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
       .innerJoin(schema.photos,   eq(schema.photoArtists.photoId, schema.photos.id))
       .innerJoin(schema.concerts, eq(schema.photos.concertId, schema.concerts.id))
       .leftJoin(schema.venues,    eq(schema.concerts.venueId, schema.venues.id))
-      .where(
-        and(
-          eq(schema.photoArtists.artistId, artist.id),
-          inArray(schema.photos.concertId, userConcertIds),
-        ),
-      )
+      .where(eq(schema.photoArtists.artistId, artist.id))
       .orderBy(desc(schema.concerts.date), asc(schema.photos.setOrder), asc(schema.photos.createdAt));
 
     const photos = rows.map((r) => {

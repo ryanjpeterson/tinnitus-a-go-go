@@ -1,8 +1,8 @@
 /**
  * Event series (festival) routes.
  *
- *   GET  /series          paginated list of series the user has shows in
- *   GET  /series/:slug    detail + that user's concerts in this series
+ *   GET  /series          paginated list of all series
+ *   GET  /series/:slug    detail + concerts in this series
  */
 
 import type { FastifyInstance } from "fastify";
@@ -10,10 +10,10 @@ import { desc, eq, inArray, sql, and } from "drizzle-orm";
 import { z } from "zod";
 import { slugify } from "@tagg/shared";
 import { db, schema } from "../db/client.js";
-import { requireUser } from "../auth/middleware.js";
+import { requireAdmin } from "../auth/middleware.js";
 
 export async function seriesRoutes(app: FastifyInstance): Promise<void> {
-  app.addHook("preHandler", requireUser);
+  // GET endpoints are public, PATCH requires admin
 
   const listQuery = z.object({
     page: z.coerce.number().int().min(1).default(1),
@@ -26,13 +26,7 @@ export async function seriesRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "Invalid query.", details: parsed.error.flatten() });
     }
     const { page, limit } = parsed.data;
-    const userId = req.user!.id;
     const offset = (page - 1) * limit;
-
-    const userConcertIds = db
-      .select({ id: schema.concertAttendees.concertId })
-      .from(schema.concertAttendees)
-      .where(eq(schema.concertAttendees.userId, userId));
 
     // Only include series that have festival_day type concerts (not regular concerts with tour names)
     const [rows, countRows] = await Promise.all([
@@ -51,7 +45,6 @@ export async function seriesRoutes(app: FastifyInstance): Promise<void> {
           eq(schema.concerts.type, "festival_day"),
         ))
         .leftJoin(schema.concertArtists, eq(schema.concertArtists.concertId, schema.concerts.id))
-        .where(inArray(schema.concerts.id, userConcertIds))
         .groupBy(schema.eventSeries.id)
         .orderBy(desc(schema.eventSeries.year))
         .limit(limit)
@@ -62,8 +55,7 @@ export async function seriesRoutes(app: FastifyInstance): Promise<void> {
         .innerJoin(schema.concerts, and(
           eq(schema.concerts.eventSeriesId, schema.eventSeries.id),
           eq(schema.concerts.type, "festival_day"),
-        ))
-        .where(inArray(schema.concerts.id, userConcertIds)),
+        )),
     ]);
 
     const total = countRows[0]?.total ?? 0;
@@ -78,30 +70,21 @@ export async function seriesRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/series/:slug", async (req, reply) => {
     const { slug } = req.params as { slug: string };
-    const userId = req.user!.id;
 
     const series = await db.query.eventSeries.findFirst({
       where: eq(schema.eventSeries.slug, slug),
     });
     if (!series) return reply.code(404).send({ error: "Series not found." });
 
-    // Days the user attended in this series, each with their artist lineup
+    // All concerts in this series with their artist lineup
     const concertRows = await db
       .select({
         concertId: schema.concerts.id,
         date: schema.concerts.date,
         venueName: schema.venues.name,
         venueCity: schema.venues.city,
-        status: schema.concertAttendees.status,
       })
       .from(schema.concerts)
-      .innerJoin(
-        schema.concertAttendees,
-        and(
-          eq(schema.concertAttendees.concertId, schema.concerts.id),
-          eq(schema.concertAttendees.userId, userId),
-        ),
-      )
       .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
       .where(eq(schema.concerts.eventSeriesId, series.id))
       .orderBy(desc(schema.concerts.date));
@@ -134,7 +117,6 @@ export async function seriesRoutes(app: FastifyInstance): Promise<void> {
       id: r.concertId,
       date: r.date,
       venue: r.venueName ? { name: r.venueName, city: r.venueCity } : null,
-      attendance: { status: r.status },
       artists: (artistsByConcert.get(r.concertId) ?? []).map((a) => ({
         name: a.artistName,
         slug: a.artistSlug,
@@ -158,13 +140,13 @@ export async function seriesRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
-  // ----- PATCH /series/:slug -----
+  // ----- PATCH /series/:slug (admin only) -----
   const patchBodySchema = z.object({
     name: z.string().min(1).max(200).optional(),
     year: z.number().int().min(1900).max(2100).nullable().optional(),
   });
 
-  app.patch("/series/:slug", async (req, reply) => {
+  app.patch("/series/:slug", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
     const parsed = patchBodySchema.safeParse(req.body);
     if (!parsed.success) {

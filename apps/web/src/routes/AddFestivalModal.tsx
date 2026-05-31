@@ -325,7 +325,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
       }
 
       void qc.invalidateQueries({ queryKey: ["festivals"] });
-      navigate(`/app/festivals/${slug}`);
+      navigate(`/festivals/${slug}`);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create festival.");

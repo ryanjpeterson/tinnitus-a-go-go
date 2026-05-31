@@ -160,6 +160,10 @@ export function FestivalDetailPage() {
   // Flyer upload
   const flyerFileRef = useRef<HTMLInputElement>(null);
   const [uploadingFlyer, setUploadingFlyer] = useState(false);
+  const [showFlyerUrlInput, setShowFlyerUrlInput] = useState(false);
+  const [flyerUrlInput, setFlyerUrlInput] = useState("");
+  const [flyerUrlImporting, setFlyerUrlImporting] = useState(false);
+  const [flyerError, setFlyerError] = useState<string | null>(null);
 
   if (q.isLoading) {
     return <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">Loading…</div>;
@@ -304,6 +308,22 @@ export function FestivalDetailPage() {
     }
   };
 
+  const handleFlyerUrlImport = async () => {
+    if (!flyerUrlInput.trim()) return;
+    setFlyerUrlImporting(true);
+    setFlyerError(null);
+    try {
+      await api.uploadFestivalFlyerFromUrl(festival.slug, flyerUrlInput.trim());
+      await qc.invalidateQueries({ queryKey: ["festivals", slug] });
+      setFlyerUrlInput("");
+      setShowFlyerUrlInput(false);
+    } catch (err) {
+      setFlyerError(err instanceof Error ? err.message : "Failed to import image from URL.");
+    } finally {
+      setFlyerUrlImporting(false);
+    }
+  };
+
   const handleRemoveAttendance = async () => {
     if (!window.confirm("Remove yourself from this festival?")) return;
     try {
@@ -352,36 +372,72 @@ export function FestivalDetailPage() {
                 <span className="text-3xl font-display text-yellow-400/30 uppercase mb-2">
                   {festival.name.slice(0, 2)}
                 </span>
-                {isAdmin && (
-                  <label className="text-xs font-mono text-text-subtle hover:text-accent-lime cursor-pointer transition-colors">
-                    + Add flyer
-                    <input
-                      ref={flyerFileRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="sr-only"
-                      onChange={(e) => void handleFlyerUpload(e)}
-                    />
-                  </label>
-                )}
               </div>
             )}
-            {uploadingFlyer && (
+            {(uploadingFlyer || flyerUrlImporting) && (
               <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <span className="text-xs font-mono text-white animate-pulse">Uploading…</span>
+                <span className="text-xs font-mono text-white animate-pulse">
+                  {flyerUrlImporting ? "Importing…" : "Uploading…"}
+                </span>
               </div>
             )}
           </div>
-          {isAdmin && festival.flyerUrl && (
-            <label className="block mt-2 text-xs font-mono text-text-subtle hover:text-accent-lime cursor-pointer text-center transition-colors">
-              Change flyer
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
-                onChange={(e) => void handleFlyerUpload(e)}
-              />
-            </label>
+          {/* Flyer controls */}
+          {isAdmin && (
+            <div className="mt-2 space-y-2">
+              <div className="flex gap-1 justify-center">
+                <label className="text-xs font-mono text-text-subtle hover:text-accent-lime cursor-pointer transition-colors border border-border rounded px-2 py-1">
+                  {festival.flyerUrl ? "Replace" : "Upload"}
+                  <input
+                    ref={flyerFileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    onChange={(e) => void handleFlyerUpload(e)}
+                    disabled={uploadingFlyer || flyerUrlImporting}
+                  />
+                </label>
+                <button
+                  onClick={() => setShowFlyerUrlInput((v) => !v)}
+                  disabled={uploadingFlyer || flyerUrlImporting}
+                  className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors border border-border rounded px-2 py-1"
+                >
+                  URL
+                </button>
+                {festival.flyerUrl && (
+                  <button
+                    onClick={handleDeleteFlyer}
+                    disabled={uploadingFlyer || flyerUrlImporting}
+                    className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors border border-border rounded px-2 py-1"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              {showFlyerUrlInput && (
+                <div className="flex gap-1">
+                  <input
+                    type="url"
+                    placeholder="Paste image URL…"
+                    value={flyerUrlInput}
+                    onChange={(e) => setFlyerUrlInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && void handleFlyerUrlImport()}
+                    disabled={flyerUrlImporting}
+                    className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                  />
+                  <button
+                    onClick={() => void handleFlyerUrlImport()}
+                    disabled={flyerUrlImporting || !flyerUrlInput.trim()}
+                    className="text-xs font-mono px-2 py-1 rounded bg-accent-lime text-bg font-bold disabled:opacity-50"
+                  >
+                    {flyerUrlImporting ? "…" : "Go"}
+                  </button>
+                </div>
+              )}
+              {flyerError && (
+                <p className="text-xs text-accent-pink font-mono text-center">{flyerError}</p>
+              )}
+            </div>
           )}
         </div>
 

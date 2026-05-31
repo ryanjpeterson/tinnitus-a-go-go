@@ -144,13 +144,13 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
             c.id            as concert_id,
             c.date::text    as date,
             coalesce(
-              c.headliner_hint,
               (select a.name from concert_artists caa
                join artists a on a.id = caa.artist_id
                where caa.concert_id = c.id
                  and caa.role in ('headliner', 'co_headliner')
                order by caa.set_order asc nulls last, a.name asc
                limit 1),
+              c.headliner_hint,
               (select a.name from concert_artists caa
                join artists a on a.id = caa.artist_id
                where caa.concert_id = c.id
@@ -182,13 +182,13 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
               c.id as concert_id,
               c.date::text as date,
               coalesce(
-                c.headliner_hint,
                 (select a.name from concert_artists caa
                  join artists a on a.id = caa.artist_id
                  where caa.concert_id = c.id
                    and caa.role in ('headliner', 'co_headliner')
                  order by caa.set_order asc nulls last, a.name asc
                  limit 1),
+                c.headliner_hint,
                 (select a.name from concert_artists caa
                  join artists a on a.id = caa.artist_id
                  where caa.concert_id = c.id
@@ -229,13 +229,13 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
               ac.id,
               ac.date,
               coalesce(
-                ac.headliner_hint,
                 (select a.name from concert_artists caa
                  join artists a on a.id = caa.artist_id
                  where caa.concert_id = ac.id
                    and caa.role in ('headliner', 'co_headliner')
                  order by caa.set_order asc nulls last, a.name asc
                  limit 1),
+                ac.headliner_hint,
                 (select a.name from concert_artists caa
                  join artists a on a.id = caa.artist_id
                  where caa.concert_id = ac.id
@@ -251,13 +251,13 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
               ac.id,
               ac.date,
               coalesce(
-                ac.headliner_hint,
                 (select a.name from concert_artists caa
                  join artists a on a.id = caa.artist_id
                  where caa.concert_id = ac.id
                    and caa.role in ('headliner', 'co_headliner')
                  order by caa.set_order asc nulls last, a.name asc
                  limit 1),
+                ac.headliner_hint,
                 (select a.name from concert_artists caa
                  join artists a on a.id = caa.artist_id
                  where caa.concert_id = ac.id

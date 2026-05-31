@@ -69,7 +69,7 @@ function ConcertRow({
           </span>
         </div>
         <Link
-          to={`/concerts/${concert.id}`}
+          to={`/shows/${concert.id}`}
           className="block mt-0.5 text-sm font-display uppercase tracking-wide text-text-base hover:text-accent-lime transition-colors truncate"
         >
           {label}

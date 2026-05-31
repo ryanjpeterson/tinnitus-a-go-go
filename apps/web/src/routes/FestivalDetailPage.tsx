@@ -732,9 +732,9 @@ export function FestivalDetailPage() {
             {Object.entries(setsByDate).map(([date, dateSets]) => {
               const concert = concertsByDate[date];
               const concertUrl = concert?.slug
-                ? `/concerts/${concert.slug}`
+                ? `/shows/${concert.slug}`
                 : concert?.id
-                ? `/concerts/${concert.id}`
+                ? `/shows/${concert.id}`
                 : null;
 
               return (

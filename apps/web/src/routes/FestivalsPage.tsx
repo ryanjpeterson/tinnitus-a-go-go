@@ -1,15 +1,33 @@
 /**
  * Festival index — card grid showing user's festivals.
  *
+ * All filter/page state lives in the URL (?page=) so the browser back
+ * button always restores the exact view you left.
+ *
  * Uses the new festivals API if available (after migration),
  * otherwise falls back to the legacy series API.
  */
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, type FestivalListItem, type SeriesListItem } from "@/lib/api";
 import { AddFestivalModal } from "./AddFestivalModal";
+
+const PAGE_SIZE = 60;
+
+/** Build a new URLSearchParams from the current one, merging in changes. */
+function mergeParams(
+  current: URLSearchParams,
+  updates: Record<string, string | undefined>,
+): URLSearchParams {
+  const next = new URLSearchParams(current);
+  for (const [k, v] of Object.entries(updates)) {
+    if (v === undefined || v === "") next.delete(k);
+    else next.set(k, v);
+  }
+  return next;
+}
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
@@ -152,20 +170,29 @@ function LegacyFestivalCard({ series }: { series: SeriesListItem }) {
 }
 
 export function FestivalsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [addOpen, setAddOpen] = useState(false);
+
+  // Derive state from URL params
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+
+  /** Set page only — pushes a new history entry so back works. */
+  const setPage = (p: number): void => {
+    setSearchParams(mergeParams(searchParams, { page: p === 1 ? undefined : String(p) }), { replace: false });
+  };
 
   // Try new festivals API first
   const festivalsQuery = useQuery({
-    queryKey: ["festivals"],
-    queryFn: () => api.listFestivals({ limit: 60 }),
+    queryKey: ["festivals", { page }],
+    queryFn: () => api.listFestivals({ page, limit: PAGE_SIZE }),
     staleTime: 30_000,
     retry: false, // Don't retry if it fails (migration might not be run)
   });
 
   // Fall back to legacy series API if new one fails
   const seriesQuery = useQuery({
-    queryKey: ["series"],
-    queryFn: () => api.listSeries({ limit: 60 }),
+    queryKey: ["series", { page }],
+    queryFn: () => api.listSeries({ page, limit: PAGE_SIZE }),
     staleTime: 30_000,
     enabled: festivalsQuery.isError, // Only run if festivals query fails
   });
@@ -179,6 +206,10 @@ export function FestivalsPage() {
   const total = useNewApi
     ? (festivalsQuery.data?.total ?? 0)
     : (seriesQuery.data?.total ?? 0);
+
+  const totalPages = useNewApi
+    ? (festivalsQuery.data?.totalPages ?? 0)
+    : (seriesQuery.data?.totalPages ?? 0);
 
   const isEmpty = useNewApi
     ? newFestivals.length === 0
@@ -228,17 +259,65 @@ export function FestivalsPage() {
           )}
         </div>
       ) : useNewApi ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {newFestivals.map((f) => (
-            <NewFestivalCard key={f.id} festival={f} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {newFestivals.map((f) => (
+              <NewFestivalCard key={f.id} festival={f} />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between text-xs font-mono text-text-muted">
+              <span>{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}</span>
+              <div className="flex gap-1">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                  className="px-3 py-1.5 rounded border border-border disabled:opacity-30 hover:border-accent-lime transition-colors"
+                >
+                  ← Prev
+                </button>
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(page + 1)}
+                  className="px-3 py-1.5 rounded border border-border disabled:opacity-30 hover:border-accent-lime transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {legacySeries.map((s) => (
-            <LegacyFestivalCard key={s.id} series={s} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {legacySeries.map((s) => (
+              <LegacyFestivalCard key={s.id} series={s} />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between text-xs font-mono text-text-muted">
+              <span>{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}</span>
+              <div className="flex gap-1">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                  className="px-3 py-1.5 rounded border border-border disabled:opacity-30 hover:border-accent-lime transition-colors"
+                >
+                  ← Prev
+                </button>
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(page + 1)}
+                  className="px-3 py-1.5 rounded border border-border disabled:opacity-30 hover:border-accent-lime transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

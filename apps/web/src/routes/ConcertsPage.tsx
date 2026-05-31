@@ -141,7 +141,7 @@ function ConcertCard({
       borderClass
     )}>
       {/* Flyer / header image */}
-      <Link to={`/concerts/${concert.id}`} className="block">
+      <Link to={`/shows/${concert.id}`} className="block">
         <div className="aspect-[3/2] overflow-hidden bg-surface-2 relative">
           {concert.flyerUrl ? (
             <>
@@ -179,7 +179,7 @@ function ConcertCard({
       {/* Card body */}
       <div className="flex-1 flex flex-col p-3 gap-1">
         <Link
-          to={`/concerts/${concert.id}`}
+          to={`/shows/${concert.id}`}
           className="font-display uppercase tracking-wide text-sm text-text-base hover:text-accent-lime transition-colors line-clamp-1"
         >
           {headliner}
@@ -408,10 +408,10 @@ export function ConcertsPage() {
       {concertsQuery.isLoading ? (
         <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">Loading…</div>
       ) : concertsQuery.isError ? (
-        <div className="py-16 text-center text-accent-pink font-mono text-sm">Failed to load concerts.</div>
+        <div className="py-16 text-center text-accent-pink font-mono text-sm">Failed to load shows.</div>
       ) : concerts.length === 0 ? (
         <div className="py-16 text-center text-text-subtle font-mono text-sm">
-          {statusFilter || urlQ ? "No concerts match your filter." : "No concerts yet. Import your CSV or add your first show."}
+          {statusFilter || urlQ ? "No shows match your filter." : "No shows yet. Import your CSV or add your first show."}
         </div>
       ) : (
         <>

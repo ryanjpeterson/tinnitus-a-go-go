@@ -281,7 +281,7 @@ function OnThisDay({ shows }: { shows: DeepStatsResponse["onThisDay"] }) {
             </div>
             <div className="min-w-0">
               <Link
-                to={`/concerts/${s.concertId}`}
+                to={`/shows/${s.concertId}`}
                 className="text-sm font-medium text-text-base hover:text-accent-lime transition-colors truncate block"
               >
                 {showName(s.headlinerHint, s.seriesName)}
@@ -330,7 +330,7 @@ function Milestones({ milestones }: { milestones: DeepStatsResponse["milestones"
             </div>
             <div className="min-w-0 pt-0.5">
               <Link
-                to={`/concerts/${m.concertId}`}
+                to={`/shows/${m.concertId}`}
                 className="text-sm font-medium text-text-base hover:text-accent-lime transition-colors block truncate"
               >
                 {showName(m.headlinerHint, m.seriesName)}
@@ -422,7 +422,7 @@ export function StatsPage() {
 
       {/* ── Overview tiles ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatTile label="Shows attended" value={d.totalShows}   sub="concerts"           accent="lime" />
+        <StatTile label="Shows attended" value={d.totalShows}   sub="shows"              accent="lime" />
         <StatTile label="Artists seen"   value={d.totalArtists} sub="unique"             accent="muted" />
         <StatTile label="Venues visited" value={d.totalVenues}  sub="unique"             accent="muted" />
         <StatTile label="Years active"   value={d.yearsActive}  sub="span"               accent="muted" />
@@ -434,7 +434,7 @@ export function StatsPage() {
           {d.firstShow && (
             <div className="rounded-lg border border-border bg-surface p-4">
               <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-1">First show</p>
-              <Link to={`/concerts/${d.firstShow.concertId}`} className="text-sm font-medium hover:text-accent-lime transition-colors block truncate">
+              <Link to={`/shows/${d.firstShow.concertId}`} className="text-sm font-medium hover:text-accent-lime transition-colors block truncate">
                 {showName(d.firstShow.headlinerHint)}
               </Link>
               <p className="text-xs font-mono text-text-subtle">{fmtDate(d.firstShow.date)}</p>
@@ -443,7 +443,7 @@ export function StatsPage() {
           {d.latestShow && (
             <div className="rounded-lg border border-border bg-surface p-4">
               <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-1">Most recent</p>
-              <Link to={`/concerts/${d.latestShow.concertId}`} className="text-sm font-medium hover:text-accent-lime transition-colors block truncate">
+              <Link to={`/shows/${d.latestShow.concertId}`} className="text-sm font-medium hover:text-accent-lime transition-colors block truncate">
                 {showName(d.latestShow.headlinerHint)}
               </Link>
               <p className="text-xs font-mono text-text-subtle">{fmtDate(d.latestShow.date)}</p>
@@ -499,7 +499,7 @@ export function StatsPage() {
                 <span className="text-xs font-normal text-text-subtle">{d.mostExpensiveShow.currency}</span>
               </p>
               <Link
-                to={`/concerts/${d.mostExpensiveShow.concertId}`}
+                to={`/shows/${d.mostExpensiveShow.concertId}`}
                 className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors"
               >
                 {showName(d.mostExpensiveShow.headlinerHint)} · {fmtDate(d.mostExpensiveShow.date)} ↗

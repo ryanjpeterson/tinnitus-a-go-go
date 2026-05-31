@@ -213,7 +213,7 @@ function MobileMenu({
             }
           >
             {link.label}
-            {link.to === "/concerts" && followupCount > 0 && isAdmin && (
+            {link.to === "/shows" && followupCount > 0 && isAdmin && (
               <span className="min-w-[22px] h-5 rounded-full bg-accent-pink text-white text-[11px] font-mono font-bold flex items-center justify-center px-1.5 leading-none">
                 {followupCount}
               </span>
@@ -303,7 +303,7 @@ export function AppShell() {
 
   // New root-level nav links
   const navLinks = [
-    { to: "/concerts", label: "Shows" },
+    { to: "/shows", label: "Shows" },
     { to: "/artists",  label: "Artists" },
     { to: "/venues",   label: "Venues" },
     { to: "/festivals",label: "Festivals" },
@@ -348,7 +348,7 @@ export function AppShell() {
                 }
               >
                 {link.label}
-                {link.to === "/concerts" && followupCount > 0 && isAdmin && (
+                {link.to === "/shows" && followupCount > 0 && isAdmin && (
                   <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full bg-accent-pink text-white text-[10px] font-mono font-bold flex items-center justify-center px-1 leading-none">
                     {followupCount}
                   </span>
@@ -399,9 +399,11 @@ export function AppShell() {
 
       <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <Routes>
-          {/* Handle legacy /app/* routes with redirects */}
-          <Route path="/app/concerts" element={<Navigate to="/concerts" replace />} />
-          <Route path="/app/concerts/:id" element={<Navigate to={location.pathname.replace("/app", "")} replace />} />
+          {/* Handle legacy /app/* and /concerts routes with redirects */}
+          <Route path="/app/concerts" element={<Navigate to="/shows" replace />} />
+          <Route path="/app/concerts/:id" element={<Navigate to={location.pathname.replace("/app/concerts", "/shows")} replace />} />
+          <Route path="/concerts" element={<Navigate to="/shows" replace />} />
+          <Route path="/concerts/:id" element={<Navigate to={location.pathname.replace("/concerts", "/shows")} replace />} />
           <Route path="/app/artists" element={<Navigate to="/artists" replace />} />
           <Route path="/app/artists/:slug" element={<Navigate to={location.pathname.replace("/app", "")} replace />} />
           <Route path="/app/venues" element={<Navigate to="/venues" replace />} />
@@ -410,12 +412,12 @@ export function AppShell() {
           <Route path="/app/festivals/:slug" element={<Navigate to={location.pathname.replace("/app", "")} replace />} />
           <Route path="/app/stats" element={<Navigate to="/" replace />} />
           <Route path="/app/account" element={<Navigate to="/account" replace />} />
-          <Route path="/app/*" element={<Navigate to="/concerts" replace />} />
+          <Route path="/app/*" element={<Navigate to="/shows" replace />} />
 
           {/* Main content routes */}
           <Route path="/" element={<StatsPage />} />
-          <Route path="/concerts" element={<ConcertsPage />} />
-          <Route path="/concerts/:id" element={<ConcertDetailPage />} />
+          <Route path="/shows" element={<ConcertsPage />} />
+          <Route path="/shows/:id" element={<ConcertDetailPage />} />
           <Route path="/artists" element={<ArtistsPage />} />
           <Route path="/artists/:slug" element={<ArtistPage />} />
           <Route path="/venues" element={<VenuesPage />} />
@@ -456,17 +458,17 @@ function Dashboard({
     <div>
       <h1 className="font-display uppercase text-4xl mb-1">The damage</h1>
       <p className="text-text-muted text-sm mb-8">
-        Your concert log, {username ? `@${username}` : "loading…"}
+        Your show log, {username ? `@${username}` : "loading…"}
       </p>
 
       <div className="grid gap-4 sm:grid-cols-3 mb-10">
-        <Link to="/concerts?status=attended" className="group">
+        <Link to="/shows?status=attended" className="group">
           <Tile title="Attended" value={String(attended)} sub={`${totalShows} logged total`} accent="lime" />
         </Link>
-        <Link to="/concerts?status=attending" className="group">
+        <Link to="/shows?status=attending" className="group">
           <Tile title="Upcoming" value={String(upcoming)} sub="on the books" accent="yellow" />
         </Link>
-        <Link to="/concerts?status=interested" className="group">
+        <Link to="/shows?status=interested" className="group">
           <Tile title="Watchlist" value={String(interested)} sub="interested · not committed" accent="purple" />
         </Link>
       </div>
@@ -474,10 +476,10 @@ function Dashboard({
       <div className="rounded-lg border border-border bg-surface p-6 mb-6">
         <div className="text-xs uppercase tracking-wider text-text-muted mb-3 font-mono">Quick actions</div>
         <div className="flex flex-wrap gap-3">
-          <Link to="/concerts" className="text-sm text-accent-lime hover:underline font-mono">
+          <Link to="/shows" className="text-sm text-accent-lime hover:underline font-mono">
             → Browse Shows
           </Link>
-          <Link to="/concerts?sort=date_asc&status=attending" className="text-sm text-text-muted hover:text-text-base font-mono">
+          <Link to="/shows?sort=date_asc&status=attending" className="text-sm text-text-muted hover:text-text-base font-mono">
             → Upcoming shows
           </Link>
           <Link to="/stats" className="text-sm text-text-muted hover:text-text-base font-mono">
@@ -507,7 +509,7 @@ function Dashboard({
       )}
 
       <p className="mt-8 text-xs text-text-subtle font-mono">
-        v2026.05.28 · concert log active
+        v2026.05.31 · show log active
       </p>
     </div>
   );

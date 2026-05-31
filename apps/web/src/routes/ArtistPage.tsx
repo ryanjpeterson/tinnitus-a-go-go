@@ -488,7 +488,7 @@ export function ArtistPage() {
             // Link to festival page for festival_day concerts, otherwise to concert page
             const href = c.type === "festival_day" && c.eventSeries?.slug
               ? `/festivals/${c.eventSeries.slug}#set-${slug}`
-              : `/concerts/${c.id}`;
+              : `/shows/${c.id}`;
             return (
               <Link
                 key={c.id}
@@ -546,7 +546,7 @@ export function ArtistPage() {
               >
                 <div className="flex items-baseline gap-2 mb-2">
                   <Link
-                    to={`/concerts/${setlist.concertId}`}
+                    to={`/shows/${setlist.concertId}`}
                     className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors"
                   >
                     {fmtDate(setlist.concertDate)}
@@ -622,7 +622,7 @@ export function ArtistPage() {
               <div key={concertId} className="mb-5">
                 <div className="flex items-baseline gap-2 mb-2">
                   <Link
-                    to={`/concerts/${concertId}`}
+                    to={`/shows/${concertId}`}
                     className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors"
                   >
                     {fmtDate(group.date)}
@@ -661,7 +661,7 @@ export function ArtistPage() {
             srcLarge: p.urls.large,
             caption: (
               <Link
-                to={`/concerts/${p.concert.id}`}
+                to={`/shows/${p.concert.id}`}
                 className="hover:text-accent-lime transition-colors"
               >
                 {fmtDate(p.concert.date)}

@@ -1,27 +1,67 @@
 /**
  * Artist index — card grid of all artists in the user's log.
+ *
+ * All filter/page state lives in the URL (?page=&q=) so the browser back
+ * button always restores the exact view you left.
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { EntityCard } from "@/components/EntityCard";
 
+const PAGE_SIZE = 40;
+
+/** Build a new URLSearchParams from the current one, merging in changes. */
+function mergeParams(
+  current: URLSearchParams,
+  updates: Record<string, string | undefined>,
+): URLSearchParams {
+  const next = new URLSearchParams(current);
+  for (const [k, v] of Object.entries(updates)) {
+    if (v === undefined || v === "") next.delete(k);
+    else next.set(k, v);
+  }
+  return next;
+}
+
 export function ArtistsPage() {
-  const [q, setQ] = useState("");
-  const [debouncedQ, setDebouncedQ] = useState("");
-  const [page, setPage] = useState(1);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Derive state from URL params
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const urlQ = searchParams.get("q") ?? "";
+
+  // Local input state — keeps the search field responsive while debounce runs
+  const [inputQ, setInputQ] = useState(urlQ);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync input field when URL changes externally (e.g. browser back)
+  useEffect(() => {
+    setInputQ(urlQ);
+  }, [urlQ]);
+
+  /** Set page only — pushes a new history entry so back works. */
+  const setPage = (p: number): void => {
+    setSearchParams(mergeParams(searchParams, { page: p === 1 ? undefined : String(p) }), { replace: false });
+  };
 
   const handleSearch = (val: string): void => {
-    setQ(val);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => { setDebouncedQ(val); setPage(1); }, 300);
+    setInputQ(val);
+    if (searchTimer.current != null) clearTimeout(searchTimer.current);
+    // Write to URL after 300 ms; use replace so typing doesn't spam history
+    searchTimer.current = setTimeout(() => {
+      setSearchParams(
+        mergeParams(searchParams, { q: val.trim() || undefined, page: undefined }),
+        { replace: true },
+      );
+    }, 300);
   };
 
   const artistsQuery = useQuery({
-    queryKey: ["artists", { q: debouncedQ, page }],
-    queryFn: () => api.listArtists({ q: debouncedQ || undefined, page, limit: 40 }),
+    queryKey: ["artists", { q: urlQ, page }],
+    queryFn: () => api.listArtists({ q: urlQ || undefined, page, limit: PAGE_SIZE }),
     staleTime: 30_000,
   });
 
@@ -37,7 +77,7 @@ export function ArtistsPage() {
       <input
         type="search"
         placeholder="Search artists…"
-        value={q}
+        value={inputQ}
         onChange={(e) => handleSearch(e.target.value)}
         className="w-full max-w-sm rounded border border-border bg-surface px-3 py-2 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime mb-5"
       />
@@ -46,7 +86,7 @@ export function ArtistsPage() {
         <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">Loading…</div>
       ) : artists.length === 0 ? (
         <div className="py-16 text-center text-text-subtle font-mono text-sm">
-          {debouncedQ ? "No artists match your search." : "Import your CSV to populate artists."}
+          {urlQ ? "No artists match your search." : "Import your CSV to populate artists."}
         </div>
       ) : (
         <>
@@ -65,14 +105,20 @@ export function ArtistsPage() {
 
           {totalPages > 1 && (
             <div className="mt-6 flex items-center justify-between text-xs font-mono text-text-muted">
-              <span>{total} artists</span>
+              <span>{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}</span>
               <div className="flex gap-1">
-                <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
-                  className="px-3 py-1.5 rounded border border-border disabled:opacity-30 hover:border-accent-lime transition-colors">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                  className="px-3 py-1.5 rounded border border-border disabled:opacity-30 hover:border-accent-lime transition-colors"
+                >
                   ← Prev
                 </button>
-                <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}
-                  className="px-3 py-1.5 rounded border border-border disabled:opacity-30 hover:border-accent-lime transition-colors">
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(page + 1)}
+                  className="px-3 py-1.5 rounded border border-border disabled:opacity-30 hover:border-accent-lime transition-colors"
+                >
                   Next →
                 </button>
               </div>

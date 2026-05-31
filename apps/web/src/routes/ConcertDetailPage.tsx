@@ -2698,8 +2698,8 @@ export function ConcertDetailPage() {
   if (concertQuery.isError || !concertQuery.data) {
     return (
       <div className="py-16 text-center font-mono text-sm text-accent-pink">
-        Concert not found.{" "}
-        <Link to="/concerts" className="underline text-text-muted">Back to Shows</Link>
+        Show not found.{" "}
+        <Link to="/shows" className="underline text-text-muted">Back to Shows</Link>
       </div>
     );
   }
@@ -2727,7 +2727,7 @@ export function ConcertDetailPage() {
   return (
     <div>
       {/* Breadcrumb */}
-      <Link to="/concerts" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
+      <Link to="/shows" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
         ← Shows
       </Link>
 
@@ -2811,24 +2811,24 @@ export function ConcertDetailPage() {
             </a>
           )}
 
-          {/* Delete concert (admin only) */}
+          {/* Delete show (admin only) */}
           {isAdmin && (
             <div className="pt-4 border-t border-border">
               <button
                 disabled={deleting}
                 onClick={async () => {
-                  if (!window.confirm("Delete this concert permanently? This can't be undone.")) return;
+                  if (!window.confirm("Delete this show permanently? This can't be undone.")) return;
                   setDeleting(true);
                   try {
                     await api.deleteConcert(concert.id);
-                    navigate("/concerts");
+                    navigate("/shows");
                   } catch {
                     setDeleting(false);
                   }
                 }}
                 className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors disabled:opacity-50"
               >
-                {deleting ? "Deleting…" : "Delete concert"}
+                {deleting ? "Deleting…" : "Delete show"}
               </button>
             </div>
           )}

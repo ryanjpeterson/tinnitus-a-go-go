@@ -549,7 +549,7 @@ export function VenuePage() {
           {concerts.map((c) => (
             <Link
               key={c.id}
-              to={`/concerts/${c.id}`}
+              to={`/shows/${c.id}`}
               className="group flex items-start gap-3 rounded-lg border border-border bg-surface p-3 hover:border-accent-lime transition-colors"
             >
               <div className="flex-1 min-w-0">

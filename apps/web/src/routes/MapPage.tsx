@@ -8,7 +8,7 @@
 import { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { APIProvider, Map, AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
+import { APIProvider, Map, Marker, useMap } from "@vis.gl/react-google-maps";
 import { api, type VenueMapItem } from "@/lib/api";
 
 const API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) ?? "";
@@ -33,25 +33,18 @@ const DARK_STYLES: any[] = [
   { featureType: "water",                 elementType: "labels.text.fill",   stylers: [{ color: "#2d4a2d" }] },
 ];
 
-// Custom pin component — solid pink
-function VenuePin({ selected }: { selected?: boolean }) {
-  return (
-    <div
-      style={{
-        width: selected ? 24 : 18,
-        height: selected ? 24 : 18,
-        borderRadius: "50%",
-        backgroundColor: "#FF3D6E",
-        border: `2px solid ${selected ? "#ff8fa8" : "#ff6b8a"}`,
-        boxShadow: selected
-          ? "0 0 16px rgba(255,61,110,0.8), 0 2px 8px rgba(0,0,0,0.8)"
-          : "0 0 10px rgba(255,61,110,0.5), 0 2px 4px rgba(0,0,0,0.6)",
-        transition: "all 0.15s ease-out",
-        cursor: "pointer",
-      }}
-    />
-  );
-}
+// Pink circle marker icons as data URLs
+const PINK_MARKER_ICON = "data:image/svg+xml," + encodeURIComponent(`
+  <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="10" cy="10" r="8" fill="#FF3D6E" stroke="#ff6b8a" stroke-width="2"/>
+  </svg>
+`);
+
+const PINK_MARKER_ICON_SELECTED = "data:image/svg+xml," + encodeURIComponent(`
+  <svg width="28" height="28" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="14" cy="14" r="11" fill="#FF3D6E" stroke="#ff8fa8" stroke-width="3"/>
+  </svg>
+`);
 
 // Venue info popup
 function VenuePopup({ venue, onClose }: { venue: VenueMapItem; onClose: () => void }) {
@@ -111,14 +104,13 @@ function MapContent({ venues }: { venues: VenueMapItem[] }) {
   return (
     <>
       {venues.map((venue) => (
-        <AdvancedMarker
+        <Marker
           key={venue.id}
           position={{ lat: venue.lat, lng: venue.lng }}
           title={venue.name}
           onClick={() => handleMarkerClick(venue)}
-        >
-          <VenuePin selected={selectedVenue?.id === venue.id} />
-        </AdvancedMarker>
+          icon={selectedVenue?.id === venue.id ? PINK_MARKER_ICON_SELECTED : PINK_MARKER_ICON}
+        />
       ))}
       {selectedVenue && (
         <VenuePopup venue={selectedVenue} onClose={() => setSelectedVenue(null)} />
@@ -235,7 +227,6 @@ export function MapPage() {
             <Map
               defaultCenter={center}
               defaultZoom={zoom}
-              mapId="DEMO_MAP_ID"
               styles={DARK_STYLES}
               disableDefaultUI={false}
               zoomControl={true}

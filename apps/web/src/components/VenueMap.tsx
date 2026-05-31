@@ -10,7 +10,7 @@
  *   compact  — 160px tall  (concert detail page, inline snippet)
  */
 
-import { APIProvider, Map, AdvancedMarker } from "@vis.gl/react-google-maps";
+import { APIProvider, Map, Marker } from "@vis.gl/react-google-maps";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -46,6 +46,13 @@ const DARK_STYLES: any[] = [
   { featureType: "water",                 elementType: "geometry.fill",      stylers: [{ color: "#0a1a0f" }] },
   { featureType: "water",                 elementType: "labels.text.fill",   stylers: [{ color: "#2d4a2d" }] },
 ];
+
+// Pink circle marker icon as data URL
+const PINK_MARKER_ICON = "data:image/svg+xml," + encodeURIComponent(`
+  <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="10" cy="10" r="8" fill="#FF3D6E" stroke="#ff6b8a" stroke-width="2"/>
+  </svg>
+`);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -99,26 +106,12 @@ export function VenueMap({ lat, lng, venueName, compact = false }: VenueMapProps
         <Map
           defaultCenter={position}
           defaultZoom={16}
-          // mapId required for AdvancedMarker; DEMO_MAP_ID is Google's sandbox
-          mapId="DEMO_MAP_ID"
           styles={DARK_STYLES}
           disableDefaultUI={true}
           gestureHandling={compact ? "none" : "cooperative"}
           clickableIcons={false}
         >
-          <AdvancedMarker position={position} title={venueName}>
-            {/* Custom branded pin: solid pink */}
-            <div
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: "50%",
-                backgroundColor: "#FF3D6E",
-                border: "2px solid #ff6b8a",
-                boxShadow: "0 0 12px rgba(255,61,110,0.6), 0 2px 6px rgba(0,0,0,0.8)",
-              }}
-            />
-          </AdvancedMarker>
+          <Marker position={position} title={venueName} icon={PINK_MARKER_ICON} />
         </Map>
       </div>
     </APIProvider>

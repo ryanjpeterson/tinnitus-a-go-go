@@ -464,6 +464,13 @@ export const api = {
       rawBody: true,
     });
   },
+  uploadVenuePhotoFromUrl: (venueSlug: string, url: string) =>
+    request<{ imageUrl: string }>(`/venues/${venueSlug}/photo/url`, {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
+  deleteVenuePhoto: (venueSlug: string) =>
+    request<void>(`/venues/${venueSlug}/photo`, { method: "DELETE" }),
 
   // Setlist.fm
   searchSetlistfm: (params: { artist: string; date: string }) => {

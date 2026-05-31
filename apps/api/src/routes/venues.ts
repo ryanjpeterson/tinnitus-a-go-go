@@ -1,18 +1,21 @@
 /**
  * Venue routes.
  *
- *   GET    /venues               paginated list of venues the user has shows at
- *   GET    /venues/:slug         detail + that user's concerts at this venue (also matches alias slugs)
- *   PATCH  /venues/:slug         update venue info (name, city, region, country, lat, lng, capacity)
- *   POST   /venues/:slug/photo   upload a cover photo for a venue
- *   POST   /venues/:slug/aliases add an alias name for this venue
+ *   GET    /venues                   paginated list of venues the user has shows at
+ *   GET    /venues/:slug             detail + that user's concerts at this venue (also matches alias slugs)
+ *   PATCH  /venues/:slug             update venue info (name, city, region, country, lat, lng, capacity)
+ *   POST   /venues/:slug/photo       upload a cover photo for a venue
+ *   POST   /venues/:slug/photo/url   upload a cover photo from URL
+ *   DELETE /venues/:slug/photo       remove the cover photo
+ *   POST   /venues/:slug/aliases     add an alias name for this venue
  *   DELETE /venues/:slug/aliases/:aliasId  remove an alias
  */
 
 import type { FastifyInstance } from "fastify";
 import { desc, eq, inArray, sql, ilike, and, ne } from "drizzle-orm";
 import { z } from "zod";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { createHash } from "node:crypto";
 import { db, schema } from "../db/client.js";
 import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
@@ -370,5 +373,143 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
       .where(eq(schema.venues.id, venue.id));
 
     return reply.send({ imageUrl: mediaUrl(objectKey) });
+  });
+
+  // ── POST /venues/:slug/photo/url ──────────────────────────────────────────
+  // Upload cover photo from URL
+
+  const photoUrlBody = z.object({
+    url: z.string().url().max(2048),
+  });
+
+  const PHOTO_ALLOWED = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+
+  app.post("/venues/:slug/photo/url", { preHandler: [requireAdmin] }, async (req, reply) => {
+    const { slug } = req.params as { slug: string };
+
+    const venue = await db.query.venues.findFirst({
+      where: eq(schema.venues.slug, slug),
+    });
+    if (!venue) return reply.code(404).send({ error: "Venue not found." });
+
+    const parsed = photoUrlBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Invalid URL.", details: parsed.error.flatten() });
+    }
+    const { url } = parsed.data;
+
+    if (!/^https?:\/\//i.test(url)) {
+      return reply.code(400).send({ error: "Only HTTP/HTTPS URLs are supported." });
+    }
+
+    let buffer: Buffer;
+    let contentType: string;
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15_000);
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; TinnitusBot/1.0)",
+          "Accept": "image/jpeg,image/png,image/webp,image/*",
+        },
+      });
+      clearTimeout(timer);
+
+      if (!res.ok) {
+        return reply.code(422).send({ error: `Failed to fetch image: HTTP ${res.status}` });
+      }
+
+      contentType = res.headers.get("content-type")?.toLowerCase().split(";")[0]?.trim() ?? "";
+
+      if (!PHOTO_ALLOWED.has(contentType)) {
+        const urlLower = url.toLowerCase();
+        if (urlLower.includes(".jpg") || urlLower.includes(".jpeg")) {
+          contentType = "image/jpeg";
+        } else if (urlLower.includes(".png")) {
+          contentType = "image/png";
+        } else if (urlLower.includes(".webp")) {
+          contentType = "image/webp";
+        } else {
+          return reply.code(415).send({ error: "URL does not point to a valid image." });
+        }
+      }
+
+      const arrayBuffer = await res.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+
+      if (buffer.length > 10 * 1024 * 1024) {
+        return reply.code(413).send({ error: "Image too large. Maximum size is 10MB." });
+      }
+
+      // Verify magic bytes
+      const magicBytes = buffer.slice(0, 4);
+      const isJpeg = magicBytes[0] === 0xff && magicBytes[1] === 0xd8;
+      const isPng = magicBytes[0] === 0x89 && magicBytes[1] === 0x50 && magicBytes[2] === 0x4e && magicBytes[3] === 0x47;
+      const isWebp = magicBytes[0] === 0x52 && magicBytes[1] === 0x49 && magicBytes[2] === 0x46 && magicBytes[3] === 0x46;
+
+      if (!isJpeg && !isPng && !isWebp) {
+        return reply.code(415).send({ error: "URL does not point to a valid image file." });
+      }
+
+      if (isJpeg) contentType = "image/jpeg";
+      else if (isPng) contentType = "image/png";
+      else if (isWebp) contentType = "image/webp";
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("abort")) {
+        return reply.code(422).send({ error: "Request timed out while fetching image." });
+      }
+      return reply.code(422).send({ error: `Could not fetch the image: ${msg}` });
+    }
+
+    const ext = contentType === "image/png" ? ".png" : contentType === "image/webp" ? ".webp" : ".jpg";
+    const objectKey = `venues/${venue.id}/cover${ext}`;
+
+    try {
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: objectKey,
+          Body: buffer,
+          ContentType: contentType,
+          ContentLength: buffer.length,
+        }),
+      );
+    } catch (err) {
+      req.log.error({ err }, "MinIO venue photo URL upload failed");
+      return reply.code(502).send({ error: "Storage upload failed." });
+    }
+
+    // Delete old photo if different key
+    if (venue.imageKey && venue.imageKey !== objectKey) {
+      await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: venue.imageKey })).catch(() => undefined);
+    }
+
+    await db
+      .update(schema.venues)
+      .set({ imageKey: objectKey })
+      .where(eq(schema.venues.id, venue.id));
+
+    return reply.send({ imageUrl: mediaUrl(objectKey) });
+  });
+
+  // ── DELETE /venues/:slug/photo ────────────────────────────────────────────
+
+  app.delete("/venues/:slug/photo", { preHandler: [requireAdmin] }, async (req, reply) => {
+    const { slug } = req.params as { slug: string };
+
+    const venue = await db.query.venues.findFirst({
+      where: eq(schema.venues.slug, slug),
+    });
+    if (!venue || !venue.imageKey) return reply.code(404).send({ error: "No photo to remove." });
+
+    await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: venue.imageKey })).catch(() => undefined);
+    await db
+      .update(schema.venues)
+      .set({ imageKey: null })
+      .where(eq(schema.venues.id, venue.id));
+
+    return reply.code(204).send();
   });
 }

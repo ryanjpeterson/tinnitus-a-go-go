@@ -301,6 +301,13 @@ export function VenuePage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
 
+  // Photo upload state
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showPhotoUrlInput, setShowPhotoUrlInput] = useState(false);
+  const [photoUrlInput, setPhotoUrlInput] = useState("");
+  const [photoUrlImporting, setPhotoUrlImporting] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
   const q = useQuery({
     queryKey: ["venues", slug],
     queryFn: () => api.getVenue(slug!),
@@ -320,15 +327,45 @@ export function VenuePage() {
 
   const { venue, concerts, stats } = q.data;
 
-  const handlePhotoUpload = async (files: FileList | null): Promise<void> => {
-    if (!files || files.length === 0 || !slug) return;
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = e.target.files?.[0];
+    if (!file || !slug) return;
+    setUploadingPhoto(true);
+    setPhotoError(null);
     try {
-      await api.uploadVenuePhoto(slug, files[0]!);
+      await api.uploadVenuePhoto(slug, file);
       await qc.invalidateQueries({ queryKey: ["venues", slug] });
-    } catch {
-      // swallow — future toast system
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
+      setUploadingPhoto(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const handlePhotoUrlImport = async (): Promise<void> => {
+    if (!photoUrlInput.trim() || !slug) return;
+    setPhotoUrlImporting(true);
+    setPhotoError(null);
+    try {
+      await api.uploadVenuePhotoFromUrl(slug, photoUrlInput.trim());
+      await qc.invalidateQueries({ queryKey: ["venues", slug] });
+      setPhotoUrlInput("");
+      setShowPhotoUrlInput(false);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Failed to import image from URL.");
+    } finally {
+      setPhotoUrlImporting(false);
+    }
+  };
+
+  const handleDeletePhoto = async (): Promise<void> => {
+    if (!slug || !window.confirm("Remove this photo?")) return;
+    try {
+      await api.deleteVenuePhoto(slug);
+      await qc.invalidateQueries({ queryKey: ["venues", slug] });
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Delete failed.");
     }
   };
 
@@ -341,25 +378,93 @@ export function VenuePage() {
       </Link>
 
       {/* Venue photo */}
-      <div className="mt-4 mb-5 rounded-lg border border-border bg-surface overflow-hidden">
-        <div className="relative aspect-video bg-surface-2">
-          {venue.imageUrl ? (
-            <img src={venue.imageUrl} alt={venue.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <span className="font-display uppercase text-4xl text-text-subtle opacity-20 tracking-widest">
-                {venue.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")}
-              </span>
-            </div>
-          )}
-          {isAdmin && (
-            <label className="absolute bottom-2 right-2 text-xs font-mono px-2 py-1 rounded border border-white/30 text-white/60 bg-black/40 hover:border-accent-lime hover:text-accent-lime cursor-pointer transition-colors">
-              {venue.imageUrl ? "Change photo" : "Add photo"}
-              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
-                onChange={(e) => void handlePhotoUpload(e.target.files)} />
-            </label>
-          )}
+      <div className="mt-4 mb-5">
+        <div className="rounded-lg border border-border bg-surface overflow-hidden">
+          <div className="relative aspect-video bg-surface-2 group">
+            {venue.imageUrl ? (
+              <>
+                <img src={venue.imageUrl} alt={venue.name} className="w-full h-full object-cover" />
+                {isAdmin && (
+                  <button
+                    onClick={() => void handleDeletePhoto()}
+                    className="absolute top-2 right-2 w-6 h-6 rounded bg-black/60 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                    title="Remove photo"
+                  >×</button>
+                )}
+              </>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <span className="font-display uppercase text-4xl text-text-subtle opacity-20 tracking-widest">
+                  {venue.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")}
+                </span>
+              </div>
+            )}
+            {(uploadingPhoto || photoUrlImporting) && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <span className="text-xs font-mono text-white animate-pulse">
+                  {photoUrlImporting ? "Importing…" : "Uploading…"}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
+        {/* Photo controls */}
+        {isAdmin && (
+          <div className="mt-2 space-y-2">
+            <div className="flex gap-1 justify-center">
+              <label className="text-xs font-mono text-text-subtle hover:text-accent-lime cursor-pointer transition-colors border border-border rounded px-2 py-1">
+                {venue.imageUrl ? "Replace" : "Upload"}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={(e) => void handlePhotoUpload(e)}
+                  disabled={uploadingPhoto || photoUrlImporting}
+                />
+              </label>
+              <button
+                onClick={() => setShowPhotoUrlInput((v) => !v)}
+                disabled={uploadingPhoto || photoUrlImporting}
+                className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors border border-border rounded px-2 py-1"
+              >
+                URL
+              </button>
+              {venue.imageUrl && (
+                <button
+                  onClick={() => void handleDeletePhoto()}
+                  disabled={uploadingPhoto || photoUrlImporting}
+                  className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors border border-border rounded px-2 py-1"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            {showPhotoUrlInput && (
+              <div className="flex gap-1 max-w-md mx-auto">
+                <input
+                  type="url"
+                  placeholder="Paste image URL…"
+                  value={photoUrlInput}
+                  onChange={(e) => setPhotoUrlInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void handlePhotoUrlImport()}
+                  disabled={photoUrlImporting}
+                  className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                />
+                <button
+                  onClick={() => void handlePhotoUrlImport()}
+                  disabled={photoUrlImporting || !photoUrlInput.trim()}
+                  className="text-xs font-mono px-2 py-1 rounded bg-accent-lime text-bg font-bold disabled:opacity-50"
+                >
+                  {photoUrlImporting ? "…" : "Go"}
+                </button>
+              </div>
+            )}
+            {photoError && (
+              <p className="text-xs text-accent-pink font-mono text-center">{photoError}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Header */}

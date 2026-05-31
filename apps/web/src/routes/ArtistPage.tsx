@@ -455,13 +455,27 @@ export function ArtistPage() {
         />
       )}
 
-      {/* First/last seen */}
-      {stats.firstSeen && (
+      {/* First/last seen + upcoming show */}
+      {(stats.firstSeen || stats.upcomingShow) && (
         <p className="text-xs text-text-subtle font-mono mb-4">
-          First seen {fmtDate(stats.firstSeen)}
-          {stats.lastSeen && stats.lastSeen !== stats.firstSeen
-            ? ` · last seen ${fmtDate(stats.lastSeen)}`
-            : ""}
+          {stats.firstSeen && (
+            <>
+              First seen {fmtDate(stats.firstSeen)}
+              {stats.lastSeen && stats.lastSeen !== stats.firstSeen && (
+                <> · last seen {fmtDate(stats.lastSeen)}</>
+              )}
+            </>
+          )}
+          {stats.upcomingShow && (
+            <>
+              {stats.firstSeen && " · "}
+              <span className="text-yellow-400">
+                Playing{" "}
+                {stats.upcomingShow.eventSeries?.name ?? stats.upcomingShow.venue?.name ?? "TBD"}{" "}
+                on {fmtDate(stats.upcomingShow.date)}
+              </span>
+            </>
+          )}
         </p>
       )}
 

@@ -101,7 +101,7 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
     });
     if (!artist) return reply.code(404).send({ error: "Artist not found." });
 
-    // All concerts featuring this artist, newest first
+    // All concerts featuring this artist, newest first, with attendance info
     const concertRows = await db
       .select({
         concertId: schema.concerts.id,
@@ -114,11 +114,13 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
         seriesSlug: schema.eventSeries.slug,
         role: schema.concertArtists.role,
         appearanceNotes: schema.concertArtists.appearanceNotes,
+        attendanceStatus: schema.concertAttendees.status,
       })
       .from(schema.concertArtists)
       .innerJoin(schema.concerts, eq(schema.concertArtists.concertId, schema.concerts.id))
       .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
       .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
+      .leftJoin(schema.concertAttendees, eq(schema.concertAttendees.concertId, schema.concerts.id))
       .where(eq(schema.concertArtists.artistId, artist.id))
       .orderBy(desc(schema.concerts.date));
 
@@ -132,7 +134,19 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
         ? { name: r.venueName, city: r.venueCity, region: r.venueRegion }
         : null,
       eventSeries: r.seriesName ? { name: r.seriesName, slug: r.seriesSlug } : null,
+      attendance: r.attendanceStatus ? { status: r.attendanceStatus } : null,
     }));
+
+    // Calculate stats based on attended shows only
+    const attendedConcerts = concerts.filter((c) => c.attendance?.status === "attended");
+    const firstAttended = attendedConcerts.at(-1);
+    const lastAttended = attendedConcerts.at(0);
+
+    // Find upcoming/planned show (interested or attending status)
+    // This could be future OR past (if user hasn't updated status yet)
+    const upcomingShow = concerts.find(
+      (c) => c.attendance?.status === "interested" || c.attendance?.status === "attending"
+    );
 
     return reply.send({
       artist: {
@@ -148,8 +162,18 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
       concerts,
       stats: {
         total: concerts.length,
-        firstSeen: concerts.at(-1)?.date ?? null,
-        lastSeen: concerts.at(0)?.date ?? null,
+        attended: attendedConcerts.length,
+        firstSeen: firstAttended?.date ?? null,
+        lastSeen: lastAttended?.date ?? null,
+        // Upcoming/planned show info for "Playing at X on Y" display
+        upcomingShow: upcomingShow
+          ? {
+              date: upcomingShow.date,
+              venue: upcomingShow.venue,
+              eventSeries: upcomingShow.eventSeries,
+              status: upcomingShow.attendance?.status,
+            }
+          : null,
       },
     });
   });

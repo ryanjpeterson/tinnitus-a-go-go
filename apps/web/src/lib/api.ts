@@ -758,9 +758,14 @@ export interface ArtistDetailResponse {
   stats: {
     total: number;
     attended: number;
-    upcoming: number;
     firstSeen: string | null;
     lastSeen: string | null;
+    upcomingShow: {
+      date: string;
+      venue: { name: string; city: string | null; region: string | null } | null;
+      eventSeries: { name: string; slug: string | null } | null;
+      status: AttendanceStatus | undefined;
+    } | null;
   };
 }
 

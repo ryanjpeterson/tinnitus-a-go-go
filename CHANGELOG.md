@@ -7,6 +7,21 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Added — Last.fm artist enrichment, URL import for photos, artist stats improvements
+
+- **Last.fm artist enrichment** — automatic fetch of bio, genre, and MusicBrainz ID from Last.fm. New env var `LASTFM_API_KEY` (optional). Artist edit form gains a "Fetch from Last.fm" button for immediate enrichment. A scheduled worker automatically enriches 50 artists per hour that are missing bio or image. Note: Last.fm no longer provides artist images (all are placeholders); Spotify fallback planned for future.
+- **URL import for venue photos** — venue edit form now has Upload/URL/Remove buttons for cover photo (consistent with artist images and festival flyers). Paste an image URL instead of uploading a file.
+- **URL import for artist images** — artist edit form now has Upload/URL/Remove buttons for artist image. Same flow as venues and festival flyers.
+- **Artist stats: attended-only first/last seen** — artist page `firstSeen` and `lastSeen` dates now count only shows with `attended` status. Shows marked interested/attending display as "Playing [venue] on [date]" instead of inflating the seen count.
+- **New API endpoints:**
+  - `POST /artists/:slug/enrich` — fetch from Last.fm immediately
+  - `POST /artists/:slug/enrich/queue` — queue for background enrichment
+  - `POST /artists/enrich/bulk` — queue all artists missing bio/image
+  - `POST /artists/:slug/image/url` — import image from URL
+  - `DELETE /artists/:slug/image` — remove artist image
+  - `POST /venues/:slug/photo/url` — import cover photo from URL
+  - `DELETE /venues/:slug/photo` — remove venue cover photo
+
 ### Added / Changed — Stats polish, consistent index cards, home tile fixes
 
 - **Home "Attended" tile** — "Shows logged" renamed to **Attended**; the value now shows the attended count (lime) and the sub-line shows total logged. Clicking navigates to `?status=attended`. Previously this tile navigated to all concerts and showed a less actionable number.

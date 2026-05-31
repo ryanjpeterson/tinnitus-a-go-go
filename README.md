@@ -3,7 +3,7 @@
 A multi-user concert log for people who still believe the next show is worth the ringing.
 Self-hosted, invite-only, served directly from a personal Mac via Tailscale to a small group of friends.
 
-> **Current status:** Phase 13 complete — festival flyer inheritance (festival_day concerts inherit festival's flyer when they don't have their own), per-artist setlist lookups on concert detail (each artist in the lineup can have a separate setlist.fm lookup), manual URL paste for setlist.fm links (works even without API key), setlists section on artist page showing saved setlists grouped by concert.
+> **Current status:** Phase 14 complete — Last.fm artist enrichment (auto-fetch bio, genre, MusicBrainz ID; scheduled worker enriches 50 artists/hour), URL import for venue/artist photos (consistent with festival flyers), artist stats improvements (first/last seen only counts attended shows; interested/attending shows display as "Playing [venue] on [date]").
 
 ---
 
@@ -238,6 +238,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 | Image proc.    | Sharp (WebP variants at 200/800/1600 px, EXIF GPS strip) via BullMQ worker |
 | Video proc.    | ffmpeg (H.264 MP4 transcode + WebP poster frame) via BullMQ worker   |
 | LLM fallback   | `@anthropic-ai/sdk` — Claude Haiku for URL paste extraction (optional)|
+| Artist data    | Last.fm API — bio, genre, MusicBrainz ID enrichment (optional)       |
 | Fonts          | Antonio (display) · Caveat Brush (script) · Inter (body) · JetBrains Mono |
 | Mail (dev)     | Mailpit                                                               |
 | Dev orchestr.  | Docker Compose                                                        |
@@ -369,6 +370,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   └── worker/               BullMQ worker:
 │                             · Images — Sharp WebP variants (200/800/1600 px), EXIF GPS strip
 │                             · Videos — ffmpeg H.264 MP4 transcode + WebP poster frame extraction
+│                             · Artist enrichment — scheduled Last.fm fetch (hourly, 50 artists/batch)
 │
 ├── packages/
 │   └── shared/               Zod schemas + TypeScript types shared by api + web
@@ -437,6 +439,7 @@ All defined in [.env.example](./.env.example). Highlights:
 | `RATE_LIMIT_WINDOW`        | Rate-limit window (default `1 minute`)                            |
 | `SETLISTFM_API_KEY`        | Optional — enables setlist.fm concert lookups                     |
 | `ANTHROPIC_API_KEY`        | Optional — enables Claude fallback for URL paste parser           |
+| `LASTFM_API_KEY`           | Optional — enables Last.fm artist enrichment (bio, genre, MBID)   |
 | `GOOGLE_MAPS_API_KEY`      | Optional — enables embedded maps; OSM link shown when absent      |
 | `VITE_GOOGLE_MAPS_API_KEY` | Frontend Maps key (passed to `@vis.gl/react-google-maps`)         |
 | `APP_URL`                  | Public app base URL (used in email links)                         |
@@ -534,6 +537,11 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `GET`    | `/artists/:slug`          | Artist detail with concert history and stats                       |
 | `PATCH`  | `/artists/:slug`          | Update name, genre, bio, MusicBrainz ID. Slug regenerates on name change |
 | `POST`   | `/artists/:slug/image`    | Upload / replace artist image (JPEG/PNG/WebP ≤10 MB)              |
+| `POST`   | `/artists/:slug/image/url`| Import artist image from URL                                      |
+| `DELETE` | `/artists/:slug/image`    | Remove artist image                                               |
+| `POST`   | `/artists/:slug/enrich`   | Fetch bio, genre, MBID from Last.fm immediately                   |
+| `POST`   | `/artists/:slug/enrich/queue` | Queue artist for background Last.fm enrichment                |
+| `POST`   | `/artists/enrich/bulk`    | Queue all artists missing bio/image for enrichment                |
 | `GET`    | `/artists/:slug/photos`   | All photos tagged with this artist (user's concerts only), newest concert first |
 | `GET`    | `/artists/:slug/setlists` | All saved setlists for this artist from user's attended concerts   |
 
@@ -545,6 +553,8 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `GET`    | `/venues/:slug`                   | Venue detail with concert history, stats, and aliases. Alias slugs redirect to canonical (302) |
 | `PATCH`  | `/venues/:slug`                   | Update name, city, region, country, lat, lng, capacity. Slug regenerates on name change |
 | `POST`   | `/venues/:slug/photo`             | Upload / replace venue cover photo                            |
+| `POST`   | `/venues/:slug/photo/url`         | Import venue cover photo from URL                             |
+| `DELETE` | `/venues/:slug/photo`             | Remove venue cover photo                                      |
 | `POST`   | `/venues/:slug/aliases`           | Add a historical name alias (with optional date range + notes)|
 | `DELETE` | `/venues/:slug/aliases/:aliasId`  | Remove a venue alias                                          |
 
@@ -839,14 +849,16 @@ crontab -e
 ### Artist, venue, and festival pages
 - Shared `EntityCard` component across all three index pages — consistent image/initials placeholder, sub-lines, **16:9 aspect ratio**, and placeholder colour theming
 - Detail: image, genre, bio, MusicBrainz link, stats (total / attended / upcoming), full concert history
-- **Inline edit form** — name, genre, bio, MusicBrainz ID, image upload
+- **Inline edit form** — name, genre, bio, MusicBrainz ID, image upload/URL import/delete
+- **Last.fm enrichment** — "Fetch from Last.fm" button fetches bio, genre, and MusicBrainz ID; scheduled worker enriches 50 artists/hour automatically
+- **Artist stats** — first/last seen dates count only attended shows; interested/attending shows display as "Playing [venue] on [date]"
 - **Photos section** — all photos tagged with this artist across all concerts, grouped by concert, with lightbox
 - **Setlists section** — all saved setlists for this artist from user's attended concerts, grouped by concert date with venue info; links to setlist.fm and concert detail page; displays song list when available
 
 ### Venue pages
 - Paginated card grid with search
 - Detail: cover photo, stats, "Also known as" aliases panel, **full Google Maps embed** (320 px), show history
-- **Inline edit form** — name, city, region, country, lat/lng, capacity
+- **Inline edit form** — name, city, region, country, lat/lng, capacity, photo upload/URL import/delete
 - **Alias management** — add historical names with optional date ranges and notes; alias slugs at the API level redirect to the canonical venue
 
 ### Batch editor (AG-Grid)
@@ -930,6 +942,9 @@ crontab -e
 - **Festival flyer inheritance** — `festival_day` concerts without their own flyer automatically inherit the festival's flyer; `flyerInherited` field added to API responses
 - **Per-artist setlist lookups** — concert detail page shows each artist separately with individual "Load" and "URL" buttons; setlist.fm links can be saved per artist per concert; works with or without API key via manual URL paste
 - **Artist setlists section** — artist detail page shows all saved setlists grouped by concert with song lists and setlist.fm links
+- **Last.fm artist enrichment** — `LASTFM_API_KEY` env var enables automatic fetch of bio, genre, and MusicBrainz ID; "Fetch from Last.fm" button on artist edit form; scheduled worker enriches 50 unenriched artists per hour (note: Last.fm no longer provides artist images — Spotify fallback planned)
+- **URL import for media** — venue photos and artist images can be imported via URL paste (consistent with festival flyers); click URL button, paste image link, save
+- **Attended-only artist stats** — artist page first/last seen dates only count shows with `attended` status; interested/attending shows display as "Playing [venue] on [date]" instead
 
 ### ⏳ Planned
 - **Export CSV UI** — button in the app to trigger `GET /users/me/export.csv` download (endpoint exists, no UI yet)

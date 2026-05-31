@@ -121,6 +121,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS}
       SETLISTFM_API_KEY: ${SETLISTFM_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LASTFM_API_KEY: ${LASTFM_API_KEY:-}
     volumes:
       - ./apps/api:/app/apps/api
       - ./packages:/app/packages
@@ -151,6 +152,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET: ${MINIO_BUCKET}
+      LASTFM_API_KEY: ${LASTFM_API_KEY:-}
     volumes:
       - ./apps/worker:/app/apps/worker
       # Worker imports the Drizzle schema directly from the api workspace, so it needs

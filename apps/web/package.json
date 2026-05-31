@@ -10,6 +10,8 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
+    "@react-three/drei": "9.88.17",
+    "@react-three/fiber": "8.15.19",
     "@tagg/shared": "workspace:*",
     "@tanstack/react-query": "^5.62.0",
     "@vis.gl/react-google-maps": "^1.8.3",
@@ -20,6 +22,7 @@
     "react-router-dom": "^6.28.0",
     "swiper": "^12.2.0",
     "tailwind-merge": "^2.5.5",
+    "three": "0.160.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

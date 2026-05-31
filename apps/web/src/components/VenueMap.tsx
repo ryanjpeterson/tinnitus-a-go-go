@@ -20,10 +20,10 @@ const API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)
 
 /**
  * Dark map style — matches the app palette:
- *   bg          #141416 (new lighter bg token)
- *   roads       surface / surface-2 shades
- *   water       deep navy
- *   text labels muted grey
+ *   bg          #141416 (dark background)
+ *   accents     #A8FF3E (lime green for roads, labels)
+ *   water       dark with subtle green tint
+ *   minimal     hide most POIs, keep it clean
  *
  * google.maps.MapTypeStyle is loaded lazily by the Google Maps JS SDK; we
  * assert the type as `object[]` here to avoid a hard @types/google.maps dep.
@@ -31,23 +31,20 @@ const API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const DARK_STYLES: any[] = [
   { elementType: "geometry",              stylers: [{ color: "#141416" }] },
-  { elementType: "labels.text.fill",      stylers: [{ color: "#9C9A93" }] },
+  { elementType: "labels.text.fill",      stylers: [{ color: "#4a6b3a" }] },
   { elementType: "labels.text.stroke",    stylers: [{ color: "#0e0e10" }] },
-  { featureType: "administrative",        elementType: "geometry",           stylers: [{ color: "#303034" }] },
-  { featureType: "administrative.country",elementType: "labels.text.fill",   stylers: [{ color: "#9C9A93" }] },
+  { featureType: "administrative",        elementType: "geometry",           stylers: [{ color: "#1C1C1F" }] },
+  { featureType: "administrative",        elementType: "labels.text.fill",   stylers: [{ color: "#4a6b3a" }] },
   { featureType: "landscape",             elementType: "geometry",           stylers: [{ color: "#141416" }] },
-  { featureType: "poi",                   elementType: "geometry",           stylers: [{ color: "#1C1C1F" }] },
-  { featureType: "poi",                   elementType: "labels.text.fill",   stylers: [{ color: "#6B6963" }] },
-  { featureType: "poi.park",              elementType: "geometry.fill",      stylers: [{ color: "#1a2a1a" }] },
-  { featureType: "road",                  elementType: "geometry",           stylers: [{ color: "#252528" }] },
-  { featureType: "road",                  elementType: "labels.text.fill",   stylers: [{ color: "#6B6963" }] },
-  { featureType: "road.arterial",         elementType: "geometry",           stylers: [{ color: "#2E2E32" }] },
-  { featureType: "road.highway",          elementType: "geometry",           stylers: [{ color: "#353538" }] },
+  { featureType: "poi",                   stylers: [{ visibility: "off" }] },
+  { featureType: "road",                  elementType: "geometry",           stylers: [{ color: "#1f2a1f" }] },
+  { featureType: "road",                  elementType: "labels.text.fill",   stylers: [{ color: "#4a6b3a" }] },
+  { featureType: "road.arterial",         elementType: "geometry",           stylers: [{ color: "#243024" }] },
+  { featureType: "road.highway",          elementType: "geometry",           stylers: [{ color: "#2a3d2a" }] },
   { featureType: "road.highway",          elementType: "geometry.stroke",    stylers: [{ color: "#141416" }] },
-  { featureType: "transit",               elementType: "geometry",           stylers: [{ color: "#1C1C1F" }] },
-  { featureType: "transit.station",       elementType: "labels.text.fill",   stylers: [{ color: "#6B6963" }] },
-  { featureType: "water",                 elementType: "geometry.fill",      stylers: [{ color: "#0d1f2d" }] },
-  { featureType: "water",                 elementType: "labels.text.fill",   stylers: [{ color: "#3d6175" }] },
+  { featureType: "transit",               stylers: [{ visibility: "off" }] },
+  { featureType: "water",                 elementType: "geometry.fill",      stylers: [{ color: "#0a1a0f" }] },
+  { featureType: "water",                 elementType: "labels.text.fill",   stylers: [{ color: "#2d4a2d" }] },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -110,15 +107,15 @@ export function VenueMap({ lat, lng, venueName, compact = false }: VenueMapProps
           clickableIcons={false}
         >
           <AdvancedMarker position={position} title={venueName}>
-            {/* Custom branded pin: pink disc with lime ring */}
+            {/* Custom branded pin: solid pink */}
             <div
               style={{
-                width: 22,
-                height: 22,
+                width: 20,
+                height: 20,
                 borderRadius: "50%",
                 backgroundColor: "#FF3D6E",
-                border: "3px solid #A8FF3E",
-                boxShadow: "0 0 12px rgba(255,61,110,0.7), 0 2px 6px rgba(0,0,0,0.8)",
+                border: "2px solid #ff6b8a",
+                boxShadow: "0 0 12px rgba(255,61,110,0.6), 0 2px 6px rgba(0,0,0,0.8)",
               }}
             />
           </AdvancedMarker>

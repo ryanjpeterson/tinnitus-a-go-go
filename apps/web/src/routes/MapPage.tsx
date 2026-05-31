@@ -13,42 +13,39 @@ import { api, type VenueMapItem } from "@/lib/api";
 
 const API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) ?? "";
 
-// Dark map style — matches the app palette
+// Dark map style — minimal with green accents
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const DARK_STYLES: any[] = [
   { elementType: "geometry",              stylers: [{ color: "#141416" }] },
-  { elementType: "labels.text.fill",      stylers: [{ color: "#9C9A93" }] },
+  { elementType: "labels.text.fill",      stylers: [{ color: "#4a6b3a" }] },
   { elementType: "labels.text.stroke",    stylers: [{ color: "#0e0e10" }] },
-  { featureType: "administrative",        elementType: "geometry",           stylers: [{ color: "#303034" }] },
-  { featureType: "administrative.country",elementType: "labels.text.fill",   stylers: [{ color: "#9C9A93" }] },
+  { featureType: "administrative",        elementType: "geometry",           stylers: [{ color: "#1C1C1F" }] },
+  { featureType: "administrative",        elementType: "labels.text.fill",   stylers: [{ color: "#4a6b3a" }] },
   { featureType: "landscape",             elementType: "geometry",           stylers: [{ color: "#141416" }] },
-  { featureType: "poi",                   elementType: "geometry",           stylers: [{ color: "#1C1C1F" }] },
-  { featureType: "poi",                   elementType: "labels.text.fill",   stylers: [{ color: "#6B6963" }] },
-  { featureType: "poi.park",              elementType: "geometry.fill",      stylers: [{ color: "#1a2a1a" }] },
-  { featureType: "road",                  elementType: "geometry",           stylers: [{ color: "#252528" }] },
-  { featureType: "road",                  elementType: "labels.text.fill",   stylers: [{ color: "#6B6963" }] },
-  { featureType: "road.arterial",         elementType: "geometry",           stylers: [{ color: "#2E2E32" }] },
-  { featureType: "road.highway",          elementType: "geometry",           stylers: [{ color: "#353538" }] },
+  { featureType: "poi",                   stylers: [{ visibility: "off" }] },
+  { featureType: "road",                  elementType: "geometry",           stylers: [{ color: "#1f2a1f" }] },
+  { featureType: "road",                  elementType: "labels.text.fill",   stylers: [{ color: "#4a6b3a" }] },
+  { featureType: "road.arterial",         elementType: "geometry",           stylers: [{ color: "#243024" }] },
+  { featureType: "road.highway",          elementType: "geometry",           stylers: [{ color: "#2a3d2a" }] },
   { featureType: "road.highway",          elementType: "geometry.stroke",    stylers: [{ color: "#141416" }] },
-  { featureType: "transit",               elementType: "geometry",           stylers: [{ color: "#1C1C1F" }] },
-  { featureType: "transit.station",       elementType: "labels.text.fill",   stylers: [{ color: "#6B6963" }] },
-  { featureType: "water",                 elementType: "geometry.fill",      stylers: [{ color: "#0d1f2d" }] },
-  { featureType: "water",                 elementType: "labels.text.fill",   stylers: [{ color: "#3d6175" }] },
+  { featureType: "transit",               stylers: [{ visibility: "off" }] },
+  { featureType: "water",                 elementType: "geometry.fill",      stylers: [{ color: "#0a1a0f" }] },
+  { featureType: "water",                 elementType: "labels.text.fill",   stylers: [{ color: "#2d4a2d" }] },
 ];
 
-// Custom pin component
+// Custom pin component — solid pink
 function VenuePin({ selected }: { selected?: boolean }) {
   return (
     <div
       style={{
-        width: selected ? 28 : 22,
-        height: selected ? 28 : 22,
+        width: selected ? 24 : 18,
+        height: selected ? 24 : 18,
         borderRadius: "50%",
         backgroundColor: "#FF3D6E",
-        border: `${selected ? 4 : 3}px solid #A8FF3E`,
+        border: `2px solid ${selected ? "#ff8fa8" : "#ff6b8a"}`,
         boxShadow: selected
-          ? "0 0 20px rgba(168,255,62,0.8), 0 0 12px rgba(255,61,110,0.7), 0 2px 6px rgba(0,0,0,0.8)"
-          : "0 0 12px rgba(255,61,110,0.7), 0 2px 6px rgba(0,0,0,0.8)",
+          ? "0 0 16px rgba(255,61,110,0.8), 0 2px 8px rgba(0,0,0,0.8)"
+          : "0 0 10px rgba(255,61,110,0.5), 0 2px 4px rgba(0,0,0,0.6)",
         transition: "all 0.15s ease-out",
         cursor: "pointer",
       }}

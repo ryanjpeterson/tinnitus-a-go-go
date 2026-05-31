@@ -89,6 +89,45 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  // ── GET /venues/map ────────────────────────────────────────────────────────
+  // Public endpoint: returns all venues with lat/lng coordinates for map display
+
+  app.get("/venues/map", async (_req, reply) => {
+    const rows = await db
+      .select({
+        id: schema.venues.id,
+        name: schema.venues.name,
+        slug: schema.venues.slug,
+        city: schema.venues.city,
+        region: schema.venues.region,
+        lat: schema.venues.lat,
+        lng: schema.venues.lng,
+        showCount: sql<number>`count(distinct ${schema.concerts.id})::int`,
+      })
+      .from(schema.venues)
+      .leftJoin(schema.concerts, eq(schema.concerts.venueId, schema.venues.id))
+      .where(and(
+        sql`${schema.venues.lat} IS NOT NULL`,
+        sql`${schema.venues.lng} IS NOT NULL`,
+      ))
+      .groupBy(schema.venues.id)
+      .orderBy(desc(sql`count(distinct ${schema.concerts.id})`));
+
+    return reply.send({
+      venues: rows.map((v) => ({
+        id: v.id,
+        name: v.name,
+        slug: v.slug,
+        city: v.city,
+        region: v.region,
+        lat: v.lat!,
+        lng: v.lng!,
+        showCount: v.showCount,
+      })),
+      total: rows.length,
+    });
+  });
+
   // ── GET /venues/:slug ──────────────────────────────────────────────────────
   // Public endpoint: venue detail + all concerts at this venue
 

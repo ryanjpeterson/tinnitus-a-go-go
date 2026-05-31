@@ -17,6 +17,7 @@ import { FestivalsPage } from "./FestivalsPage";
 import { FestivalDetailPage } from "./FestivalDetailPage";
 import { FollowUpPrompt } from "./FollowUpPrompt";
 import { StatsPage } from "./StatsPage";
+import { MapPage } from "./MapPage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Services panel — shown to admin users in all environments.
@@ -307,6 +308,7 @@ export function AppShell() {
     { to: "/artists",  label: "Artists" },
     { to: "/venues",   label: "Venues" },
     { to: "/festivals",label: "Festivals" },
+    { to: "/map",      label: "Map" },
   ];
 
   return (
@@ -424,6 +426,7 @@ export function AppShell() {
           <Route path="/venues/:slug" element={<VenuePage />} />
           <Route path="/festivals" element={<FestivalsPage />} />
           <Route path="/festivals/:slug" element={<FestivalDetailPage />} />
+          <Route path="/map" element={<MapPage />} />
           <Route path="/stats" element={<Navigate to="/" replace />} />
           <Route path="/account" element={user ? <AccountPage /> : <Navigate to="/login" replace />} />
 

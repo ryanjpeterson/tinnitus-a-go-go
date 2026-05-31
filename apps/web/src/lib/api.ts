@@ -327,6 +327,7 @@ export const api = {
     const query = qs.toString() ? `?${qs.toString()}` : "";
     return request<VenueListResponse>(`/venues${query}`);
   },
+  listVenuesForMap: () => request<VenueMapResponse>("/venues/map"),
   getVenue: (slug: string) => request<VenueDetailResponse>(`/venues/${slug}`),
   patchVenue: (
     slug: string,
@@ -800,6 +801,22 @@ export interface VenueListResponse {
   page: number;
   totalPages: number;
   limit: number;
+}
+
+export interface VenueMapItem {
+  id: string;
+  name: string;
+  slug: string;
+  city: string | null;
+  region: string | null;
+  lat: number;
+  lng: number;
+  showCount: number;
+}
+
+export interface VenueMapResponse {
+  venues: VenueMapItem[];
+  total: number;
 }
 
 export interface VenueAlias {

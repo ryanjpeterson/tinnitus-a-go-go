@@ -184,7 +184,6 @@ services:
     volumes:
       - ./apps/web:/app/apps/web
       - ./packages:/app/packages
-      - web_node_modules:/app/apps/web/node_modules
     ports:
       - "4444:4444"
 
@@ -193,5 +192,4 @@ volumes:
   redis_data:
   minio_data:
   api_node_modules:
-  web_node_modules:
   worker_node_modules:

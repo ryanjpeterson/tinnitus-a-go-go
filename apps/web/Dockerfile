@@ -15,8 +15,11 @@ FROM deps AS dev
 ENV NODE_ENV=development
 COPY apps/web apps/web
 COPY packages/shared packages/shared
+COPY apps/web/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 WORKDIR /app/apps/web
 EXPOSE 4444
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["pnpm", "dev"]
 
 FROM deps AS build

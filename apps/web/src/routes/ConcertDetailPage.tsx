@@ -1589,76 +1589,93 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
 
 function AttendanceEditor({ concertId, attendance }: { concertId: string; attendance: ConcertDetail["attendance"] }) {
   const qc = useQueryClient();
-  const [editing, setEditing] = useState(!attendance); // Start in edit mode if no attendance
   const [notes, setNotes] = useState(attendance?.personalNotes ?? "");
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>(attendance?.status ?? "interested");
+  const [hasChanges, setHasChanges] = useState(false);
 
   const patch = useMutation({
     mutationFn: (body: Parameters<typeof api.patchConcert>[1]) => api.patchConcert(concertId, body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["concerts", concertId] }); qc.invalidateQueries({ queryKey: ["concerts/stats"] }); qc.invalidateQueries({ queryKey: ["concerts"] }); setEditing(false); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["concerts", concertId] });
+      qc.invalidateQueries({ queryKey: ["concerts/stats"] });
+      qc.invalidateQueries({ queryKey: ["concerts"] });
+      setHasChanges(false);
+    },
   });
+
+  const handleStatusChange = (newStatus: AttendanceStatus) => {
+    setSelectedStatus(newStatus);
+    setHasChanges(true);
+  };
+
+  const handleNotesChange = (newNotes: string) => {
+    setNotes(newNotes);
+    setHasChanges(true);
+  };
+
+  const handleSave = () => {
+    const updates: Parameters<typeof api.patchConcert>[1] = {};
+    if (selectedStatus !== attendance?.status) {
+      updates.status = selectedStatus;
+    }
+    if (notes !== (attendance?.personalNotes ?? "")) {
+      updates.personalNotes = notes || null;
+    }
+    if (Object.keys(updates).length > 0) {
+      patch.mutate(updates);
+    }
+  };
 
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-mono uppercase tracking-wider text-text-muted">Attendance</span>
-        {attendance && (
-          <button onClick={() => setEditing((v) => !v)} className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
-            {editing ? "Cancel" : "Edit"}
-          </button>
-        )}
       </div>
 
-      {editing ? (
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-text-muted block mb-1">Status</label>
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                const newStatus = e.target.value as AttendanceStatus;
-                setSelectedStatus(newStatus);
-                patch.mutate({ status: newStatus });
-              }}
-              className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime"
-            >
-              {(["attended","attending","interested","missed","cancelled","dismissed"] as AttendanceStatus[]).map(
-                (s) => <option key={s} value={s}>{STATUS_CHIP[s].label}</option>,
-              )}
-            </select>
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs text-text-muted block mb-1">Status</label>
+          <select
+            value={selectedStatus}
+            onChange={(e) => handleStatusChange(e.target.value as AttendanceStatus)}
+            className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime"
+          >
+            {(["attended","attending","interested","missed","cancelled","dismissed"] as AttendanceStatus[]).map(
+              (s) => <option key={s} value={s}>{STATUS_CHIP[s].label}</option>,
+            )}
+          </select>
+        </div>
+
+        <div>
+          <label className="text-xs text-text-muted block mb-1">Personal notes</label>
+          <textarea
+            rows={3}
+            value={notes}
+            onChange={(e) => handleNotesChange(e.target.value)}
+            placeholder="Add your notes about this show..."
+            className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime resize-none"
+          />
+        </div>
+
+        {attendance?.ticketPricePaid != null && (
+          <div className="text-xs text-text-subtle font-mono">
+            Ticket: {(attendance.ticketPricePaid / 100).toFixed(2)} {attendance.ticketPriceCurrency ?? ""}
           </div>
-          {attendance && (
-            <>
-              <div>
-                <label className="text-xs text-text-muted block mb-1">Personal notes</label>
-                <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}
-                  className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime resize-none" />
-              </div>
-              <button
-                onClick={() => patch.mutate({ personalNotes: notes || null })}
-                disabled={patch.isPending}
-                className="text-xs font-mono px-4 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {patch.isPending ? "Saving…" : "Save notes"}
-              </button>
-            </>
+        )}
+
+        <button
+          onClick={handleSave}
+          disabled={patch.isPending || !hasChanges}
+          className={clsx(
+            "text-xs font-mono px-4 py-1.5 rounded font-bold transition-opacity disabled:opacity-50",
+            hasChanges
+              ? "bg-accent-lime text-bg hover:opacity-90"
+              : "bg-surface-2 text-text-muted"
           )}
-        </div>
-      ) : attendance ? (
-        <div className="space-y-1.5">
-          <span className={clsx("inline-block text-xs px-2 py-0.5 rounded border font-mono", STATUS_CHIP[attendance.status].classes)}>
-            {STATUS_CHIP[attendance.status].label}
-          </span>
-          {attendance.personalNotes && (
-            <p className="text-sm text-text-base mt-2 italic">{attendance.personalNotes}</p>
-          )}
-          {attendance.ticketPricePaid != null && (
-            <div className="text-xs text-text-subtle font-mono">
-              Ticket: {(attendance.ticketPricePaid / 100).toFixed(2)} {attendance.ticketPriceCurrency ?? ""}
-            </div>
-          )}
-        </div>
-      ) : null}
+        >
+          {patch.isPending ? "Saving…" : hasChanges ? "Save changes" : "No changes"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -2761,9 +2778,9 @@ export function ConcertDetailPage() {
                 {concert.venue.city && <span className="text-text-subtle"> · {concert.venue.city}</span>}
               </div>
             )}
-            {/* Compact venue map */}
+            {/* Compact venue map - desktop only */}
             {concert.venue?.lat != null && concert.venue.lng != null && (
-              <div className="mt-3">
+              <div className="mt-3 hidden sm:block">
                 <VenueMap
                   lat={concert.venue.lat}
                   lng={concert.venue.lng}
@@ -2788,6 +2805,24 @@ export function ConcertDetailPage() {
 
           {/* Attendance (admin only) */}
           {isAdmin && <AttendanceEditor concertId={concert.id} attendance={concert.attendance} />}
+
+          {/* Venue map - mobile only, larger */}
+          {concert.venue?.lat != null && concert.venue.lng != null && (
+            <div className="sm:hidden rounded-lg border border-border bg-surface p-4">
+              <p className="text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Location</p>
+              <VenueMap
+                lat={concert.venue.lat}
+                lng={concert.venue.lng}
+                venueName={concert.venue.name}
+              />
+              <div className="mt-3 text-sm text-text-muted">
+                <Link to={`/venues/${concert.venue.slug}`} className="hover:text-accent-lime transition-colors">
+                  {concert.venue.name}
+                </Link>
+                {concert.venue.city && <span className="text-text-subtle"> · {concert.venue.city}</span>}
+              </div>
+            </div>
+          )}
 
           {/* Setlist (admin only) */}
           {isAdmin && (

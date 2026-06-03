@@ -9,7 +9,6 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, type DeepStatsResponse } from "@/lib/api";
-import { Wordmark } from "@/components/Wordmark";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -411,12 +410,6 @@ export function StatsPage() {
 
   return (
     <div className="space-y-4">
-
-      {/* Page header */}
-      <div className="mb-4">
-        <Wordmark size="lg" svg />
-      </div>
-
       {/* On This Day — shown prominently when applicable */}
       {d.onThisDay.length > 0 && <OnThisDay shows={d.onThisDay} />}
 

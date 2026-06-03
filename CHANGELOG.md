@@ -7,6 +7,20 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Added — PWA support for iOS and desktop
+
+- **PWA (Progressive Web App)** — app can now be installed on iOS via Safari "Add to Home Screen" and on desktop via Chrome/Edge install prompt.
+  - Service worker with offline caching for fonts and static assets
+  - API responses cached with NetworkFirst strategy (5 minute TTL)
+  - iOS-specific meta tags for standalone mode, splash screens, and touch icons
+  - Dark theme status bar (`black-translucent`) for immersive iOS experience
+  - Safe area insets respected on notched devices
+  - Icon generation script (`pnpm generate-icons`) for regenerating PWA icons
+
+### Removed
+
+- **Timeline page** — removed the Guitar Hero-style 3D timeline visualization along with Three.js dependencies (`three`, `@react-three/fiber`, `@react-three/drei`)
+
 ### Added — Last.fm artist enrichment, URL import for photos, artist stats improvements
 
 - **Last.fm artist enrichment** — automatic fetch of bio, genre, and MusicBrainz ID from Last.fm. New env var `LASTFM_API_KEY` (optional). Artist edit form gains a "Fetch from Last.fm" button for immediate enrichment. A scheduled worker automatically enriches 50 artists per hour that are missing bio or image. Note: Last.fm no longer provides artist images (all are placeholders); Spotify fallback planned for future.

@@ -3,7 +3,7 @@
 A multi-user concert log for people who still believe the next show is worth the ringing.
 Self-hosted, invite-only, served directly from a personal Mac via Tailscale to a small group of friends.
 
-> **Current status:** Phase 14 complete — Last.fm artist enrichment (auto-fetch bio, genre, MusicBrainz ID; scheduled worker enriches 50 artists/hour), URL import for venue/artist photos (consistent with festival flyers), artist stats improvements (first/last seen only counts attended shows; interested/attending shows display as "Playing [venue] on [date]").
+> **Current status:** Phase 14 complete — PWA support for iOS/desktop (installable, offline-ready, splash screens), Last.fm artist enrichment (auto-fetch bio, genre, MusicBrainz ID; scheduled worker enriches 50 artists/hour), URL import for venue/artist photos.
 
 ---
 

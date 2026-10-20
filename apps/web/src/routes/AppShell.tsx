@@ -18,6 +18,7 @@ import { FestivalDetailPage } from "./FestivalDetailPage";
 import { FollowUpPrompt } from "./FollowUpPrompt";
 import { StatsPage } from "./StatsPage";
 import { MapPage } from "./MapPage";
+import { YearReviewIndex, YearReviewPage } from "./YearReviewPage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AppShell — main layout for public content with optional auth
@@ -167,6 +168,8 @@ export function AppShell() {
           <Route path="/festivals" element={<FestivalsPage />} />
           <Route path="/festivals/:slug" element={<FestivalDetailPage />} />
           <Route path="/map" element={<MapPage />} />
+          <Route path="/year" element={<YearReviewIndex />} />
+          <Route path="/year/:year" element={<YearReviewPage />} />
           <Route path="/stats" element={<Navigate to="/" replace />} />
           <Route path="/account" element={user ? <AccountPage /> : <Navigate to="/login" replace />} />
 

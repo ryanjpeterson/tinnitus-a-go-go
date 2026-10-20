@@ -271,7 +271,8 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │   │   │   ├── stats.ts          GET /concerts/deep-stats — 12 parallel queries:
 │   │   │   │   │                     by-status, by-year, by-month, by-DOW, heatmap,
 │   │   │   │   │                     top artists/venues, rating dist, on-this-day,
-│   │   │   │   │                     ticket prices, milestones, first/last show
+│   │   │   │   │                     ticket prices, milestones, first/last show;
+│   │   │   │   │                     GET /concerts/year-review[/:year] — per-year recap
 │   │   │   │   ├── copy.ts           GET /public/copy (open); GET+PATCH /admin/copy (admin)
 │   │   │   │   ├── setlistfm.ts      setlist.fm proxy: search by artist+date, by artist MBID/name,
 │   │   │   │   │                     fetch by setlist ID or URL (optional API key)
@@ -330,6 +331,11 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   │                         top 20 artists + top 15 venues, rating distribution,
 │   │       │   │                         ticket price stats, milestone timeline —
 │   │       │   │                         all custom CSS/SVG (no chart lib)
+│       │   ├── YearReviewPage.tsx    year in review at /year/:year (/year → latest):
+│       │   │                         year strip + prev/next, headline numbers vs last
+│       │   │                         year, first/last show, busiest month, month + DOW
+│       │   │                         bars, repeat artists, first-time artists, venues,
+│       │   │                         festivals, most-heard songs, flyer wall
 │   │       │   ├── ArtistsPage.tsx       paginated artist card grid (EntityCard) with search
 │   │       │   ├── ArtistPage.tsx        artist detail: image, bio, stats, concert history,
 │   │       │   │                         tagged photos section, setlists section; inline edit form
@@ -505,6 +511,8 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `GET`    | `/concerts`                   | Paginated list. Query: `status`, `year`, `q`, `sort`, `page`, `limit` |
 | `GET`    | `/concerts/stats`             | Count per status for the calling user                               |
 | `GET`    | `/concerts/deep-stats`        | Full analytics payload: 12 aggregations (by year/month/DOW, heatmap, top artists/venues, rating dist, on-this-day, milestones, ticket prices, overview totals) |
+| `GET`    | `/concerts/year-review`       | Every year with attended shows and its count, newest first (public)  |
+| `GET`    | `/concerts/year-review/:year` | One year's recap: totals (vs previous year), new artists/venues, cities, top artists/venues, festivals, most-heard songs, photo/video counts, every show with flyer (public, attended only) |
 | `GET`    | `/concerts/followup`          | Shows attended in the last 14 days without a rating or notes        |
 | `GET`    | `/concerts/:id`               | Single concert with artists, venue (incl. lat/lng), series, and attendance |
 | `POST`   | `/concerts`                   | Create concert + attendee record                                    |

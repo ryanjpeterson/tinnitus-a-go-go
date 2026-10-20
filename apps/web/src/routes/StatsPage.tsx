@@ -42,7 +42,7 @@ function showName(headlinerHint: string | null | undefined, seriesName?: string 
 // Stat tile
 // ─────────────────────────────────────────────────────────────────────────────
 
-function StatTile({
+export function StatTile({
   label, value, sub, accent = "lime",
 }: {
   label: string; value: string | number; sub?: string; accent?: "lime" | "pink" | "muted";
@@ -61,7 +61,7 @@ function StatTile({
 // Section wrapper
 // ─────────────────────────────────────────────────────────────────────────────
 
-function Section({ title, children, className = "" }: {
+export function Section({ title, children, className = "" }: {
   title: string; children: React.ReactNode; className?: string;
 }) {
   return (
@@ -85,7 +85,13 @@ function YearBars({ byYear }: { byYear: DeepStatsResponse["byYear"] }) {
         const attendPct  = r.count > 0 ? (r.attended / r.count) * 100 : 0;
         return (
           <div key={r.year} className="flex items-center gap-3">
-            <span className="text-xs font-mono text-text-muted w-10 shrink-0 text-right">{r.year}</span>
+            <Link
+              to={`/year/${r.year}`}
+              title={`${r.year} in review`}
+              className="text-xs font-mono text-text-muted hover:text-accent-lime hover:underline w-10 shrink-0 text-right"
+            >
+              {r.year}
+            </Link>
             <div className="flex-1 h-3 bg-surface-2 rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full"
@@ -180,7 +186,7 @@ function Heatmap({ heatmap, byYear }: {
 // Day of week + month mini bars — tall version
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MiniVBars({ data, labels, color = "#A8FF3E" }: {
+export function MiniVBars({ data, labels, color = "#A8FF3E" }: {
   data: number[]; labels: string[]; color?: string;
 }) {
   const max = Math.max(...data, 1);
@@ -208,7 +214,7 @@ function MiniVBars({ data, labels, color = "#A8FF3E" }: {
 // Ranked list — replaces horizontal bars for top artists + venues
 // ─────────────────────────────────────────────────────────────────────────────
 
-type RankedItem = {
+export type RankedItem = {
   id: string;
   name: string;
   sub?: string;
@@ -216,7 +222,7 @@ type RankedItem = {
   href: string;
 };
 
-function RankedList({ items, color = "#A8FF3E" }: { items: RankedItem[]; color?: string }) {
+export function RankedList({ items, color = "#A8FF3E" }: { items: RankedItem[]; color?: string }) {
   if (items.length === 0) return <p className="text-xs text-text-subtle font-mono">No data yet.</p>;
 
   return (
@@ -445,9 +451,26 @@ export function StatsPage() {
         </div>
       )}
 
+      {/* ── Year in review entry point ───────────────────────────────────── */}
+      {d.byYear.length > 0 && (
+        <Link
+          to={`/year/${d.byYear[0]!.year}`}
+          className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4 hover:border-accent-lime transition-colors"
+        >
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-0.5">Year in review</p>
+            <p className="text-sm font-medium group-hover:text-accent-lime transition-colors">
+              Your {d.byYear[0]!.year}, and every year before it
+            </p>
+          </div>
+          <span className="font-mono text-accent-lime shrink-0">→</span>
+        </Link>
+      )}
+
       {/* ── Activity by year (full width) ───────────────────────────────── */}
       <Section title="Activity by year">
         <YearBars byYear={d.byYear} />
+        <p className="text-[10px] font-mono text-text-subtle mt-1 pl-14">tap a year for its review</p>
       </Section>
 
       {/* ── Heatmap ─────────────────────────────────────────────────────── */}

@@ -138,6 +138,10 @@ export const api = {
     request<DeepStatsResponse>(
       `/concerts/deep-stats${localDate ? `?localDate=${encodeURIComponent(localDate)}` : ""}`,
     ),
+  listReviewYears: () =>
+    request<{ years: YearCount[] }>("/concerts/year-review"),
+  getYearReview: (year: number) =>
+    request<YearReviewResponse>(`/concerts/year-review/${year}`),
   getSiteCopy: () =>
     request<{ copy: Record<string, string> }>("/public/copy"),
 
@@ -1098,6 +1102,44 @@ export interface PublicConcertDetail extends PublicConcertItem {
   venue: { id: string; slug: string; name: string; city: string | null; region: string | null; lat: number | null; lng: number | null } | null;
   createdAt: string;
   updatedAt: string;
+}
+
+// ─── Year in review ──────────────────────────────────────────────────────────
+
+export interface YearCount {
+  year: number;
+  count: number;
+}
+
+export interface YearReviewResponse {
+  year: number;
+  /** Every year with attended shows, newest first — drives year navigation. */
+  years: YearCount[];
+  totalShows: number;
+  /** Attended shows the year before, or null if there were none. */
+  prevYearShows: number | null;
+  uniqueArtists: number;
+  newArtistCount: number;
+  uniqueVenues: number;
+  newVenueCount: number;
+  uniqueCities: number;
+  songsHeard: number;
+  photos: number;
+  videos: number;
+  shows: Array<{
+    concertId: string;
+    date: string;
+    type: string;
+    headliner: string | null;
+    flyerUrl: string | null;
+    series: { name: string; slug: string } | null;
+    venue: { name: string; city: string | null; slug: string } | null;
+  }>;
+  topArtists: Array<{ artistId: string; name: string; slug: string; count: number; isNew: boolean }>;
+  newArtists: Array<{ artistId: string; name: string; slug: string; firstSeen: string }>;
+  topVenues: Array<{ venueId: string; name: string; slug: string; city: string | null; count: number; isNew: boolean }>;
+  festivals: Array<{ seriesId: string; name: string; slug: string; days: number; startDate: string }>;
+  topSongs: Array<{ song: string; artistName: string | null; artistSlug: string | null; count: number }>;
 }
 
 // ─── Deep stats ──────────────────────────────────────────────────────────────

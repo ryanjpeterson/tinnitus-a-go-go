@@ -7,6 +7,17 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Added — Year in review
+
+- **Year in review** (`/year/:year`, `/year` opens the latest year) — a recap page for every year with attended shows. A year strip and prev/next arrows step between years, skipping years with no shows; the current year is labelled "so far".
+  - Headline numbers: shows (with change vs the previous year), artists seen and how many were first-timers, venues (and how many were new), cities, festivals.
+  - Highlights: first and last show of the year, most-seen artist, busiest month and favourite night.
+  - Month-by-month and day-of-week bars, artists seen more than once, every first-time artist, top venues (first visits marked), festivals with day counts.
+  - **Songs heard live** — total songs from saved setlists and the songs heard at more than one show (hidden when no setlists were saved that year).
+  - **Flyer wall** — every show of the year in date order, with photo/video counts.
+  - Reached from a new "Year in review" card on the Stats page; the year labels in "Activity by year" now link to their review.
+- **New public API endpoints** — `GET /concerts/year-review` (years with attended shows) and `GET /concerts/year-review/:year` (one year's recap). Attended shows only; no personal notes or prices.
+
 ### Fixed — Attendance, Shows list, hardening
 
 - **Attendance picker showed "Interested" on every show** — `GET /concerts/:id` never returned attendance, so the editor always fell back to its default. The endpoint now returns the signed-in user's own attendance (omitted for anonymous visitors, so notes and ticket prices stay private). The picker opens on the saved status; a show with nothing logged shows "Not logged — pick a status", and **Save changes** stays disabled until a value actually differs from what's saved.

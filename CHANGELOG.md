@@ -7,6 +7,14 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Fixed — Mobile / PWA polish
+
+- **Sign out on mobile** — the mobile header only links to the account page, which had no sign-out control, so there was no way to sign out on a phone. The account page now has a **Sign out** button. The unused full-screen `MobileMenu` overlay was removed from `AppShell`.
+- **iOS status bar overlap** — with the `black-translucent` status bar, the header sat under the clock/notch in standalone mode. The header now pads by `env(safe-area-inset-top)`. Vertical safe-area padding was removed from `body`, where it combined with `height: 100%` to make every page slightly taller than the screen (constant rubber-band scrolling).
+- **Follow-up dot on the bottom nav** — the pink indicator was positioned against the whole nav bar instead of the Shows icon; it now sits on the Shows item.
+- **Signed-in data cleared on sign-out** — signing out now clears the React Query cache and the service worker's `api-cache`, so attendance, personal notes and follow-ups can't reappear on a shared or offline device. `/api/auth/*` responses are no longer cached by the service worker at all.
+- **Attendance editor** — "Save changes" now reflects whether the form actually differs from the saved values (reverting an edit disables it again instead of leaving a button that does nothing), stays in "Saving…" until the refreshed show arrives, and shows an error message if the save fails. The attendance and show-details editors now reset when moving directly from one show to another instead of carrying over the previous show's values.
+
 ### Added — PWA support for iOS and desktop
 
 - **PWA (Progressive Web App)** — app can now be installed on iOS via Safari "Add to Home Screen" and on desktop via Chrome/Edge install prompt.

@@ -70,7 +70,9 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: /\/api\/.*/i,
+            // Never cache auth responses — a stale /auth/me would keep showing
+            // a signed-out user as signed in.
+            urlPattern: /\/api\/(?!auth\/).*/i,
             handler: "NetworkFirst",
             options: {
               cacheName: "api-cache",

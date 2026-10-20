@@ -1591,39 +1591,27 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
   const qc = useQueryClient();
   const [notes, setNotes] = useState(attendance?.personalNotes ?? "");
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>(attendance?.status ?? "interested");
-  const [hasChanges, setHasChanges] = useState(false);
+
+  // Derived from the saved values, so reverting an edit by hand turns the
+  // button back off instead of leaving a "Save changes" that does nothing.
+  const updates: Parameters<typeof api.patchConcert>[1] = {};
+  if (selectedStatus !== attendance?.status) updates.status = selectedStatus;
+  if (notes !== (attendance?.personalNotes ?? "")) updates.personalNotes = notes || null;
+  const hasChanges = Object.keys(updates).length > 0;
 
   const patch = useMutation({
     mutationFn: (body: Parameters<typeof api.patchConcert>[1]) => api.patchConcert(concertId, body),
+    // Returning the detail refetch keeps the button in "Saving…" until the new
+    // attendance arrives, rather than flashing "Save changes" against stale props.
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["concerts", concertId] });
       qc.invalidateQueries({ queryKey: ["concerts/stats"] });
       qc.invalidateQueries({ queryKey: ["concerts"] });
-      setHasChanges(false);
+      return qc.invalidateQueries({ queryKey: ["concerts", concertId] });
     },
   });
 
-  const handleStatusChange = (newStatus: AttendanceStatus) => {
-    setSelectedStatus(newStatus);
-    setHasChanges(true);
-  };
-
-  const handleNotesChange = (newNotes: string) => {
-    setNotes(newNotes);
-    setHasChanges(true);
-  };
-
   const handleSave = () => {
-    const updates: Parameters<typeof api.patchConcert>[1] = {};
-    if (selectedStatus !== attendance?.status) {
-      updates.status = selectedStatus;
-    }
-    if (notes !== (attendance?.personalNotes ?? "")) {
-      updates.personalNotes = notes || null;
-    }
-    if (Object.keys(updates).length > 0) {
-      patch.mutate(updates);
-    }
+    if (hasChanges) patch.mutate(updates);
   };
 
   return (
@@ -1637,7 +1625,7 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
           <label className="text-xs text-text-muted block mb-1">Status</label>
           <select
             value={selectedStatus}
-            onChange={(e) => handleStatusChange(e.target.value as AttendanceStatus)}
+            onChange={(e) => setSelectedStatus(e.target.value as AttendanceStatus)}
             className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime"
           >
             {(["attended","attending","interested","missed","cancelled","dismissed"] as AttendanceStatus[]).map(
@@ -1651,7 +1639,7 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
           <textarea
             rows={3}
             value={notes}
-            onChange={(e) => handleNotesChange(e.target.value)}
+            onChange={(e) => setNotes(e.target.value)}
             placeholder="Add your notes about this show..."
             className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime resize-none"
           />
@@ -1661,6 +1649,12 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
           <div className="text-xs text-text-subtle font-mono">
             Ticket: {(attendance.ticketPricePaid / 100).toFixed(2)} {attendance.ticketPriceCurrency ?? ""}
           </div>
+        )}
+
+        {patch.isError && (
+          <p className="text-xs font-mono text-accent-pink">
+            {patch.error instanceof Error ? patch.error.message : "Failed to save."}
+          </p>
         )}
 
         <button
@@ -2798,13 +2792,13 @@ export function ConcertDetailPage() {
           </div>
 
           {/* Concert info (admin only) */}
-          {isAdmin && <ConcertMetaEditor concert={concert} />}
+          {isAdmin && <ConcertMetaEditor key={concert.id} concert={concert} />}
 
           {/* Lineup */}
           <LineupEditor concert={concert} isAdmin={isAdmin} />
 
           {/* Attendance (admin only) */}
-          {isAdmin && <AttendanceEditor concertId={concert.id} attendance={concert.attendance} />}
+          {isAdmin && <AttendanceEditor key={concert.id} concertId={concert.id} attendance={concert.attendance} />}
 
           {/* Venue map - mobile only, larger */}
           {concert.venue?.lat != null && concert.venue.lng != null && (

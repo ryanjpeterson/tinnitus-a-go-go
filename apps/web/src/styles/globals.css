@@ -10,9 +10,9 @@
       radial-gradient(ellipse at top, rgba(168, 255, 62, 0.06), transparent 60%),
       radial-gradient(ellipse at bottom, rgba(255, 61, 110, 0.04), transparent 60%);
     background-attachment: fixed;
-    /* iOS safe area support */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    /* iOS safe area support. Top/bottom insets are handled by the header and
+       the mobile bottom nav — padding body vertically on top of height: 100%
+       made the page always taller than the viewport. */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
     /* Prevent pull-to-refresh in PWA mode */

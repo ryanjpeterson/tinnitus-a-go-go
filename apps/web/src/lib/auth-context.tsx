@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { UserPublic } from "@tagg/shared";
 import { api, ApiError } from "./api";
 
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserPublic | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   async function refresh() {
     try {
@@ -36,6 +38,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await api.logout();
     } finally {
       setUser(null);
+      // Drop everything fetched while signed in (attendance, personal notes,
+      // follow-ups) from memory and from the service worker's API cache so it
+      // can't resurface on a shared or offline device.
+      queryClient.clear();
+      if ("caches" in window) {
+        await caches.delete("api-cache").catch(() => undefined);
+      }
     }
   }
 

@@ -142,122 +142,12 @@ function ServicesPanel() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Mobile nav overlay
-// ─────────────────────────────────────────────────────────────────────────────
-
-function MobileMenu({
-  open,
-  onClose,
-  navLinks,
-  followupCount,
-  username,
-  isAdmin,
-  onSignOut,
-}: {
-  open: boolean;
-  onClose: () => void;
-  navLinks: { to: string; label: string }[];
-  followupCount: number;
-  username: string | null;
-  isAdmin: boolean;
-  onSignOut: () => void;
-}) {
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [open, onClose]);
-
-  // Prevent body scroll while open
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-bg sm:hidden">
-      {/* Header row */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <Link to="/" onClick={onClose}>
-          <Wordmark size="sm" svg />
-        </Link>
-        <button
-          onClick={onClose}
-          aria-label="Close menu"
-          className="p-2 -mr-1 text-text-muted hover:text-text-base transition-colors"
-        >
-          {/* X icon */}
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <line x1="4" y1="4" x2="18" y2="18"/>
-            <line x1="18" y1="4" x2="4" y2="18"/>
-          </svg>
-        </button>
-      </div>
-
-      {/* Nav links — large tap targets */}
-      <nav className="flex-1 overflow-y-auto px-5 py-6 flex flex-col gap-1">
-        {navLinks.map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            onClick={onClose}
-            className={({ isActive }) =>
-              `relative flex items-center justify-between px-4 py-4 rounded-lg text-xl font-display uppercase tracking-wide transition-colors ${
-                isActive
-                  ? "bg-surface-2 text-accent-lime"
-                  : "text-text-muted hover:bg-surface hover:text-text-base"
-              }`
-            }
-          >
-            {link.label}
-            {link.to === "/shows" && followupCount > 0 && isAdmin && (
-              <span className="min-w-[22px] h-5 rounded-full bg-accent-pink text-white text-[11px] font-mono font-bold flex items-center justify-center px-1.5 leading-none">
-                {followupCount}
-              </span>
-            )}
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* Footer */}
-      <div className="px-5 py-5 border-t border-border flex items-center justify-between gap-3">
-        {isAdmin && username ? (
-          <>
-            <Link
-              to="/account"
-              onClick={onClose}
-              className="text-sm text-text-muted hover:text-accent-lime transition-colors font-mono"
-            >
-              @<span>{username}</span>
-            </Link>
-            <Button variant="secondary" size="sm" onClick={() => { onSignOut(); onClose(); }}>
-              Sign out
-            </Button>
-          </>
-        ) : (
-          <Link to="/login" onClick={onClose} className="ml-auto">
-            <Button variant="secondary" size="sm">
-              Log in
-            </Button>
-          </Link>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // AppShell — main layout for public content with optional auth
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function AppShell() {
   const { user, signOut } = useAuth();
   const location = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [globalAddOpen, setGlobalAddOpen] = useState(false);
 
   const isAdmin = user?.isAdmin ?? false;
@@ -277,9 +167,6 @@ export function AppShell() {
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [isAdmin]);
-
-  // Close mobile menu on route change
-  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
   // Stats query - only fetch if logged in (for dashboard)
   const statsQuery = useQuery({
@@ -319,18 +206,8 @@ export function AppShell() {
       {/* Daily follow-up prompt — floats over all pages, shown once per day (admin only) */}
       {isAdmin && <FollowUpPrompt />}
 
-      {/* Mobile full-screen nav overlay */}
-      <MobileMenu
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        navLinks={navLinks}
-        followupCount={followupCount}
-        username={user?.username ?? null}
-        isAdmin={isAdmin}
-        onSignOut={signOut}
-      />
-
-      <header className="flex items-center justify-between border-b border-border px-5 py-3 sm:px-6 sm:py-4">
+      {/* Top padding clears the iOS status bar / notch in standalone mode (black-translucent) */}
+      <header className="flex items-center justify-between border-b border-border px-5 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-6 sm:py-4 sm:pt-[calc(1rem+env(safe-area-inset-top))]">
         <div className="flex items-center gap-6">
           <Link to="/">
             <Wordmark size="sm" svg />
@@ -441,14 +318,14 @@ export function AppShell() {
               <NavLink
                 key={link.to}
                 to={link.to}
-                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-colors ${
+                className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-colors ${
                   isActive ? "text-accent-lime" : "text-text-muted"
                 }`}
               >
                 <BottomNavIcon name={link.label} />
                 <span className="text-[10px] font-mono">{link.label}</span>
                 {link.to === "/shows" && followupCount > 0 && isAdmin && (
-                  <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-accent-pink" />
+                  <span className="absolute top-1 right-3 w-2 h-2 rounded-full bg-accent-pink" />
                 )}
               </NavLink>
             );

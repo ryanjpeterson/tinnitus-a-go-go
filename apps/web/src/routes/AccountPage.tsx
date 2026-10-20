@@ -1,13 +1,14 @@
 /**
- * Account settings — password change.
+ * Account settings — password change and sign out.
  */
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
 export function AccountPage() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -114,6 +115,13 @@ export function AccountPage() {
             {saving ? "Saving…" : "Update password"}
           </button>
         </form>
+      </div>
+
+      {/* Sign out — the only sign-out control on mobile, where the header has no room for one */}
+      <div className="mt-6 flex justify-end">
+        <Button variant="secondary" size="sm" onClick={() => void signOut()}>
+          Sign out
+        </Button>
       </div>
     </div>
   );

@@ -187,7 +187,7 @@ export function LandingPage() {
       <section className="px-5 pt-14 pb-10 sm:px-8 max-w-5xl mx-auto">
         <Wordmark size="xl" svg className="mb-6" />
 
-        <p className="text-xl sm:text-2xl font-display uppercase text-text-base leading-snug max-w-2xl mb-4">
+        <p className="text-xl sm:text-2xl font-display text-text-base leading-snug max-w-2xl mb-4">
           {copy["landing.tagline"]}
         </p>
         <p className="text-sm sm:text-base text-text-muted max-w-2xl leading-relaxed">

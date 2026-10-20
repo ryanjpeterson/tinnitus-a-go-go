@@ -70,7 +70,7 @@ function ConcertRow({
         </div>
         <Link
           to={`/shows/${concert.id}`}
-          className="block mt-0.5 text-sm font-display uppercase tracking-wide text-text-base hover:text-accent-lime transition-colors truncate"
+          className="block mt-0.5 text-sm font-display tracking-wide text-text-base hover:text-accent-lime transition-colors truncate"
         >
           {label}
         </Link>
@@ -198,7 +198,7 @@ export function FollowUpPrompt() {
         {/* Header */}
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border">
           <div>
-            <h2 className="font-display uppercase text-lg leading-tight">
+            <h2 className="font-display text-lg leading-tight">
               {total === 1 ? "1 show needs follow-up" : `${total} shows need follow-up`}
             </h2>
             <p className="text-xs text-text-muted font-mono mt-0.5">

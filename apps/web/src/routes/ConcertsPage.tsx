@@ -1,55 +1,48 @@
 /**
- * Concert list — card grid view of the user's log.
+ * Shows — the concert log as ticket-style rows, grouped by month.
  *
  * All filter/sort/page state lives in the URL (?page=&sort=&status=&q=) so
  * the browser back button always restores the exact view you left.
  */
 
-import { useState, useRef, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useState } from "react";
 import { AddConcertModal } from "./AddConcertModal";
 import { useQuery } from "@tanstack/react-query";
-import { clsx } from "clsx";
 import { api, type ConcertListItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useListParams } from "@/lib/useListParams";
+import { monthLabel } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import {
+  EmptyState, EventRow, List, ListGroupLabel, Loading, PageHeader, Pager, PillTabs, SearchField, SelectField,
+} from "@/components/ui/kit";
 import type { AttendanceStatus } from "@tagg/shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const STATUS_TABS: { label: string; value: AttendanceStatus | undefined; activeClass: string }[] = [
-  { label: "All",       value: undefined,    activeClass: "bg-accent-lime text-bg font-bold"      },
-  { label: "Attended",  value: "attended",   activeClass: "bg-lime-950 text-accent-lime font-bold" },
-  { label: "Attending", value: "attending",  activeClass: "bg-yellow-950 text-yellow-400 font-bold"},
-  { label: "Interested",value: "interested", activeClass: "bg-purple-950 text-purple-400 font-bold"},
-  { label: "Missed",    value: "missed",     activeClass: "bg-red-950 text-red-400 font-bold"        },
+type StatusValue = AttendanceStatus | "all";
+type SortOrder = "newest" | "oldest";
+
+const STATUS_OPTIONS: { value: StatusValue; label: string; activeClass: string }[] = [
+  { value: "all",        label: "All",        activeClass: "border-accent-lime bg-accent-lime text-bg" },
+  { value: "attended",   label: "Attended",   activeClass: "border-lime-700 bg-lime-950 text-accent-lime" },
+  { value: "attending",  label: "Attending",  activeClass: "border-yellow-700 bg-yellow-950 text-yellow-400" },
+  { value: "interested", label: "Interested", activeClass: "border-purple-800 bg-purple-950 text-purple-400" },
+  { value: "missed",     label: "Missed",     activeClass: "border-red-800 bg-red-950 text-red-400" },
 ];
 
-const STATUS_CHIP: Record<AttendanceStatus, { label: string; classes: string; dot: string; border: string }> = {
-  attended:  { label: "Attended",  classes: "bg-lime-950 text-accent-lime border-lime-700",    dot: "bg-accent-lime",  border: "border-lime-700"   },
-  attending: { label: "Attending", classes: "bg-yellow-950 text-yellow-400 border-yellow-700", dot: "bg-yellow-400",   border: "border-yellow-600" },
-  interested:{ label: "Interested",classes: "bg-purple-950 text-purple-400 border-purple-800", dot: "bg-purple-400",   border: "border-purple-700" },
-  missed:    { label: "Missed",    classes: "bg-red-950 text-red-400 border-red-800",          dot: "bg-red-400",      border: "border-red-700"    },
-  cancelled: { label: "Cancelled", classes: "bg-surface-2 text-text-subtle border-border",     dot: "bg-text-subtle",  border: "border-border"     },
-  dismissed: { label: "Dismissed", classes: "bg-surface-2 text-text-subtle border-border",     dot: "bg-text-subtle",  border: "border-border"     },
-};
-
-type SortOrder = "newest" | "oldest";
+const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+];
 
 const PAGE_SIZE = 24;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-function fmtDate(isoDate: string): string {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  if (!year || !month || !day) return isoDate;
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
-  });
-}
 
 function concertHeadliner(c: ConcertListItem): string {
   const top = c.artists.filter((a) => a.role === "headliner" || a.role === "co_headliner");
@@ -64,138 +57,19 @@ function supportingActs(c: ConcertListItem): string {
   if (all.length === 0) return "";
   const shown = all.slice(0, 3).map((a) => a.name);
   const extra = all.length - shown.length;
-  return shown.join(", ") + (extra > 0 ? ` +${extra}` : "");
+  return "with " + shown.join(", ") + (extra > 0 ? ` +${extra}` : "");
 }
 
-/** Build a new URLSearchParams from the current one, merging in changes. */
-function mergeParams(
-  current: URLSearchParams,
-  updates: Record<string, string | undefined>,
-): URLSearchParams {
-  const next = new URLSearchParams(current);
-  for (const [k, v] of Object.entries(updates)) {
-    if (v === undefined || v === "") next.delete(k);
-    else next.set(k, v);
+/** Consecutive concerts sharing a month, in list order. */
+function groupByMonth(concerts: ConcertListItem[]): { label: string; items: ConcertListItem[] }[] {
+  const groups: { label: string; items: ConcertListItem[] }[] = [];
+  for (const c of concerts) {
+    const label = monthLabel(c.date);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(c);
+    else groups.push({ label, items: [c] });
   }
-  return next;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Flyer placeholder
-// ─────────────────────────────────────────────────────────────────────────────
-
-const PLACEHOLDER_BG: Partial<Record<AttendanceStatus, string>> = {
-  attended:  "bg-lime-950",
-  attending: "bg-yellow-950",
-  interested:"bg-purple-950",
-  missed:    "bg-red-950",
-};
-
-function FlyerPlaceholder({ title, status }: { title: string; status?: AttendanceStatus }) {
-  const initials = title.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
-  const bg = status ? (PLACEHOLDER_BG[status] ?? "bg-surface-2") : "bg-surface-2";
-  return (
-    <div
-      className={clsx(
-        "w-full h-full flex flex-col items-center justify-center select-none",
-        bg,
-      )}
-    >
-      <div className="font-display uppercase text-2xl text-text-subtle tracking-widest opacity-40">
-        {initials}
-      </div>
-      <div className="mt-1 opacity-20">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-text-subtle">
-          <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-          <path d="M8 2v4M16 2v4M3 10h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          <circle cx="8" cy="15" r="1.5" fill="currentColor"/>
-          <circle cx="12" cy="15" r="1.5" fill="currentColor"/>
-          <circle cx="16" cy="15" r="1.5" fill="currentColor"/>
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Concert card
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ConcertCard({ concert }: { concert: ConcertListItem }) {
-  const chip = concert.attendance ? STATUS_CHIP[concert.attendance.status] : null;
-  const headliner = concertHeadliner(concert);
-  const supports = supportingActs(concert);
-
-  const borderClass = chip ? chip.border : "border-border";
-
-  return (
-    <div className={clsx(
-      "group relative flex flex-col rounded-lg border bg-surface overflow-hidden hover:border-accent-lime transition-colors",
-      borderClass
-    )}>
-      {/* Flyer / header image */}
-      <Link to={`/shows/${concert.id}`} className="block">
-        <div className="aspect-[3/2] overflow-hidden bg-surface-2 relative">
-          {concert.flyerUrl ? (
-            <>
-              {/* Blurred background */}
-              <img
-                src={concert.flyerUrl}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 w-full h-full object-cover blur-lg scale-110 opacity-80"
-              />
-              {/* Sharp foreground image */}
-              <img
-                src={concert.flyerUrl}
-                alt={headliner}
-                className="relative w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
-                loading="lazy"
-              />
-            </>
-          ) : (
-            <FlyerPlaceholder title={headliner} status={concert.attendance?.status} />
-          )}
-        </div>
-      </Link>
-
-      {/* Card body */}
-      <div className="flex-1 flex flex-col p-3 gap-1">
-        <Link
-          to={`/shows/${concert.id}`}
-          className="font-display uppercase tracking-wide text-sm text-text-base hover:text-accent-lime transition-colors line-clamp-1"
-        >
-          {headliner}
-        </Link>
-
-        {supports && (
-          <p className="text-xs text-text-subtle truncate">{supports}</p>
-        )}
-
-        <div className="text-xs text-text-muted font-mono mt-0.5">
-          {fmtDate(concert.date)}
-        </div>
-
-        {concert.eventSeries && (
-          <div className="text-xs text-yellow-600 font-mono truncate" title={concert.eventSeries.name}>
-            {concert.eventSeries.name}
-          </div>
-        )}
-
-        {concert.venue && (
-          <div className="text-xs text-text-subtle truncate">
-            {concert.venue.name}{concert.venue.city ? ` · ${concert.venue.city}` : ""}
-          </div>
-        )}
-
-        {concert.attendance?.personalNotes && (
-          <p className="text-xs text-text-subtle italic line-clamp-1 mt-0.5">
-            {concert.attendance.personalNotes}
-          </p>
-        )}
-      </div>
-    </div>
-  );
+  return groups;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -205,66 +79,20 @@ function ConcertCard({ concert }: { concert: ConcertListItem }) {
 export function ConcertsPage() {
   const { user } = useAuth();
   const isAdmin = user?.isAdmin ?? false;
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { searchParams, page, q, inputQ, onSearch, setFilter, setPage } = useListParams();
   const [addOpen, setAddOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  // ── Derive state from URL params ──────────────────────────────────────────
-  const page         = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
-  const sort         = (searchParams.get("sort") ?? "newest") as SortOrder;
-  const statusParam  = searchParams.get("status") as AttendanceStatus | null;
-  const statusFilter = STATUS_TABS.some((t) => t.value === statusParam) ? (statusParam ?? undefined) : undefined;
-  const urlQ         = searchParams.get("q") ?? "";
-
-  // Local input state — keeps the search field responsive while debounce runs
-  const [inputQ, setInputQ] = useState(urlQ);
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Sync input field when URL changes externally (e.g. browser back)
-  useEffect(() => {
-    setInputQ(urlQ);
-  }, [urlQ]);
-
-  // Cancel a pending search write on unmount — otherwise it fires after you've
-  // opened a show and navigates you back to /shows?q=…
-  useEffect(() => () => {
-    if (searchTimer.current != null) clearTimeout(searchTimer.current);
-  }, []);
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  /** Set params, always resetting to page 1. Replaces history (filter changes aren't navigation). */
-  const setFilter = (updates: Record<string, string | undefined>): void => {
-    setSearchParams(mergeParams(searchParams, { ...updates, page: undefined }), { replace: true });
-  };
-
-  /** Set page only — pushes a new history entry so back works. */
-  const setPage = (p: number): void => {
-    setSearchParams(mergeParams(searchParams, { page: p === 1 ? undefined : String(p) }), { replace: false });
-  };
-
-  const handleSearch = (val: string): void => {
-    setInputQ(val);
-    if (searchTimer.current != null) clearTimeout(searchTimer.current);
-    // Write to URL after 300 ms; use replace so typing doesn't spam history
-    // Functional update merges into the params as they are when the timer
-    // fires, so a status/sort change made while typing isn't overwritten.
-    searchTimer.current = setTimeout(() => {
-      setSearchParams(
-        (current) => mergeParams(current, { q: val.trim() || undefined, page: undefined }),
-        { replace: true },
-      );
-    }, 300);
-  };
-
+  const sort: SortOrder = searchParams.get("sort") === "oldest" ? "oldest" : "newest";
+  const statusParam = searchParams.get("status");
+  const status: StatusValue = STATUS_OPTIONS.some((o) => o.value === statusParam) ? (statusParam as StatusValue) : "all";
+  const statusFilter = status === "all" ? undefined : status;
   const apiSort = sort === "oldest" ? "date_asc" : "date_desc";
 
-  // ── Queries ───────────────────────────────────────────────────────────────
-
   const concertsQuery = useQuery({
-    queryKey: ["concerts", { status: statusFilter, q: urlQ, page, sort: apiSort }],
-    queryFn: () => api.listConcerts({ status: statusFilter, q: urlQ || undefined, page, limit: PAGE_SIZE, sort: apiSort }),
+    queryKey: ["concerts", { status: statusFilter, q, page, sort: apiSort }],
+    queryFn: () => api.listConcerts({ status: statusFilter, q: q || undefined, page, limit: PAGE_SIZE, sort: apiSort }),
     staleTime: 15_000,
   });
 
@@ -289,143 +117,92 @@ export function ConcertsPage() {
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
     <div>
-      {/* Toolbar */}
-      <div className="mb-5 space-y-2">
-        {/* Row 1: search + actions */}
-        <div className="flex items-center gap-2">
-          <input
-            type="search"
-            placeholder="Search artist, venue, or festival…"
-            value={inputQ}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="flex-1 rounded border border-border bg-surface px-3 py-1.5 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
-          />
-          {isAdmin && (
-            <button
-              onClick={() => setAddOpen(true)}
-              className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity shrink-0"
-            >
+      <PageHeader
+        title="Shows"
+        count={total}
+        actions={isAdmin && (
+          <>
+            <Button variant="secondary" size="md" onClick={() => void handleExport()} disabled={exporting}
+              className="hidden rounded-full sm:inline-flex">
+              {exporting ? "Exporting…" : "Export CSV"}
+            </Button>
+            <Button size="md" onClick={() => setAddOpen(true)} className="rounded-full">
               + Add show
-            </button>
-          )}
-          {isAdmin && (
-            <button
-              onClick={() => void handleExport()}
-              disabled={exporting}
-              className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors border border-border rounded px-3 py-1.5 shrink-0 disabled:opacity-50"
-            >
-              {exporting ? "Exporting…" : "Export ↓"}
-            </button>
-          )}
-        </div>
-        {exportError && <p className="text-xs font-mono text-accent-pink">{exportError}</p>}
+            </Button>
+          </>
+        )}
+      />
 
-        {/* Row 2: status filter (admin only) + sort */}
-        <div className="flex items-center gap-2 flex-wrap">
+      {/* Filters — stacked full-width controls on phones, pills on desktop */}
+      <div className="mb-5 space-y-3">
+        <SearchField value={inputQ} onChange={onSearch} placeholder="Search artist, venue, or festival" />
+        <div className={isAdmin ? "grid grid-cols-2 gap-3 sm:hidden" : "sm:hidden"}>
           {isAdmin && (
-            <>
-              {/* Mobile: dropdown */}
-              <select
-                value={statusFilter ?? ""}
-                onChange={(e) => setFilter({ status: e.target.value || undefined })}
-                className="sm:hidden rounded border border-border bg-surface px-3 py-1.5 text-xs font-mono text-text-base focus:outline-none focus:border-accent-lime"
-              >
-                {STATUS_TABS.map((tab) => (
-                  <option key={tab.label} value={tab.value ?? ""}>
-                    {tab.label}
-                  </option>
-                ))}
-              </select>
-              {/* Desktop: tabs */}
-              <div className="hidden sm:flex gap-1 rounded border border-border p-0.5 bg-surface">
-                {STATUS_TABS.map((tab) => (
-                  <button
-                    key={tab.label}
-                    onClick={() => setFilter({ status: tab.value })}
-                    className={clsx(
-                      "min-w-[72px] px-3 py-1.5 rounded text-xs font-mono transition-colors text-center",
-                      statusFilter === tab.value
-                        ? tab.activeClass
-                        : "text-text-muted hover:text-text-base",
-                    )}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </>
+            <SelectField label="Status" value={status} options={STATUS_OPTIONS}
+              onChange={(v) => setFilter({ status: v === "all" ? undefined : v })} />
           )}
-          <div className="ml-auto flex gap-1">
-            <button
-              onClick={() => setFilter({ sort: "newest" })}
-              className={clsx(
-                "min-w-[56px] px-3 py-1.5 rounded text-xs font-mono transition-colors text-center border",
-                sort === "newest" ? "bg-accent-lime text-bg font-bold border-accent-lime" : "text-text-muted hover:text-text-base border-border",
-              )}
-            >
-              Newest
-            </button>
-            <button
-              onClick={() => setFilter({ sort: "oldest" })}
-              className={clsx(
-                "min-w-[56px] px-3 py-1.5 rounded text-xs font-mono transition-colors text-center border",
-                sort === "oldest" ? "bg-accent-lime text-bg font-bold border-accent-lime" : "text-text-muted hover:text-text-base border-border",
-              )}
-            >
-              Oldest
-            </button>
-          </div>
+          <SelectField label="Sort" value={sort} options={SORT_OPTIONS}
+            onChange={(v) => setFilter({ sort: v === "newest" ? undefined : v })} />
         </div>
+        <div className="hidden items-center justify-between gap-3 sm:flex">
+          {isAdmin ? (
+            <PillTabs value={status} options={STATUS_OPTIONS}
+              onChange={(v) => setFilter({ status: v === "all" ? undefined : v })} />
+          ) : <span />}
+          <SelectField label="Sort" value={sort} options={SORT_OPTIONS} className="w-44"
+            onChange={(v) => setFilter({ sort: v === "newest" ? undefined : v })} />
+        </div>
+        {isAdmin && (
+          <button onClick={() => void handleExport()} disabled={exporting}
+            className="text-sm font-semibold text-text-muted hover:text-accent-lime sm:hidden">
+            {exporting ? "Exporting…" : "Export CSV ↓"}
+          </button>
+        )}
+        {exportError && <p className="text-sm text-accent-pink">{exportError}</p>}
       </div>
 
-      {/* Concert grid */}
       {concertsQuery.isLoading ? (
-        <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">Loading…</div>
+        <Loading />
       ) : concertsQuery.isError ? (
-        <div className="py-16 text-center text-accent-pink font-mono text-sm">Failed to load shows.</div>
+        <EmptyState tone="error" title="Couldn't load shows." body="Check your connection and try again." />
       ) : concerts.length === 0 && page > 1 && total > 0 ? (
-        <div className="py-16 text-center text-text-subtle font-mono text-sm">
-          {/* API reports totalPages: 0 for an empty page, so derive it from total */}
-          Nothing on page {page} — there {total <= PAGE_SIZE ? "is only 1 page" : `are only ${Math.ceil(total / PAGE_SIZE)} pages`}.{" "}
-          <button onClick={() => setPage(1)} className="underline hover:text-accent-lime">Back to page 1</button>
-        </div>
+        <EmptyState
+          title={`Nothing on page ${page}`}
+          // API reports totalPages: 0 for an empty page, so derive it from total
+          body={`There ${total <= PAGE_SIZE ? "is only 1 page" : `are only ${Math.ceil(total / PAGE_SIZE)} pages`}.`}
+          action={<Button variant="secondary" onClick={() => setPage(1)}>Back to page 1</Button>}
+        />
       ) : concerts.length === 0 ? (
-        <div className="py-16 text-center text-text-subtle font-mono text-sm">
-          {statusFilter || urlQ ? "No shows match your filter." : "No shows yet. Import your CSV or add your first show."}
-        </div>
+        <EmptyState
+          title={statusFilter || q ? "No shows match." : "No shows yet."}
+          body={statusFilter || q ? "Try a different search or filter." : "Import your CSV or add your first show."}
+        />
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {concerts.map((c) => (
-              <ConcertCard key={c.id} concert={c} />
-            ))}
-          </div>
-
-          {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between text-xs font-mono text-text-muted">
-              <span>{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}</span>
-              <div className="flex gap-1">
-                <button
-                  disabled={page <= 1}
-                  onClick={() => setPage(page - 1)}
-                  className="px-3 py-1.5 rounded border border-border disabled:opacity-30 hover:border-accent-lime transition-colors"
-                >
-                  ← Prev
-                </button>
-                <button
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(page + 1)}
-                  className="px-3 py-1.5 rounded border border-border disabled:opacity-30 hover:border-accent-lime transition-colors"
-                >
-                  Next →
-                </button>
+          <List>
+            {groupByMonth(concerts).map((g) => (
+              <div key={g.label} className="divide-y divide-border">
+                <ListGroupLabel>{g.label}</ListGroupLabel>
+                {g.items.map((c) => (
+                  <EventRow
+                    key={c.id}
+                    to={`/shows/${c.id}`}
+                    date={c.date}
+                    showYear={false}
+                    approximate={c.dateIsApproximate}
+                    title={concertHeadliner(c)}
+                    subtitle={c.venue ? `${c.venue.name}${c.venue.city ? ` · ${c.venue.city}` : ""}` : c.eventSeries?.name}
+                    meta={[c.venue && c.eventSeries ? c.eventSeries.name : null, supportingActs(c) || null].filter(Boolean).join(" · ") || undefined}
+                    imageUrl={c.flyerUrl}
+                    status={c.attendance?.status}
+                  />
+                ))}
               </div>
-            </div>
-          )}
+            ))}
+          </List>
+          <Pager page={page} totalPages={totalPages} total={total} pageSize={PAGE_SIZE} onPage={setPage} />
         </>
       )}
 

@@ -77,7 +77,7 @@ export function ServicesPanel() {
   const services    = buildServices(isDev);
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-5">
+    <div className="card p-4 sm:p-5">
       <div className="flex items-center gap-2 mb-4">
         <div className="text-xs uppercase tracking-wider text-text-muted font-mono">
           {isDev ? "Dev services" : "Services"}

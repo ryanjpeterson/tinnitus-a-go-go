@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { APIProvider, Map, Marker, useMap } from "@vis.gl/react-google-maps";
 import { api, type VenueMapItem } from "@/lib/api";
+import { PageHeader } from "@/components/ui/kit";
 
 const API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) ?? "";
 
@@ -50,12 +51,12 @@ const PINK_MARKER_ICON_SELECTED = "data:image/svg+xml," + encodeURIComponent(`
 function VenuePopup({ venue, onClose }: { venue: VenueMapItem; onClose: () => void }) {
   return (
     <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-10">
-      <div className="rounded-lg border border-border bg-surface p-4 shadow-xl">
+      <div className="card p-4 shadow-2xl shadow-black/60">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <Link
               to={`/venues/${venue.slug}`}
-              className="font-display uppercase text-lg hover:text-accent-lime transition-colors block truncate"
+              className="font-display text-xl hover:text-accent-lime transition-colors block truncate"
             >
               {venue.name}
             </Link>
@@ -64,13 +65,13 @@ function VenuePopup({ venue, onClose }: { venue: VenueMapItem; onClose: () => vo
                 {[venue.city, venue.region].filter(Boolean).join(", ")}
               </p>
             )}
-            <p className="text-xs font-mono text-text-subtle mt-2">
+            <p className="text-sm text-text-subtle mt-1">
               {venue.showCount} {venue.showCount === 1 ? "show" : "shows"}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-text-subtle hover:text-text-base transition-colors p-1 -mr-1 -mt-1"
+            className="-mr-2 -mt-2 flex h-10 w-10 items-center justify-center rounded-full text-text-subtle transition-colors hover:text-text-base"
             aria-label="Close"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
@@ -80,9 +81,9 @@ function VenuePopup({ venue, onClose }: { venue: VenueMapItem; onClose: () => vo
         </div>
         <Link
           to={`/venues/${venue.slug}`}
-          className="mt-3 block text-center text-xs font-mono px-3 py-2 rounded border border-accent-lime text-accent-lime hover:bg-accent-lime/10 transition-colors"
+          className="mt-3 flex h-11 items-center justify-center rounded-full bg-accent-lime text-[15px] font-semibold text-bg transition-opacity hover:opacity-90"
         >
-          View venue →
+          View venue
         </Link>
       </div>
     </div>
@@ -175,8 +176,8 @@ export function MapPage() {
   if (!API_KEY) {
     return (
       <div>
-        <h1 className="font-display uppercase text-3xl mb-6">Map</h1>
-        <div className="rounded-lg border border-border bg-surface p-8 text-center">
+        <PageHeader title="Map" />
+        <div className="card p-8 text-center">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="mx-auto mb-4 text-accent-pink">
             <path
               d="M12 2C8.134 2 5 5.134 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7z"
@@ -197,25 +198,18 @@ export function MapPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display uppercase text-3xl">Map</h1>
-        {venues.length > 0 && (
-          <span className="font-mono text-sm text-text-muted">
-            {venues.length} {venues.length === 1 ? "venue" : "venues"}
-          </span>
-        )}
-      </div>
+      <PageHeader title="Map" count={venues.length} className="mb-4" />
 
       {venuesQuery.isLoading ? (
-        <div className="rounded-lg border border-border bg-surface-2 h-[calc(100vh-220px)] min-h-[400px] flex items-center justify-center">
+        <div className="card bg-surface-2 h-[calc(100dvh-15rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[360px] sm:h-[calc(100dvh-13rem)] flex items-center justify-center">
           <p className="text-text-subtle font-mono text-sm animate-pulse">Loading map…</p>
         </div>
       ) : venuesQuery.isError ? (
-        <div className="rounded-lg border border-border bg-surface p-8 text-center">
+        <div className="card p-8 text-center">
           <p className="text-accent-pink font-mono text-sm">Failed to load venues</p>
         </div>
       ) : venues.length === 0 ? (
-        <div className="rounded-lg border border-border bg-surface p-8 text-center">
+        <div className="card p-8 text-center">
           <p className="text-text-muted font-mono text-sm">No venues with coordinates yet</p>
           <p className="text-text-subtle text-xs mt-2">
             Add lat/lng to your venues to see them on the map
@@ -223,7 +217,7 @@ export function MapPage() {
         </div>
       ) : (
         <APIProvider apiKey={API_KEY}>
-          <div className="rounded-lg overflow-hidden border border-border h-[calc(100vh-220px)] min-h-[400px] relative">
+          <div className="card overflow-hidden h-[calc(100dvh-15rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[360px] sm:h-[calc(100dvh-13rem)] relative">
             <Map
               defaultCenter={center}
               defaultZoom={zoom}
@@ -243,8 +237,8 @@ export function MapPage() {
       )}
 
       {venues.length > 0 && (
-        <p className="mt-3 text-xs text-text-subtle font-mono">
-          Click a pin to see venue details
+        <p className="mt-3 text-sm text-text-subtle">
+          Tap a pin to see the venue
         </p>
       )}
     </div>

@@ -6,11 +6,14 @@
  * prev/next arrows. Reuses the Stats page widgets so the two read as a set.
  */
 
-import { useEffect, useMemo, useRef } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { useMemo } from "react";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, type YearReviewResponse } from "@/lib/api";
-import { MiniVBars, RankedList, Section, StatTile, type RankedItem } from "./StatsPage";
+import {
+  BackButton, Chevron, EmptyState, LinkCard, Loading, RankedList, Section, SelectField, StatGrid, StatTile, type RankedItem,
+} from "@/components/ui/kit";
+import { MiniVBars } from "./StatsPage";
 
 const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTH_LONG  = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -45,67 +48,42 @@ export function YearReviewIndex() {
     staleTime: 5 * 60_000,
   });
 
-  if (q.isLoading) {
-    return <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">Rewinding the tape…</div>;
-  }
+  if (q.isLoading) return <Loading label="Rewinding the tape…" />;
   const latest = q.data?.years[0]?.year;
-  if (!latest) {
-    return <div className="py-16 text-center text-text-subtle font-mono text-sm">No attended shows yet — nothing to review.</div>;
-  }
+  if (!latest) return <EmptyState title="Nothing to review yet." body="Attended shows show up here, one page per year." />;
   return <Navigate to={`/year/${latest}`} replace />;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Year strip — every year with shows, newest on the right like a timeline
+// Year picker — a select on phones (no sideways scrolling), wrapped pills on desktop
 // ─────────────────────────────────────────────────────────────────────────────
 
-function YearStrip({ years, current }: { years: YearReviewResponse["years"]; current: number }) {
-  const activeRef = useRef<HTMLAnchorElement>(null);
-  const ordered = useMemo(() => [...years].sort((a, b) => a.year - b.year), [years]);
-
-  // Keep the selected year in view when the strip overflows on phones.
-  useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
-  }, [current]);
+function YearPicker({ years, current }: { years: YearReviewResponse["years"]; current: number }) {
+  const navigate = useNavigate();
+  const ordered = useMemo(() => [...years].sort((a, b) => b.year - a.year), [years]);
+  const options = ordered.map((y) => ({ value: String(y.year), label: `${y.year} · ${y.count} show${y.count === 1 ? "" : "s"}` }));
+  // A year with no shows (typed into the URL) still needs an option to display.
+  if (!ordered.some((y) => y.year === current)) options.unshift({ value: String(current), label: String(current) });
 
   return (
-    <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none]">
-      {ordered.map((y) => {
-        const active = y.year === current;
-        return (
-          <Link
-            key={y.year}
-            ref={active ? activeRef : undefined}
-            to={`/year/${y.year}`}
-            className={`shrink-0 rounded px-2.5 py-1 text-xs font-mono transition-colors border ${
-              active
-                ? "bg-accent-lime text-bg font-bold border-accent-lime"
-                : "text-text-muted border-border hover:text-text-base hover:border-text-subtle"
-            }`}
-            title={plural(y.count, "show")}
-          >
-            {y.year}
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Highlight card
-// ─────────────────────────────────────────────────────────────────────────────
-
-function Highlight({ label, title, sub, href }: { label: string; title: string; sub?: string; href?: string }) {
-  const body = (
     <>
-      <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-1">{label}</p>
-      <p className="text-sm font-medium truncate group-hover:text-accent-lime transition-colors">{title}</p>
-      {sub && <p className="text-xs font-mono text-text-subtle truncate">{sub}</p>}
+      <SelectField label="Year" className="sm:hidden" value={String(current)} options={options}
+        onChange={(v) => navigate(`/year/${v}`)} />
+      <div className="hidden flex-wrap gap-2 sm:flex">
+        {[...ordered].reverse().map((y) => {
+          const active = y.year === current;
+          return (
+            <Link key={y.year} to={`/year/${y.year}`} title={`${y.count} show${y.count === 1 ? "" : "s"}`}
+              className={`h-9 rounded-full border px-3.5 text-sm font-semibold leading-9 transition-colors ${
+                active ? "border-accent-lime bg-accent-lime text-bg" : "border-border text-text-muted hover:border-text-subtle hover:text-text-base"
+              }`}>
+              {y.year}
+            </Link>
+          );
+        })}
+      </div>
     </>
   );
-  const cls = "group block rounded-lg border border-border bg-surface p-4 min-w-0";
-  return href ? <Link to={href} className={`${cls} hover:border-accent-lime/50 transition-colors`}>{body}</Link> : <div className={cls}>{body}</div>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -128,7 +106,7 @@ function FlyerWall({ shows }: { shows: YearReviewResponse["shows"] }) {
               <img src={s.flyerUrl} alt={name} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
             ) : (
               <div className={`absolute inset-0 flex items-center justify-center p-2 pb-5 text-center ${s.type === "festival_day" ? "bg-yellow-950/60" : "bg-lime-950/40"}`}>
-                <span className="font-display uppercase text-sm text-text-muted leading-tight line-clamp-4 break-words">{name}</span>
+                <span className="font-display text-sm text-text-muted leading-tight line-clamp-4 break-words">{name}</span>
               </div>
             )}
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-1.5 pt-4 pb-1">
@@ -172,12 +150,8 @@ export function YearReviewPage() {
 
   if (!validYear) return <Navigate to="/year" replace />;
 
-  if (q.isLoading) {
-    return <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">Rewinding the tape…</div>;
-  }
-  if (q.isError || !d) {
-    return <div className="py-16 text-center font-mono text-sm text-accent-pink">Couldn't load {year}. Try refreshing.</div>;
-  }
+  if (q.isLoading) return <Loading label="Rewinding the tape…" />;
+  if (q.isError || !d) return <EmptyState tone="error" title={`Couldn't load ${year}.`} body="Try refreshing." />;
 
   // Prev/next step through years that actually have shows, skipping gaps.
   const ascending = [...d.years].map((y) => y.year).sort((a, b) => a - b);
@@ -186,29 +160,27 @@ export function YearReviewPage() {
   const isCurrentYear = year === new Date().getFullYear();
 
   const header = (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <Link to="/" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">← Stats</Link>
-        <div className="flex gap-1">
-          <YearArrow to={prevYear} label="←" />
-          <YearArrow to={nextYear} label="→" />
+    <header className="space-y-4">
+      <BackButton to="/" label="Stats" />
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="eyebrow mb-1">Year in review{isCurrentYear ? " · so far" : ""}</p>
+          <h1 className="font-display text-7xl leading-[0.9] text-accent-lime sm:text-8xl">{year}</h1>
+        </div>
+        <div className="flex gap-2 pb-1">
+          <YearArrow to={prevYear} dir="left" />
+          <YearArrow to={nextYear} dir="right" />
         </div>
       </div>
-      <div>
-        <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle">
-          Year in review{isCurrentYear ? " · so far" : ""}
-        </p>
-        <h1 className="font-display uppercase text-6xl sm:text-7xl leading-none text-accent-lime">{year}</h1>
-      </div>
-      {d.years.length > 1 && <YearStrip years={d.years} current={year} />}
-    </div>
+      {d.years.length > 1 && <YearPicker years={d.years} current={year} />}
+    </header>
   );
 
   if (d.totalShows === 0) {
     return (
       <div className="space-y-6">
         {header}
-        <p className="py-10 text-center text-text-subtle font-mono text-sm">No attended shows logged for {year}.</p>
+        <EmptyState title={`No attended shows in ${year}.`} body="Pick another year above." />
       </div>
     );
   }
@@ -243,50 +215,50 @@ export function YearReviewPage() {
   }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {header}
 
       {/* ── Headline numbers ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+      <StatGrid>
         <StatTile label="Shows" value={d.totalShows} sub={deltaText} accent="lime" />
         <StatTile label="Artists seen" value={d.uniqueArtists} sub={`${d.newArtistCount} for the first time`} accent="pink" />
         <StatTile label="Venues" value={d.uniqueVenues} sub={`${d.newVenueCount} new`} accent="muted" />
         <StatTile label="Cities" value={d.uniqueCities} sub={d.festivals.length > 0 ? plural(d.festivals.length, "festival") : undefined} accent="muted" />
-      </div>
+      </StatGrid>
 
       {/* ── Highlights ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Highlight
-          label="Opened the year"
+        <LinkCard
+          eyebrow="Opened the year"
           title={first.headliner ?? first.series?.name ?? "Untitled show"}
           sub={`${fmtDate(first.date)}${first.venue ? ` · ${first.venue.name}` : ""}`}
-          href={`/shows/${first.concertId}`}
+          to={`/shows/${first.concertId}`}
         />
         {d.shows.length > 1 && (
-          <Highlight
-            label={isCurrentYear ? "Latest show" : "Closed it out"}
+          <LinkCard
+            eyebrow={isCurrentYear ? "Latest show" : "Closed it out"}
             title={last.headliner ?? last.series?.name ?? "Untitled show"}
             sub={`${fmtDate(last.date)}${last.venue ? ` · ${last.venue.name}` : ""}`}
-            href={`/shows/${last.concertId}`}
+            to={`/shows/${last.concertId}`}
           />
         )}
         {topArtist && topArtist.count > 1 && (
-          <Highlight
-            label="Most seen"
+          <LinkCard
+            eyebrow="Most seen"
             title={topArtist.name}
             sub={`${plural(topArtist.count, "show")} this year`}
-            href={`/artists/${topArtist.slug}`}
+            to={`/artists/${topArtist.slug}`}
           />
         )}
-        <Highlight
-          label="Busiest month"
+        <LinkCard
+          eyebrow="Busiest month"
           title={MONTH_LONG[busiestMonth]!}
           sub={`${plural(monthCounts[busiestMonth]!, "show")} · mostly ${DOW_LONG[favouriteDay]}s`}
         />
       </div>
 
       {/* ── When ─────────────────────────────────────────────────────────── */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid gap-6 sm:grid-cols-2 sm:gap-4">
         <Section title="Month by month">
           <MiniVBars data={monthCounts} labels={MONTH_SHORT} color="#A8FF3E" />
         </Section>
@@ -297,26 +269,26 @@ export function YearReviewPage() {
 
       {/* ── Who ──────────────────────────────────────────────────────────── */}
       {topArtistItems.length > 0 && (
-        <Section title="Seen more than once">
-          <RankedList items={topArtistItems} color="#A8FF3E" />
+        <Section title="Seen more than once" flush>
+          <RankedList items={topArtistItems} />
         </Section>
       )}
 
       {d.newArtists.length > 0 && (
-        <Section title={`First time seeing · ${d.newArtistCount}`}>
+        <Section title="First time seeing" count={d.newArtistCount}>
           <div className="flex flex-wrap gap-1.5">
             {d.newArtists.map((a) => (
               <Link
                 key={a.artistId}
                 to={`/artists/${a.slug}`}
-                className="rounded-full border border-border bg-surface-2 px-2.5 py-1 text-xs text-text-muted hover:text-accent-lime hover:border-accent-lime/50 transition-colors"
+                className="rounded-full border border-border bg-surface-2 px-3.5 py-2 text-sm font-medium text-text-muted transition-colors hover:border-accent-lime/50 hover:text-accent-lime"
                 title={`First seen ${fmtDate(a.firstSeen)}`}
               >
                 {a.name}
               </Link>
             ))}
             {d.newArtistCount > d.newArtists.length && (
-              <span className="px-2.5 py-1 text-xs font-mono text-text-subtle">
+              <span className="px-3 py-2 text-sm text-text-subtle">
                 +{d.newArtistCount - d.newArtists.length} more
               </span>
             )}
@@ -325,8 +297,8 @@ export function YearReviewPage() {
       )}
 
       {/* ── Where ────────────────────────────────────────────────────────── */}
-      <Section title="Where you went">
-        <RankedList items={topVenueItems} color="#FF3D6E" />
+      <Section title="Where you went" flush>
+        <RankedList items={topVenueItems} />
       </Section>
 
       {d.festivals.length > 0 && (
@@ -336,13 +308,13 @@ export function YearReviewPage() {
               <Link
                 key={f.seriesId}
                 to={`/festivals/${f.slug}`}
-                className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2 hover:border-yellow-500/60 p-3 transition-colors"
+                className="group flex min-h-[64px] items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 p-3.5 transition-colors hover:border-yellow-500/60"
               >
                 <div className="min-w-0">
-                  <p className="text-xs font-medium truncate group-hover:text-yellow-400 transition-colors">{f.name}</p>
-                  <p className="text-[10px] font-mono text-text-subtle">{fmtDate(f.startDate)}</p>
+                  <p className="truncate text-[15px] font-semibold transition-colors group-hover:text-yellow-400">{f.name}</p>
+                  <p className="text-sm text-text-subtle">{fmtDate(f.startDate)}</p>
                 </div>
-                <span className="shrink-0 text-[10px] font-mono text-yellow-400">{plural(f.days, "day")}</span>
+                <span className="shrink-0 text-sm font-semibold text-yellow-400">{plural(f.days, "day")}</span>
               </Link>
             ))}
           </div>
@@ -351,11 +323,11 @@ export function YearReviewPage() {
 
       {/* ── What you heard ───────────────────────────────────────────────── */}
       {d.songsHeard > 0 && (
-        <Section title={`Songs heard live · ${d.songsHeard}`}>
+        <Section title="Songs heard live" count={d.songsHeard}>
           {d.topSongs.length > 0 ? (
             <ol className="space-y-1.5">
               {d.topSongs.map((s, i) => (
-                <li key={`${s.song}-${s.artistSlug ?? i}`} className="flex items-baseline gap-3 text-sm">
+                <li key={`${s.song}-${s.artistSlug ?? i}`} className="flex items-baseline gap-3 text-[15px]">
                   <span className="w-5 shrink-0 text-right text-xs font-mono text-text-subtle">{i + 1}</span>
                   <span className="min-w-0 flex-1 truncate">
                     {s.song}
@@ -379,24 +351,26 @@ export function YearReviewPage() {
       )}
 
       {/* ── The receipts ─────────────────────────────────────────────────── */}
-      <Section title={`Every show${d.photos + d.videos > 0 ? ` · ${plural(d.photos, "photo")}, ${plural(d.videos, "video")}` : ""}`}>
+      <Section title="Every show" count={d.totalShows}
+        action={d.photos + d.videos > 0 ? <span className="text-sm text-text-subtle">{plural(d.photos, "photo")} · {plural(d.videos, "video")}</span> : undefined}>
         <FlyerWall shows={d.shows} />
       </Section>
 
-      <div className="flex justify-between pt-2 text-xs font-mono">
-        {prevYear ? <Link to={`/year/${prevYear}`} className="text-text-muted hover:text-accent-lime">← {prevYear}</Link> : <span />}
-        {nextYear ? <Link to={`/year/${nextYear}`} className="text-text-muted hover:text-accent-lime">{nextYear} →</Link> : <span />}
+      <div className="grid grid-cols-2 gap-3">
+        {prevYear ? <LinkCard to={`/year/${prevYear}`} eyebrow="Previous" title={String(prevYear)} /> : <span />}
+        {nextYear ? <LinkCard to={`/year/${nextYear}`} eyebrow="Next" title={String(nextYear)} /> : <span />}
       </div>
     </div>
   );
 }
 
-function YearArrow({ to, label }: { to: number | undefined; label: string }) {
-  const cls = "w-8 h-8 flex items-center justify-center rounded border text-sm font-mono transition-colors";
-  if (to == null) return <span className={`${cls} border-border text-text-subtle opacity-30`}>{label}</span>;
+function YearArrow({ to, dir }: { to: number | undefined; dir: "left" | "right" }) {
+  const cls = "flex h-11 w-11 items-center justify-center rounded-full border transition-colors";
+  if (to == null) return <span className={`${cls} border-border text-text-subtle opacity-30`}><Chevron dir={dir} /></span>;
   return (
-    <Link to={`/year/${to}`} title={String(to)} className={`${cls} border-border text-text-muted hover:text-accent-lime hover:border-accent-lime`}>
-      {label}
+    <Link to={`/year/${to}`} aria-label={String(to)} title={String(to)}
+      className={`${cls} border-border text-text-muted hover:border-accent-lime hover:text-accent-lime`}>
+      <Chevron dir={dir} />
     </Link>
   );
 }

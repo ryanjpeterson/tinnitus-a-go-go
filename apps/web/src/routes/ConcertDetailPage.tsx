@@ -13,6 +13,8 @@ import { VenueMap } from "@/components/VenueMap";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
 import type { CarouselItem } from "@/components/PhotoCarousel";
 import { useAuth } from "@/lib/auth-context";
+import { EmptyState, Hero, Loading, StatusBadge } from "@/components/ui/kit";
+import { Button } from "@/components/ui/button";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -190,7 +192,7 @@ function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; is
 
   return (
     <div
-      className="rounded-lg border border-border bg-surface overflow-hidden relative"
+      className="card overflow-hidden relative"
       onDragEnter={handleFlyerDragEnter}
       onDragLeave={handleFlyerDragLeave}
       onDragOver={(e) => e.preventDefault()}
@@ -762,7 +764,7 @@ function PhotoGallery({
 
       {/* Toolbar */}
       <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-        <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted">Media</h2>
+        <h2 className="h-section">Media</h2>
         {isAdmin && (
           <div className="flex items-center gap-2 ml-auto">
             {!reordering && !tagging ? (
@@ -1349,9 +1351,9 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="card p-4 sm:p-5">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-mono uppercase tracking-wider text-text-muted">Concert info</span>
+        <span className="h-section">Concert info</span>
         {!editing ? (
           <button
             onClick={enterEdit}
@@ -1617,9 +1619,9 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
   };
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="card p-4 sm:p-5">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-mono uppercase tracking-wider text-text-muted">Attendance</span>
+        <span className="h-section">Attendance</span>
       </div>
 
       <div className="space-y-3">
@@ -2020,10 +2022,10 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
   });
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="card p-4 sm:p-5">
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted">Lineup</h2>
+        <h2 className="h-section">Lineup</h2>
         {isAdmin && (
           !editing ? (
             <button
@@ -2484,9 +2486,9 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
   const anyLoaded = Object.values(artistStates).some((s) => s.loaded);
 
   return (
-    <div className="rounded-lg border border-border bg-surface overflow-hidden">
+    <div className="card overflow-hidden">
       <div className="px-4 py-3 border-b border-border">
-        <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted">Setlists</h2>
+        <h2 className="h-section">Setlists</h2>
       </div>
 
       {unavailable && (
@@ -2706,15 +2708,11 @@ export function ConcertDetailPage() {
     enabled: !!id,
   });
 
-  if (concertQuery.isLoading) {
-    return <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">Loading…</div>;
-  }
+  if (concertQuery.isLoading) return <Loading />;
   if (concertQuery.isError || !concertQuery.data) {
     return (
-      <div className="py-16 text-center font-mono text-sm text-accent-pink">
-        Show not found.{" "}
-        <Link to="/shows" className="underline text-text-muted">Back to Shows</Link>
-      </div>
+      <EmptyState tone="error" title="Show not found."
+        action={<Link to="/shows"><Button variant="secondary">Back to Shows</Button></Link>} />
     );
   }
 
@@ -2738,62 +2736,56 @@ export function ConcertDetailPage() {
     concert.eventSeries?.name ??
     "Unknown show";
 
+  const isFestivalDay = concert.type === "festival_day" && !!concert.eventSeries;
+
   return (
     <div>
-      {/* Breadcrumb */}
-      <Link to="/shows" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
-        ← Shows
-      </Link>
+      <Hero
+        back={{ to: "/shows", label: "Shows" }}
+        imageUrl={concert.flyerUrl}
+        eyebrow={concert.eventSeries ? concert.eventSeries.name : "Concert"}
+        title={title}
+        accent={isFestivalDay ? "yellow" : "lime"}
+        actions={
+          <>
+            {concert.attendance && <StatusBadge status={concert.attendance.status} className="h-10 px-4 text-sm" />}
+            {concert.eventSeries && (
+              <Link to={`/festivals/${concert.eventSeries.slug}`}>
+                <Button variant="secondary" className="rounded-full">{isFestivalDay ? "Festival lineup" : "Tour page"}</Button>
+              </Link>
+            )}
+            {concert.sourceUrl && (
+              <a href={concert.sourceUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" className="rounded-full">Event page ↗</Button>
+              </a>
+            )}
+          </>
+        }
+      >
+        <p className="font-semibold text-text-base">
+          <time dateTime={concert.date}>{fmtDateLong(concert.date)}</time>
+          {concert.dateIsApproximate && <span className="ml-2 text-sm font-normal text-text-subtle">(approximate)</span>}
+        </p>
+        {concert.venue && (
+          <p>
+            <Link to={`/venues/${concert.venue.slug}`} className="hover:text-accent-lime">{concert.venue.name}</Link>
+            {concert.venue.city && <span className="text-text-subtle"> · {concert.venue.city}</span>}
+          </p>
+        )}
+      </Hero>
 
       {/* Two-column layout on desktop; single column on mobile/tablet */}
-      <div className="mt-4 lg:grid lg:gap-6 lg:grid-cols-[320px_1fr]">
-        {/* ── Left column: flyer (desktop only) ── */}
-        <div className="hidden lg:block sticky top-6 self-start">
-          <p className="text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Flyer</p>
+      <div className="lg:grid lg:grid-cols-[300px_1fr] lg:gap-6">
+        {/* ── Left column: flyer + map (desktop only) ── */}
+        <div className="sticky top-24 hidden space-y-4 self-start lg:block">
           <FlyerSection concert={concert} isAdmin={isAdmin} />
+          {concert.venue?.lat != null && concert.venue.lng != null && (
+            <VenueMap lat={concert.venue.lat} lng={concert.venue.lng} venueName={concert.venue.name} compact />
+          )}
         </div>
 
         {/* ── Right column (full width on mobile/tablet) ── */}
-        <div className="min-w-0 space-y-4">
-          {/* Header */}
-          <div>
-            <h1 className="font-display uppercase text-3xl mb-1">{title}</h1>
-            {concert.eventSeries && (
-              <Link to={`/festivals/${concert.eventSeries.slug}`} className="inline-block text-accent-pink hover:underline font-mono text-sm mb-1">
-                {concert.eventSeries.name}
-              </Link>
-            )}
-            <div className="text-text-muted text-sm">
-              <time dateTime={concert.date} className="font-mono">{fmtDateLong(concert.date)}</time>
-              {concert.dateIsApproximate && <span className="ml-2 text-text-subtle text-xs">(approximate)</span>}
-            </div>
-            {concert.venue && (
-              <div className="text-text-muted text-sm mt-0.5">
-                <Link to={`/venues/${concert.venue.slug}`} className="hover:text-accent-lime transition-colors">
-                  {concert.venue.name}
-                </Link>
-                {concert.venue.city && <span className="text-text-subtle"> · {concert.venue.city}</span>}
-              </div>
-            )}
-            {/* Compact venue map - desktop only */}
-            {concert.venue?.lat != null && concert.venue.lng != null && (
-              <div className="mt-3 hidden sm:block">
-                <VenueMap
-                  lat={concert.venue.lat}
-                  lng={concert.venue.lng}
-                  venueName={concert.venue.name}
-                  compact
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Flyer — mobile/tablet only, between header and concert info */}
-          <div className="lg:hidden">
-            <p className="text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Flyer</p>
-            <FlyerSection concert={concert} isAdmin={isAdmin} />
-          </div>
-
+        <div className="min-w-0 space-y-6">
           {/* Concert info (admin only) */}
           {isAdmin && <ConcertMetaEditor key={concert.id} concert={concert} />}
 
@@ -2803,22 +2795,26 @@ export function ConcertDetailPage() {
           {/* Attendance (admin only) */}
           {isAdmin && <AttendanceEditor key={concert.id} concertId={concert.id} attendance={concert.attendance} />}
 
-          {/* Venue map - mobile only, larger */}
+          {/* Flyer — mobile/tablet only (desktop shows it in the left column) */}
+          {/* Skipped for visitors when there's nothing to show — the hero already has the thumbnail slot */}
+          {(concert.flyerUrl || isAdmin) && (
+            <section className="space-y-3 lg:hidden">
+              <h2 className="h-section px-0.5">Flyer</h2>
+              <FlyerSection concert={concert} isAdmin={isAdmin} />
+            </section>
+          )}
+
+          {/* Venue map — mobile/tablet only */}
           {concert.venue?.lat != null && concert.venue.lng != null && (
-            <div className="sm:hidden rounded-lg border border-border bg-surface p-4">
-              <p className="text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Location</p>
-              <VenueMap
-                lat={concert.venue.lat}
-                lng={concert.venue.lng}
-                venueName={concert.venue.name}
-              />
-              <div className="mt-3 text-sm text-text-muted">
-                <Link to={`/venues/${concert.venue.slug}`} className="hover:text-accent-lime transition-colors">
-                  {concert.venue.name}
+            <section className="space-y-3 lg:hidden">
+              <div className="flex items-end justify-between gap-3 px-0.5">
+                <h2 className="h-section">Location</h2>
+                <Link to={`/venues/${concert.venue.slug}`} className="truncate text-sm font-semibold text-text-muted hover:text-accent-lime">
+                  {concert.venue.name} ›
                 </Link>
-                {concert.venue.city && <span className="text-text-subtle"> · {concert.venue.city}</span>}
               </div>
-            </div>
+              <VenueMap lat={concert.venue.lat} lng={concert.venue.lng} venueName={concert.venue.name} />
+            </section>
           )}
 
           {/* Setlist (admin only) */}
@@ -2827,7 +2823,7 @@ export function ConcertDetailPage() {
           )}
 
           {/* Photo gallery */}
-          <div className="rounded-lg border border-border bg-surface p-4">
+          <div className="card p-4 sm:p-5">
             <PhotoGallery
               concertId={concert.id}
               concertDate={concert.date}
@@ -2835,13 +2831,6 @@ export function ConcertDetailPage() {
               isAdmin={isAdmin}
             />
           </div>
-
-          {concert.sourceUrl && (
-            <a href={concert.sourceUrl} target="_blank" rel="noopener noreferrer"
-              className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
-              → Event source ↗
-            </a>
-          )}
 
           {/* Delete show (admin only) */}
           {isAdmin && (
@@ -2858,7 +2847,7 @@ export function ConcertDetailPage() {
                     setDeleting(false);
                   }
                 }}
-                className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors disabled:opacity-50"
+                className="text-sm font-semibold text-text-subtle hover:text-accent-pink transition-colors disabled:opacity-50"
               >
                 {deleting ? "Deleting…" : "Delete show"}
               </button>

@@ -28,6 +28,35 @@
     -webkit-overflow-scrolling: touch;
   }
   ::selection { background: #A8FF3E; color: #141416; }
+
+  /* Headings: Archivo at a heavy weight with slightly tight tracking.
+     Utilities like font-bold still override this where needed. */
+  .font-display {
+    font-weight: 800;
+    letter-spacing: -0.015em;
+  }
+}
+
+@layer components {
+  /* The one card surface every section, list and tile sits on. */
+  .card {
+    @apply rounded-xl border border-border bg-surface;
+  }
+  /* Small label above a heading or number. */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-text-subtle;
+  }
+  .h-page {
+    @apply font-display text-[30px] leading-[1.05] text-text-base sm:text-4xl;
+  }
+  .h-section {
+    @apply font-display text-xl leading-tight text-text-base sm:text-[22px];
+  }
+  /* Text input / select surface. */
+  .field {
+    @apply rounded-xl border border-border bg-surface px-4 text-[15px] text-text-base placeholder:text-text-subtle
+      focus:border-accent-lime focus:outline-none focus:ring-2 focus:ring-accent-lime/20;
+  }
 }
 
 @layer utilities {

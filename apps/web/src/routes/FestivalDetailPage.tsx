@@ -9,6 +9,8 @@ import { clsx } from "clsx";
 import { api, type FestivalSet, type ArtistListItem } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
 import { useAuth } from "@/lib/auth-context";
+import { Button } from "@/components/ui/button";
+import { Chevron, DateBlock, EmptyState, Hero, Loading, StatTile, StatusBadge } from "@/components/ui/kit";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
@@ -165,14 +167,11 @@ export function FestivalDetailPage() {
   const [flyerUrlImporting, setFlyerUrlImporting] = useState(false);
   const [flyerError, setFlyerError] = useState<string | null>(null);
 
-  if (q.isLoading) {
-    return <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">Loading…</div>;
-  }
+  if (q.isLoading) return <Loading />;
   if (q.isError || !q.data) {
     return (
-      <div className="py-16 text-center font-mono text-sm text-accent-pink">
-        Festival not found. <Link to="/festivals" className="underline text-text-muted">Back to festivals</Link>
-      </div>
+      <EmptyState tone="error" title="Festival not found."
+        action={<Link to="/festivals"><Button variant="secondary">Back to festivals</Button></Link>} />
     );
   }
 
@@ -337,235 +336,108 @@ export function FestivalDetailPage() {
 
   const statusColor = attendance ? STATUS_COLORS[attendance.status] ?? "" : "";
 
+  const flyerBusy = uploadingFlyer || flyerUrlImporting;
+  const dateRange = (festival.startDate || festival.endDate)
+    ? `${fmtDate(festival.startDate)}${festival.endDate && festival.endDate !== festival.startDate ? ` – ${fmtDate(festival.endDate)}` : ""}`
+    : null;
+
   return (
-    <div className="max-w-3xl">
-      <Link to="/festivals" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
-        ← Festivals
-      </Link>
+    <div className="space-y-6">
+      <Hero
+        back={{ to: "/festivals", label: "Festivals" }}
+        imageUrl={festival.flyerUrl}
+        eyebrow="Festival"
+        title={festival.name}
+        accent="yellow"
+        actions={
+          <>
+            {attendance && <StatusBadge status={attendance.status} className="h-10 px-4 text-sm" />}
+            {isAdmin && !editing && <Button variant="secondary" className="rounded-full" onClick={startEdit}>Edit festival</Button>}
+            {isAdmin && (
+              <label className={`inline-flex h-10 cursor-pointer items-center rounded-full border border-border bg-surface-2 px-4 text-sm font-semibold transition-colors hover:bg-surface ${flyerBusy ? "pointer-events-none opacity-50" : ""}`}>
+                {uploadingFlyer ? "Uploading…" : festival.flyerUrl ? "Replace flyer" : "Upload flyer"}
+                <input ref={flyerFileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
+                  onChange={(e) => void handleFlyerUpload(e)} disabled={flyerBusy} />
+              </label>
+            )}
+            {isAdmin && <Button variant="ghost" className="rounded-full" disabled={flyerBusy} onClick={() => setShowFlyerUrlInput((v) => !v)}>Flyer URL</Button>}
+            {isAdmin && festival.flyerUrl && (
+              <Button variant="ghost" className="rounded-full text-text-muted hover:text-accent-pink" disabled={flyerBusy} onClick={handleDeleteFlyer}>Remove flyer</Button>
+            )}
+            {festival.sourceUrl && (
+              <a href={festival.sourceUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" className="rounded-full">Event page ↗</Button>
+              </a>
+            )}
+          </>
+        }
+      >
+        {dateRange && <p className="font-semibold text-text-base">{dateRange}</p>}
+        {festival.venue && (
+          <p>
+            <Link to={`/venues/${festival.venue.slug}`} className="hover:text-accent-lime">{festival.venue.name}</Link>
+            {festival.venue.city && <span className="text-text-subtle"> · {festival.venue.city}{festival.venue.region && `, ${festival.venue.region}`}</span>}
+          </p>
+        )}
+      </Hero>
 
-      {/* Header with flyer */}
-      <div className="mt-4 mb-6 flex gap-6">
-        {/* Flyer */}
-        <div className="w-40 shrink-0">
-          <div className="aspect-[3/4] rounded-lg border border-border overflow-hidden bg-surface-2 relative group">
-            {festival.flyerUrl ? (
-              <>
-                <div
-                  className="absolute inset-0 bg-cover bg-center blur-lg scale-110 opacity-50"
-                  style={{ backgroundImage: `url(${festival.flyerUrl})` }}
-                />
-                <img
-                  src={festival.flyerUrl}
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-contain"
-                />
-                {isAdmin && (
-                  <button
-                    onClick={handleDeleteFlyer}
-                    className="absolute top-1 right-1 w-6 h-6 rounded bg-black/60 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                    title="Remove flyer"
-                  >×</button>
-                )}
-              </>
-            ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-text-subtle">
-                <span className="text-3xl font-display text-yellow-400/30 uppercase mb-2">
-                  {festival.name.slice(0, 2)}
-                </span>
-              </div>
-            )}
-            {(uploadingFlyer || flyerUrlImporting) && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <span className="text-xs font-mono text-white animate-pulse">
-                  {flyerUrlImporting ? "Importing…" : "Uploading…"}
-                </span>
-              </div>
-            )}
+      {isAdmin && (showFlyerUrlInput || flyerError) && (
+        <div className="space-y-2">
+          {showFlyerUrlInput && (
+            <div className="flex gap-2">
+              <input type="url" placeholder="Paste image URL" value={flyerUrlInput}
+                onChange={(e) => setFlyerUrlInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void handleFlyerUrlImport()}
+                disabled={flyerUrlImporting} className="field h-12 flex-1 sm:h-11" />
+              <Button onClick={() => void handleFlyerUrlImport()} disabled={flyerUrlImporting || !flyerUrlInput.trim()} className="h-12 sm:h-11">
+                {flyerUrlImporting ? "Importing…" : "Import"}
+              </Button>
+            </div>
+          )}
+          {flyerError && <p className="text-sm text-accent-pink">{flyerError}</p>}
+        </div>
+      )}
+
+      {/* Edit form (admin only) */}
+      {isAdmin && editing && (
+        <div className="card space-y-4 p-4 sm:p-5">
+          <h2 className="h-section">Edit festival</h2>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-semibold text-text-muted">Name</span>
+            <input value={editName} onChange={(e) => setEditName(e.target.value)} className="field h-12 w-full sm:h-11" />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-text-muted">Start date</span>
+              <input type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)}
+                className="field h-12 w-full [color-scheme:dark] sm:h-11" />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-text-muted">End date</span>
+              <input type="date" value={editEndDate} min={editStartDate || undefined} onChange={(e) => setEditEndDate(e.target.value)}
+                className="field h-12 w-full [color-scheme:dark] sm:h-11" />
+            </label>
           </div>
-          {/* Flyer controls */}
-          {isAdmin && (
-            <div className="mt-2 space-y-2">
-              <div className="flex gap-1 justify-center">
-                <label className="text-xs font-mono text-text-subtle hover:text-accent-lime cursor-pointer transition-colors border border-border rounded px-2 py-1">
-                  {festival.flyerUrl ? "Replace" : "Upload"}
-                  <input
-                    ref={flyerFileRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="sr-only"
-                    onChange={(e) => void handleFlyerUpload(e)}
-                    disabled={uploadingFlyer || flyerUrlImporting}
-                  />
-                </label>
-                <button
-                  onClick={() => setShowFlyerUrlInput((v) => !v)}
-                  disabled={uploadingFlyer || flyerUrlImporting}
-                  className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors border border-border rounded px-2 py-1"
-                >
-                  URL
-                </button>
-                {festival.flyerUrl && (
-                  <button
-                    onClick={handleDeleteFlyer}
-                    disabled={uploadingFlyer || flyerUrlImporting}
-                    className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors border border-border rounded px-2 py-1"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-              {showFlyerUrlInput && (
-                <div className="flex gap-1">
-                  <input
-                    type="url"
-                    placeholder="Paste image URL…"
-                    value={flyerUrlInput}
-                    onChange={(e) => setFlyerUrlInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && void handleFlyerUrlImport()}
-                    disabled={flyerUrlImporting}
-                    className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
-                  />
-                  <button
-                    onClick={() => void handleFlyerUrlImport()}
-                    disabled={flyerUrlImporting || !flyerUrlInput.trim()}
-                    className="text-xs font-mono px-2 py-1 rounded bg-accent-lime text-bg font-bold disabled:opacity-50"
-                  >
-                    {flyerUrlImporting ? "…" : "Go"}
-                  </button>
-                </div>
-              )}
-              {flyerError && (
-                <p className="text-xs text-accent-pink font-mono text-center">{flyerError}</p>
-              )}
-            </div>
-          )}
+          {saveError && <p className="text-sm text-accent-pink">{saveError}</p>}
+          <div className="flex gap-2">
+            <Button onClick={() => void saveEdit()} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+            <Button variant="secondary" onClick={cancelEdit} disabled={saving}>Cancel</Button>
+          </div>
         </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          {isAdmin && editing ? (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-mono text-text-muted mb-1">Name</label>
-                <input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full rounded border border-border bg-surface px-3 py-2 text-sm text-text-base focus:outline-none focus:border-accent-lime"
-                />
-              </div>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="block text-xs font-mono text-text-muted mb-1">Start date</label>
-                  <input
-                    type="date"
-                    value={editStartDate}
-                    onChange={(e) => setEditStartDate(e.target.value)}
-                    className="w-full rounded border border-border bg-surface px-3 py-2 text-sm text-text-base focus:outline-none focus:border-accent-lime [color-scheme:dark]"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs font-mono text-text-muted mb-1">End date</label>
-                  <input
-                    type="date"
-                    value={editEndDate}
-                    min={editStartDate || undefined}
-                    onChange={(e) => setEditEndDate(e.target.value)}
-                    className="w-full rounded border border-border bg-surface px-3 py-2 text-sm text-text-base focus:outline-none focus:border-accent-lime [color-scheme:dark]"
-                  />
-                </div>
-              </div>
-              {saveError && <p className="text-xs font-mono text-accent-pink">{saveError}</p>}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => void saveEdit()}
-                  disabled={saving}
-                  className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {saving ? "Saving…" : "Save"}
-                </button>
-                <button
-                  onClick={cancelEdit}
-                  disabled={saving}
-                  className="text-xs font-mono px-3 py-1.5 rounded border border-border text-text-muted hover:text-text-base transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h1 className="font-display uppercase text-3xl mb-1">{festival.name}</h1>
-                </div>
-                {isAdmin && (
-                  <button
-                    onClick={startEdit}
-                    className="mt-1 text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors shrink-0"
-                  >
-                    Edit
-                  </button>
-                )}
-              </div>
-
-              {(festival.startDate || festival.endDate) && (
-                <p className="text-sm font-mono text-text-muted mt-2">
-                  {fmtDate(festival.startDate)}
-                  {festival.endDate && festival.endDate !== festival.startDate && ` – ${fmtDate(festival.endDate)}`}
-                </p>
-              )}
-
-              {festival.venue && (
-                <Link
-                  to={`/venues/${festival.venue.slug}`}
-                  className="block text-sm text-text-subtle hover:text-accent-lime transition-colors mt-1"
-                >
-                  {festival.venue.name}
-                  {festival.venue.city && ` · ${festival.venue.city}`}
-                  {festival.venue.region && `, ${festival.venue.region}`}
-                </Link>
-              )}
-
-              {festival.sourceUrl && (
-                <a
-                  href={festival.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors mt-2 truncate"
-                >
-                  {festival.sourceUrl} ↗
-                </a>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="rounded-lg border border-border bg-surface p-4 text-center">
-          <div className="font-mono text-2xl text-text-base">{stats.totalArtists}</div>
-          <div className="text-xs text-text-muted mt-1">Artists</div>
-        </div>
-        <div className="rounded-lg border border-border bg-surface p-4 text-center">
-          <div className="font-mono text-2xl text-text-base">{stats.totalDays}</div>
-          <div className="text-xs text-text-muted mt-1">Days</div>
-        </div>
-        <div className="rounded-lg border border-border bg-surface p-4 text-center">
-          {attendance?.rating ? (
-            <div className="font-mono text-2xl text-accent-lime">{attendance.rating}/10</div>
-          ) : (
-            <div className="font-mono text-2xl text-text-subtle">—</div>
-          )}
-          <div className="text-xs text-text-muted mt-1">Rating</div>
-        </div>
+      <div className="grid grid-cols-3 gap-3">
+        <StatTile label="Artists" value={stats.totalArtists} accent="lime" />
+        <StatTile label="Days" value={stats.totalDays} />
+        <StatTile label="Rating" value={attendance?.rating ? `${attendance.rating}/10` : "—"} />
       </div>
 
       {/* Attendance section (admin only) */}
       {isAdmin && (
-        <div className="rounded-lg border border-border bg-surface p-4 mb-6">
+        <div className="card p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-mono text-text-muted uppercase">Attendance</h2>
+            <h2 className="h-section">Attendance</h2>
             {!editingAttendance && attendance && (
               <button
                 onClick={startEditAttendance}
@@ -656,16 +528,16 @@ export function FestivalDetailPage() {
 
       {/* Event notes */}
       {festival.eventNotes && (
-        <div className="rounded-lg border border-border bg-surface p-4 mb-6">
-          <h2 className="text-sm font-mono text-text-muted uppercase mb-2">Notes</h2>
+        <div className="card p-4 sm:p-5">
+          <h2 className="h-section mb-2">Notes</h2>
           <p className="text-sm text-text-base whitespace-pre-wrap">{festival.eventNotes}</p>
         </div>
       )}
 
       {/* Lineup section */}
-      <div className="mb-6">
+      <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-mono text-text-muted uppercase">Lineup</h2>
+          <h2 className="h-section">Lineup</h2>
           {isAdmin && !editingLineup && (
             <button
               onClick={startEditLineup}
@@ -729,7 +601,7 @@ export function FestivalDetailPage() {
           </div>
         ) : sets.length > 0 ? (
           <div className="space-y-3">
-            {Object.entries(setsByDate).map(([date, dateSets]) => {
+            {Object.entries(setsByDate).map(([date, dateSets], dayIdx) => {
               const concert = concertsByDate[date];
               const concertUrl = concert?.slug
                 ? `/shows/${concert.slug}`
@@ -740,33 +612,31 @@ export function FestivalDetailPage() {
               return (
                 <div
                   key={date}
-                  className="rounded-lg border border-border bg-surface p-4"
+                  className="card overflow-hidden"
                 >
-                  <div className="flex items-baseline justify-between mb-3">
-                    {concertUrl ? (
-                      <Link
-                        to={concertUrl}
-                        className="font-mono text-sm text-text-muted hover:text-accent-lime transition-colors"
-                      >
-                        {date !== "unknown" ? fmtDateShort(date) : "Date TBD"} →
-                      </Link>
-                    ) : (
-                      <time className="font-mono text-sm text-text-muted">
-                        {date !== "unknown" ? fmtDateShort(date) : "Date TBD"}
-                      </time>
-                    )}
-                    <span className="text-xs text-text-subtle">
-                      {dateSets.length} artist{dateSets.length !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  {/* Day header — a ticket-style row linking to that day's show */}
+                  {concertUrl && date !== "unknown" ? (
+                    <Link to={concertUrl} className="group flex min-h-[64px] items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface-2/70">
+                      <DateBlock date={date} />
+                      <span className="flex-1 text-[15px] font-semibold group-hover:text-accent-lime">Day {dayIdx + 1}</span>
+                      <span className="text-sm text-text-subtle">{dateSets.length} artist{dateSets.length !== 1 ? "s" : ""}</span>
+                      <Chevron className="text-text-subtle group-hover:text-accent-lime" />
+                    </Link>
+                  ) : (
+                    <div className="flex min-h-[64px] items-center gap-3 border-b border-border px-4 py-3">
+                      {date !== "unknown" ? <DateBlock date={date} /> : <span className="text-[15px] font-semibold">Date TBD</span>}
+                      <span className="flex-1" />
+                      <span className="text-sm text-text-subtle">{dateSets.length} artist{dateSets.length !== 1 ? "s" : ""}</span>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2 p-4">
                     {dateSets.map((set: FestivalSet) => (
                       <Link
                         key={set.id}
                         id={`set-${set.artist.slug}`}
                         to={`/artists/${set.artist.slug}`}
                         className={clsx(
-                          "text-xs px-2 py-1 rounded border font-mono transition-all scroll-mt-4",
+                          "rounded-full border px-3.5 py-2 text-sm font-medium transition-all scroll-mt-24",
                           highlightedSet === `set-${set.artist.slug}`
                             ? "border-accent-lime bg-lime-950 text-accent-lime ring-2 ring-accent-lime/50"
                             : "border-border bg-surface-2 text-text-muted hover:border-accent-lime hover:text-accent-lime",
@@ -790,7 +660,7 @@ export function FestivalDetailPage() {
         <div className="border-t border-border pt-6 mt-8">
           <button
             onClick={() => void handleRemoveAttendance()}
-            className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors"
+            className="text-sm font-semibold text-text-subtle hover:text-accent-pink transition-colors"
           >
             Delete festival
           </button>

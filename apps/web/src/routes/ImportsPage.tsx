@@ -73,7 +73,7 @@ export function ImportsPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-10">
-        <h1 className="font-display uppercase text-4xl mb-3">Imports</h1>
+        <h1 className="font-display text-4xl mb-3">Imports</h1>
         <p className="text-text-muted">
           Upload a <code className="font-mono">Concerts - Shows.csv</code>. We'll group rows by
           (date, venue), upsert artists/venues, and mark past shows as attended.
@@ -103,7 +103,7 @@ export function ImportsPage() {
         {active && (
           <section className="mt-8 rounded-lg border border-border bg-surface p-6">
             <div className="flex items-baseline justify-between">
-              <h2 className="font-display uppercase text-2xl">
+              <h2 className="font-display text-2xl">
                 {active.originalFilename ?? "Import"}
               </h2>
               <span
@@ -152,7 +152,7 @@ export function ImportsPage() {
         )}
 
         <section className="mt-12">
-          <h2 className="font-display uppercase text-xl mb-4">Recent imports</h2>
+          <h2 className="font-display text-xl mb-4">Recent imports</h2>
           {listQuery.data && listQuery.data.imports.length > 0 ? (
             <ul className="space-y-2 font-mono text-sm">
               {listQuery.data.imports.map((row) => (

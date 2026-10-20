@@ -26,12 +26,15 @@ export default {
         danger: "#FF5252",
       },
       fontFamily: {
-        display: ["Antonio", "ui-sans-serif", "system-ui", "sans-serif"],
+        // Heavy grotesque for headings — set to weight 800 in globals.css.
+        display: ["Archivo", "ui-sans-serif", "system-ui", "sans-serif"],
         script: ["'Caveat Brush'", "cursive"],
         body: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["'JetBrains Mono'", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       borderRadius: {
+        "2xl": "18px",
+        xl: "14px",
         lg: "10px",
         md: "8px",
         sm: "6px",

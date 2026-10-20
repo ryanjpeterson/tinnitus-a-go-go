@@ -172,7 +172,7 @@ export function CopyEditorPage() {
 
       <main className="max-w-3xl mx-auto px-5 py-8 sm:px-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-display uppercase mb-1">Copy Editor</h1>
+          <h1 className="text-2xl font-display mb-1">Copy Editor</h1>
           <p className="text-sm text-text-muted">
             Edit all website text. Changes take effect immediately (after a quick page refresh).
             Only you can see this page.

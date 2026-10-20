@@ -8,24 +8,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type ArtistPhoto, type ArtistSetlist, type SetlistfmResult } from "@/lib/api";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
 import { useAuth } from "@/lib/auth-context";
-
-function fmtDate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
-  });
-}
-
-const STATUS_CHIP: Record<string, { label: string; color: string }> = {
-  attended:  { label: "Attended",  color: "text-accent-lime" },
-  attending: { label: "Attending", color: "text-yellow-400"  },
-  interested:{ label: "Interested",color: "text-purple-400"  },
-  missed:    { label: "Missed",    color: "text-red-400"     },
-  cancelled: { label: "Cancelled", color: "text-text-subtle" },
-  dismissed: { label: "Dismissed", color: "text-text-subtle" },
-};
-const DEFAULT_CHIP = { label: "Unknown", color: "text-text-subtle" };
+import { fmtDate, plural } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { EmptyState, EventRow, Hero, List, Loading, Section } from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Inline edit form
@@ -149,7 +134,7 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
 
   return (
     <div className="rounded-lg border border-accent-lime/30 bg-surface p-5 mb-6">
-      <h2 className="font-display uppercase text-sm text-accent-lime tracking-widest mb-4">
+      <h2 className="font-display text-sm text-accent-lime tracking-widest mb-4">
         Edit Artist
       </h2>
 
@@ -350,6 +335,7 @@ export function ArtistPage() {
   const { user } = useAuth();
   const isAdmin = user?.isAdmin ?? false;
   const [editing, setEditing] = useState(false);
+  const [bioOpen, setBioOpen] = useState(false);
   const [photoLightbox, setPhotoLightbox] = useState<{ photos: ArtistPhoto[]; index: number } | null>(null);
 
   const q = useQuery({
@@ -372,73 +358,66 @@ export function ArtistPage() {
     staleTime: 30_000,
   });
 
-  if (q.isLoading) {
-    return <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">Loading…</div>;
-  }
+  if (q.isLoading) return <Loading />;
   if (q.isError || !q.data) {
     return (
-      <div className="py-16 text-center font-mono text-sm text-accent-pink">
-        Artist not found.{" "}
-        <Link to="/artists" className="underline text-text-muted">Back to artists</Link>
-      </div>
+      <EmptyState tone="error" title="Artist not found."
+        action={<Link to="/artists"><Button variant="secondary">Back to artists</Button></Link>} />
     );
   }
 
   const { artist, concerts, stats } = q.data;
 
+  // Photos grouped by show, in the order the API returns them.
+  const photoGroups = (() => {
+    const map = new Map<string, { date: string; venueName: string | null; venueCity: string | null; photos: ArtistPhoto[] }>();
+    for (const photo of photosQ.data?.photos ?? []) {
+      const existing = map.get(photo.concert.id);
+      if (existing) existing.photos.push(photo);
+      else map.set(photo.concert.id, {
+        date: photo.concert.date,
+        venueName: photo.concert.venue?.name ?? null,
+        venueCity: photo.concert.venue?.city ?? null,
+        photos: [photo],
+      });
+    }
+    return Array.from(map.entries());
+  })();
+
   return (
-    <div className="max-w-2xl">
-      <Link to="/artists" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
-        ← Artists
-      </Link>
-
-      {/* Artist photo */}
+    <div className="space-y-6">
       {!editing && (
-        <div className="mt-4 mb-5 rounded-lg border border-border bg-surface overflow-hidden">
-          <div className="relative aspect-video bg-surface-2">
-            {artist.imageUrl ? (
-              <img src={artist.imageUrl} alt={artist.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <span className="font-display uppercase text-4xl text-text-subtle opacity-20 tracking-widest">
-                  {artist.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="mb-5">
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <h1 className="font-display uppercase text-3xl mb-1">{artist.name}</h1>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-text-muted">
-              {artist.genre && <span>{artist.genre}</span>}
+        <Hero
+          back={{ to: "/artists", label: "Artists" }}
+          imageUrl={artist.imageUrl}
+          square
+          eyebrow={artist.genre ? artist.genre.split(",").slice(0, 2).join(" · ") : "Artist"}
+          title={artist.name}
+          actions={
+            <>
+              {isAdmin && <Button variant="secondary" className="rounded-full" onClick={() => setEditing(true)}>Edit artist</Button>}
               {artist.mbid && (
-                <a
-                  href={`https://musicbrainz.org/artist/${artist.mbid}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
-                >
-                  MusicBrainz ↗
+                <a href={`https://musicbrainz.org/artist/${artist.mbid}`} target="_blank" rel="noopener noreferrer">
+                  <Button variant="ghost" className="rounded-full">MusicBrainz ↗</Button>
                 </a>
               )}
-            </div>
-            {artist.bio && <p className="text-sm text-text-muted mt-2">{artist.bio}</p>}
-          </div>
-          {isAdmin && !editing && (
-            <button
-              onClick={() => setEditing(true)}
-              className="mt-1 flex-shrink-0 text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors border border-border rounded px-2.5 py-1"
-            >
-              Edit
-            </button>
+            </>
+          }
+        >
+          <p className="font-semibold text-text-base">{plural(concerts.length, "show")} logged</p>
+          {stats.firstSeen && (
+            <p>
+              First seen {fmtDate(stats.firstSeen)}
+              {stats.lastSeen && stats.lastSeen !== stats.firstSeen && <> · last {fmtDate(stats.lastSeen)}</>}
+            </p>
           )}
-        </div>
-      </div>
+          {stats.upcomingShow && (
+            <p className="text-yellow-400">
+              Next: {stats.upcomingShow.eventSeries?.name ?? stats.upcomingShow.venue?.name ?? "TBD"} · {fmtDate(stats.upcomingShow.date)}
+            </p>
+          )}
+        </Hero>
+      )}
 
       {/* Edit form (admin only) */}
       {isAdmin && editing && (
@@ -455,201 +434,107 @@ export function ArtistPage() {
         />
       )}
 
-      {/* First/last seen + upcoming show */}
-      {(stats.firstSeen || stats.upcomingShow) && (
-        <p className="text-xs text-text-subtle font-mono mb-4">
-          {stats.firstSeen && (
-            <>
-              First seen {fmtDate(stats.firstSeen)}
-              {stats.lastSeen && stats.lastSeen !== stats.firstSeen && (
-                <> · last seen {fmtDate(stats.lastSeen)}</>
-              )}
-            </>
-          )}
-          {stats.upcomingShow && (
-            <>
-              {stats.firstSeen && " · "}
-              <span className="text-yellow-400">
-                Playing{" "}
-                {stats.upcomingShow.eventSeries?.name ?? stats.upcomingShow.venue?.name ?? "TBD"}{" "}
-                on {fmtDate(stats.upcomingShow.date)}
-              </span>
-            </>
-          )}
-        </p>
-      )}
-
-      {/* Concert list */}
-      <div className="rounded-lg border border-border bg-surface overflow-hidden">
+      <section className="space-y-3">
+        <h2 className="h-section px-0.5">Shows<span className="ml-2 text-sm font-body font-medium text-text-subtle">{concerts.length}</span></h2>
         {concerts.length === 0 ? (
-          <p className="py-8 text-center text-xs text-text-subtle font-mono">No shows logged.</p>
+          <EmptyState title="No shows logged." />
         ) : (
-          concerts.map((c) => {
-            // Link to festival page for festival_day concerts, otherwise to concert page
-            const href = c.type === "festival_day" && c.eventSeries?.slug
-              ? `/festivals/${c.eventSeries.slug}#set-${slug}`
-              : `/shows/${c.id}`;
-            return (
-              <Link
-                key={c.id}
-                to={href}
-                className="flex items-start gap-4 py-3 px-4 border-b border-border last:border-b-0 hover:bg-surface-2 transition-colors"
-              >
-                <time className="w-28 shrink-0 text-right font-mono text-sm text-text-muted tabular-nums">
-                  {fmtDate(c.date)}
-                </time>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-text-base truncate">
-                    {c.type === "festival_day" && c.eventSeries ? (
-                      <>
-                        {c.eventSeries.name}
-                        {c.venue?.city && <span className="text-text-subtle"> · {c.venue.city}</span>}
-                      </>
-                    ) : (
-                      <>
-                        {c.venue?.name ?? "Unknown venue"}
-                        {c.venue?.city && <span className="text-text-subtle"> · {c.venue.city}</span>}
-                      </>
-                    )}
-                  </div>
-                  {c.type !== "festival_day" && c.eventSeries && (
-                    <div className="text-xs text-text-subtle font-mono italic">{c.eventSeries.name}</div>
-                  )}
-                  {c.appearanceNotes && (
-                    <div className="text-xs text-text-subtle italic mt-0.5">{c.appearanceNotes}</div>
-                  )}
-                </div>
-                {c.attendance && (
-                  <span className={`shrink-0 text-xs font-mono ${(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).color}`}>
-                    {(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).label}
-                  </span>
-                )}
-              </Link>
-            );
-          })
+          <List>
+            {concerts.map((c) => {
+              // Link to festival page for festival_day concerts, otherwise to concert page
+              const isFestival = c.type === "festival_day" && !!c.eventSeries;
+              const href = isFestival && c.eventSeries?.slug ? `/festivals/${c.eventSeries.slug}#set-${slug}` : `/shows/${c.id}`;
+              return (
+                <EventRow
+                  key={c.id}
+                  to={href}
+                  date={c.date}
+                  title={isFestival ? c.eventSeries!.name : (c.venue?.name ?? "Unknown venue")}
+                  subtitle={[isFestival ? c.venue?.name : null, c.venue?.city].filter(Boolean).join(" · ") || undefined}
+                  meta={[!isFestival ? c.eventSeries?.name : null, c.appearanceNotes].filter(Boolean).join(" · ") || undefined}
+                  status={c.attendance?.status}
+                />
+              );
+            })}
+          </List>
         )}
-      </div>
+      </section>
 
-      {/* Setlists section */}
+      {/* Setlists */}
       {(setlistsQ.data?.total ?? 0) > 0 && (
-        <div className="mt-8">
-          <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted mb-3">
-            Setlists
-            <span className="ml-2 text-text-subtle">({setlistsQ.data!.total})</span>
-          </h2>
-
-          <div className="rounded-lg border border-border bg-surface overflow-hidden">
+        <Section title="Setlists" count={setlistsQ.data!.total} flush>
+          <div className="divide-y divide-border">
             {setlistsQ.data!.setlists.map((setlist) => (
-              <div
-                key={setlist.id}
-                className="border-b border-border last:border-b-0 p-4"
-              >
-                <div className="flex items-baseline gap-2 mb-2">
-                  <Link
-                    to={`/shows/${setlist.concertId}`}
-                    className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors"
-                  >
+              <div key={setlist.id} className="p-4 sm:p-5">
+                <div className="mb-3 flex items-baseline gap-2">
+                  <Link to={`/shows/${setlist.concertId}`} className="min-w-0 truncate text-[15px] font-semibold hover:text-accent-lime">
                     {fmtDate(setlist.concertDate)}
-                    {setlist.venue && (
-                      <>
-                        <span className="ml-1 text-text-subtle">· {setlist.venue.name}</span>
-                        {setlist.venue.city && <span className="text-text-subtle">, {setlist.venue.city}</span>}
-                      </>
-                    )}
+                    {setlist.venue && <span className="font-normal text-text-muted"> · {setlist.venue.name}{setlist.venue.city && `, ${setlist.venue.city}`}</span>}
                   </Link>
                   {setlist.setlistfmId && (
-                    <a
-                      href={`https://www.setlist.fm/setlist/-/${setlist.setlistfmId}.html`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors ml-auto"
-                    >
+                    <a href={`https://www.setlist.fm/setlist/-/${setlist.setlistfmId}.html`} target="_blank" rel="noopener noreferrer"
+                      className="ml-auto shrink-0 text-sm text-text-subtle hover:text-accent-lime">
                       setlist.fm ↗
                     </a>
                   )}
                 </div>
-
-                {setlist.songs.length > 0 && (
-                  <ol className="text-sm text-text-muted space-y-0.5">
+                {setlist.songs.length > 0 ? (
+                  <ol className="space-y-1 text-[15px] text-text-muted">
                     {setlist.songs.map((song, i) => (
-                      <li key={i} className="flex items-baseline gap-2">
-                        <span className="text-xs text-text-subtle tabular-nums w-5 text-right">{song.position}.</span>
+                      <li key={i} className="flex items-baseline gap-3">
+                        <span className="w-6 text-right text-sm tabular-nums text-text-subtle">{song.position}</span>
                         <span className={song.isCover ? "italic" : ""}>
                           {song.name}
-                          {song.isCover && <span className="text-text-subtle ml-1">(cover)</span>}
+                          {song.isCover && <span className="ml-1 text-text-subtle">(cover)</span>}
                         </span>
                       </li>
                     ))}
                   </ol>
-                )}
-
-                {setlist.songs.length === 0 && (
-                  <p className="text-xs text-text-subtle italic">No song data available</p>
+                ) : (
+                  <p className="text-sm italic text-text-subtle">No song data available</p>
                 )}
               </div>
             ))}
           </div>
-        </div>
+        </Section>
       )}
 
-      {/* Photos section */}
-      {(photosQ.data?.total ?? 0) > 0 && (
-        <div className="mt-8">
-          <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted mb-3">
-            Photos
-            <span className="ml-2 text-text-subtle">({photosQ.data!.total})</span>
-          </h2>
-
-          {/* Group by concert */}
-          {(() => {
-            const photos = photosQ.data!.photos;
-            // Build ordered concert groups
-            const concertMap = new Map<string, { date: string; venueName: string | null; venueCity: string | null; photos: ArtistPhoto[] }>();
-            for (const photo of photos) {
-              const existing = concertMap.get(photo.concert.id);
-              if (existing) {
-                existing.photos.push(photo);
-              } else {
-                concertMap.set(photo.concert.id, {
-                  date: photo.concert.date,
-                  venueName: photo.concert.venue?.name ?? null,
-                  venueCity: photo.concert.venue?.city ?? null,
-                  photos: [photo],
-                });
-              }
-            }
-            return Array.from(concertMap.entries()).map(([concertId, group]) => (
-              <div key={concertId} className="mb-5">
-                <div className="flex items-baseline gap-2 mb-2">
-                  <Link
-                    to={`/shows/${concertId}`}
-                    className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors"
-                  >
-                    {fmtDate(group.date)}
-                    {group.venueName && <span className="ml-1 text-text-subtle">· {group.venueName}</span>}
-                    {group.venueCity && <span className="text-text-subtle">, {group.venueCity}</span>}
-                  </Link>
-                </div>
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+      {/* Photos, grouped by show */}
+      {photoGroups.length > 0 && (
+        <Section title="Photos" count={photosQ.data!.total}>
+          <div className="space-y-5">
+            {photoGroups.map(([concertId, group]) => (
+              <div key={concertId}>
+                <Link to={`/shows/${concertId}`} className="mb-2 block text-sm font-semibold text-text-muted hover:text-accent-lime">
+                  {fmtDate(group.date)}
+                  {group.venueName && <span className="font-normal text-text-subtle"> · {group.venueName}{group.venueCity && `, ${group.venueCity}`}</span>}
+                </Link>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                   {group.photos.map((p, pi) => (
                     <button
                       key={p.id}
                       onClick={() => setPhotoLightbox({ photos: group.photos, index: pi })}
-                      className="aspect-square rounded overflow-hidden bg-surface border border-border hover:border-accent-lime transition-colors"
+                      className="aspect-square overflow-hidden rounded-lg border border-border bg-surface-2 transition-colors hover:border-accent-lime"
                     >
-                      <img
-                        src={p.urls.thumb ?? p.urls.medium ?? p.urls.original}
-                        alt=""
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
+                      <img src={p.urls.thumb ?? p.urls.medium ?? p.urls.original} alt="" className="h-full w-full object-cover" loading="lazy" />
                     </button>
                   ))}
                 </div>
               </div>
-            ));
-          })()}
-        </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {artist.bio && (
+        <Section title="About">
+          <p className={`text-[15px] leading-relaxed text-text-muted ${bioOpen ? "" : "line-clamp-4"}`}>{artist.bio}</p>
+          {artist.bio.length > 280 && (
+            <button onClick={() => setBioOpen((v) => !v)} className="mt-2 text-sm font-semibold text-accent-lime">
+              {bioOpen ? "Show less" : "Read more"}
+            </button>
+          )}
+        </Section>
       )}
 
       {/* Photo carousel lightbox */}

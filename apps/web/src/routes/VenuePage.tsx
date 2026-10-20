@@ -8,24 +8,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type VenueAlias } from "@/lib/api";
 import { VenueMap } from "@/components/VenueMap";
 import { useAuth } from "@/lib/auth-context";
-
-function fmtDate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
-  });
-}
-
-const STATUS_CHIP: Record<string, { label: string; color: string }> = {
-  attended:  { label: "Attended",  color: "text-accent-lime" },
-  attending: { label: "Attending", color: "text-yellow-400"  },
-  interested:{ label: "Interested",color: "text-purple-400"  },
-  missed:    { label: "Missed",    color: "text-red-400"     },
-  cancelled: { label: "Cancelled", color: "text-text-subtle" },
-  dismissed: { label: "Dismissed", color: "text-text-subtle" },
-};
-const DEFAULT_CHIP = { label: "Unknown", color: "text-text-subtle" };
+import { fmtDate, plural } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { EmptyState, EventRow, Hero, List, Loading, StatTile } from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Venue edit form
@@ -73,7 +58,7 @@ function VenueEditForm({ venue, onCancel, onSaved }: VenueEditFormProps) {
 
   return (
     <div className="rounded-lg border border-accent-lime/30 bg-surface p-5 mb-6">
-      <h2 className="font-display uppercase text-sm text-accent-lime tracking-widest mb-4">Edit Venue</h2>
+      <h2 className="font-display text-sm text-accent-lime tracking-widest mb-4">Edit Venue</h2>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
@@ -188,9 +173,9 @@ function AliasesSection({
   });
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 mb-6">
+    <div className="card p-4 sm:p-5">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-mono uppercase tracking-wider text-text-muted">
+        <h2 className="h-section">
           Also known as
         </h2>
         {isAdmin && !adding && (
@@ -314,14 +299,11 @@ export function VenuePage() {
     enabled: !!slug,
   });
 
-  if (q.isLoading) {
-    return <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">Loading…</div>;
-  }
+  if (q.isLoading) return <Loading />;
   if (q.isError || !q.data) {
     return (
-      <div className="py-16 text-center font-mono text-sm text-accent-pink">
-        Venue not found. <Link to="/venues" className="underline text-text-muted">Back to venues</Link>
-      </div>
+      <EmptyState tone="error" title="Venue not found."
+        action={<Link to="/venues"><Button variant="secondary">Back to venues</Button></Link>} />
     );
   }
 
@@ -371,134 +353,61 @@ export function VenuePage() {
 
   const hasCoords = venue.lat != null && venue.lng != null;
 
+  const busy = uploadingPhoto || photoUrlImporting;
+  const place = [venue.city, venue.region, venue.country].filter(Boolean).join(", ");
+
   return (
-    <div className="max-w-2xl">
-      <Link to="/venues" className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
-        ← Venues
-      </Link>
-
-      {/* Venue photo */}
-      <div className="mt-4 mb-5">
-        <div className="rounded-lg border border-border bg-surface overflow-hidden">
-          <div className="relative aspect-video bg-surface-2 group">
-            {venue.imageUrl ? (
-              <>
-                <img src={venue.imageUrl} alt={venue.name} className="w-full h-full object-cover" />
-                {isAdmin && (
-                  <button
-                    onClick={() => void handleDeletePhoto()}
-                    className="absolute top-2 right-2 w-6 h-6 rounded bg-black/60 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                    title="Remove photo"
-                  >×</button>
-                )}
-              </>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <span className="font-display uppercase text-4xl text-text-subtle opacity-20 tracking-widest">
-                  {venue.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")}
-                </span>
-              </div>
-            )}
-            {(uploadingPhoto || photoUrlImporting) && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <span className="text-xs font-mono text-white animate-pulse">
-                  {photoUrlImporting ? "Importing…" : "Uploading…"}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-        {/* Photo controls */}
-        {isAdmin && (
-          <div className="mt-2 space-y-2">
-            <div className="flex gap-1 justify-center">
-              <label className="text-xs font-mono text-text-subtle hover:text-accent-lime cursor-pointer transition-colors border border-border rounded px-2 py-1">
-                {venue.imageUrl ? "Replace" : "Upload"}
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="sr-only"
-                  onChange={(e) => void handlePhotoUpload(e)}
-                  disabled={uploadingPhoto || photoUrlImporting}
-                />
+    <div className="space-y-6">
+      {!editing && (
+        <Hero
+          back={{ to: "/venues", label: "Venues" }}
+          imageUrl={venue.imageUrl}
+          square
+          eyebrow="Venue"
+          title={venue.name}
+          accent="pink"
+          actions={isAdmin && (
+            <>
+              <Button variant="secondary" className="rounded-full" onClick={() => setEditing(true)}>Edit venue</Button>
+              <label className={`inline-flex h-10 cursor-pointer items-center rounded-full border border-border bg-surface-2 px-4 text-sm font-semibold transition-colors hover:bg-surface ${busy ? "pointer-events-none opacity-50" : ""}`}>
+                {uploadingPhoto ? "Uploading…" : venue.imageUrl ? "Replace photo" : "Upload photo"}
+                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
+                  onChange={(e) => void handlePhotoUpload(e)} disabled={busy} />
               </label>
-              <button
-                onClick={() => setShowPhotoUrlInput((v) => !v)}
-                disabled={uploadingPhoto || photoUrlImporting}
-                className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors border border-border rounded px-2 py-1"
-              >
-                URL
-              </button>
+              <Button variant="ghost" className="rounded-full" disabled={busy} onClick={() => setShowPhotoUrlInput((v) => !v)}>Photo URL</Button>
               {venue.imageUrl && (
-                <button
-                  onClick={() => void handleDeletePhoto()}
-                  disabled={uploadingPhoto || photoUrlImporting}
-                  className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors border border-border rounded px-2 py-1"
-                >
-                  Remove
-                </button>
+                <Button variant="ghost" className="rounded-full text-text-muted hover:text-accent-pink" disabled={busy} onClick={() => void handleDeletePhoto()}>
+                  Remove photo
+                </Button>
               )}
-            </div>
-            {showPhotoUrlInput && (
-              <div className="flex gap-1 max-w-md mx-auto">
-                <input
-                  type="url"
-                  placeholder="Paste image URL…"
-                  value={photoUrlInput}
-                  onChange={(e) => setPhotoUrlInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && void handlePhotoUrlImport()}
-                  disabled={photoUrlImporting}
-                  className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
-                />
-                <button
-                  onClick={() => void handlePhotoUrlImport()}
-                  disabled={photoUrlImporting || !photoUrlInput.trim()}
-                  className="text-xs font-mono px-2 py-1 rounded bg-accent-lime text-bg font-bold disabled:opacity-50"
-                >
-                  {photoUrlImporting ? "…" : "Go"}
-                </button>
-              </div>
-            )}
-            {photoError && (
-              <p className="text-xs text-accent-pink font-mono text-center">{photoError}</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Header */}
-      <div className="mb-5">
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <h1 className="font-display uppercase text-3xl mb-1">{venue.name}</h1>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-text-muted">
-              {(venue.city || venue.region) && (
-                <span>{[venue.city, venue.region, venue.country].filter(Boolean).join(", ")}</span>
-              )}
-              {venue.capacity != null && (
-                <span className="font-mono text-xs text-text-subtle">Cap. {venue.capacity.toLocaleString()}</span>
-              )}
-              {hasCoords && (
-                <a
-                  href={`https://www.openstreetmap.org/?mlat=${venue.lat}&mlon=${venue.lng}#map=16/${venue.lat}/${venue.lng}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
-                >
-                  → Map ↗
-                </a>
-              )}
-            </div>
-          </div>
-          {isAdmin && !editing && (
-            <button onClick={() => setEditing(true)}
-              className="mt-1 flex-shrink-0 text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors border border-border rounded px-2.5 py-1">
-              Edit
-            </button>
+            </>
           )}
+        >
+          {place && <p className="font-semibold text-text-base">{place}</p>}
+          <p>
+            {plural(stats.total, "show")}
+            {stats.firstVisit && <> · first visit {fmtDate(stats.firstVisit)}</>}
+            {venue.capacity != null && <> · cap. {venue.capacity.toLocaleString()}</>}
+          </p>
+        </Hero>
+      )}
+
+      {isAdmin && (showPhotoUrlInput || photoError) && (
+        <div className="space-y-2">
+          {showPhotoUrlInput && (
+            <div className="flex gap-2">
+              <input type="url" placeholder="Paste image URL" value={photoUrlInput}
+                onChange={(e) => setPhotoUrlInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void handlePhotoUrlImport()}
+                disabled={photoUrlImporting} className="field h-12 flex-1 sm:h-11" />
+              <Button onClick={() => void handlePhotoUrlImport()} disabled={photoUrlImporting || !photoUrlInput.trim()} className="h-12 sm:h-11">
+                {photoUrlImporting ? "Importing…" : "Import"}
+              </Button>
+            </div>
+          )}
+          {photoError && <p className="text-sm text-accent-pink">{photoError}</p>}
         </div>
-      </div>
+      )}
 
       {/* Edit form (admin only) */}
       {isAdmin && editing && (
@@ -516,62 +425,45 @@ export function VenuePage() {
         />
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {[
-          { label: "Events",       value: stats.total },
-          { label: "Artists seen", value: stats.uniqueArtists },
-          { label: "First visit",  value: stats.firstVisit ? fmtDate(stats.firstVisit) : "–" },
-        ].map(({ label, value }) => (
-          <div key={label} className="rounded-lg border border-border bg-surface p-4 text-center">
-            <div className="font-mono text-lg text-text-base leading-tight">{value}</div>
-            <div className="text-xs text-text-muted mt-1">{label}</div>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-3">
+        <StatTile label="Shows" value={stats.total} accent="pink" />
+        <StatTile label="Artists seen" value={stats.uniqueArtists} />
       </div>
 
-      {/* Aliases */}
-      <AliasesSection venueSlug={slug!} aliases={venue.aliases} isAdmin={isAdmin} />
+      <section className="space-y-3">
+        <h2 className="h-section px-0.5">Shows here<span className="ml-2 text-sm font-body font-medium text-text-subtle">{concerts.length}</span></h2>
+        {concerts.length === 0 ? (
+          <EmptyState title="No shows logged." />
+        ) : (
+          <List>
+            {concerts.map((c) => (
+              <EventRow
+                key={c.id}
+                to={`/shows/${c.id}`}
+                date={c.date}
+                title={c.headlinerName ?? c.headlinerHint ?? c.eventSeries?.name ?? "Unknown show"}
+                subtitle={c.headlinerName || c.headlinerHint ? c.eventSeries?.name : undefined}
+                status={c.attendance?.status}
+              />
+            ))}
+          </List>
+        )}
+      </section>
 
-      {/* Map */}
       {hasCoords && (
-        <div className="mb-6">
-          <p className="text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Location</p>
+        <section className="space-y-3">
+          <div className="flex items-end justify-between gap-3 px-0.5">
+            <h2 className="h-section">Location</h2>
+            <a href={`https://www.openstreetmap.org/?mlat=${venue.lat}&mlon=${venue.lng}#map=16/${venue.lat}/${venue.lng}`}
+              target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-text-muted hover:text-accent-lime">
+              Open map ↗
+            </a>
+          </div>
           <VenueMap lat={venue.lat!} lng={venue.lng!} venueName={venue.name} />
-        </div>
+        </section>
       )}
 
-      {/* Show history */}
-      {concerts.length === 0 ? (
-        <p className="py-8 text-center text-xs text-text-subtle font-mono border border-border rounded-lg">No shows logged.</p>
-      ) : (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {concerts.map((c) => (
-            <Link
-              key={c.id}
-              to={`/shows/${c.id}`}
-              className="group flex items-start gap-3 rounded-lg border border-border bg-surface p-3 hover:border-accent-lime transition-colors"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="text-sm text-text-base truncate group-hover:text-accent-lime transition-colors">
-                  {c.headlinerName ?? c.headlinerHint ?? c.eventSeries?.name ?? "Unknown show"}
-                </div>
-                <time className="font-mono text-xs text-text-muted tabular-nums block mt-0.5">
-                  {fmtDate(c.date)}
-                </time>
-                {c.eventSeries && (
-                  <div className="text-xs text-text-subtle font-mono mt-0.5 italic">{c.eventSeries.name}</div>
-                )}
-              </div>
-              {c.attendance && (
-                <span className={`shrink-0 text-xs font-mono mt-0.5 ${(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).color}`}>
-                  {(STATUS_CHIP[c.attendance.status] ?? DEFAULT_CHIP).label}
-                </span>
-              )}
-            </Link>
-          ))}
-        </div>
-      )}
+      <AliasesSection venueSlug={slug!} aliases={venue.aliases} isAdmin={isAdmin} />
     </div>
   );
 }

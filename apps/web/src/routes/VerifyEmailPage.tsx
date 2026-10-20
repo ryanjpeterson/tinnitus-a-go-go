@@ -49,7 +49,7 @@ export function VerifyEmailPage() {
 
         {state === "ok" && (
           <>
-            <h1 className="font-display uppercase text-3xl mb-3 text-accent-lime">
+            <h1 className="font-display text-3xl mb-3 text-accent-lime">
               You're verified.
             </h1>
             <p className="text-text-muted">
@@ -67,7 +67,7 @@ export function VerifyEmailPage() {
 
         {state === "error" && (
           <>
-            <h1 className="font-display uppercase text-3xl mb-3 text-accent-pink">
+            <h1 className="font-display text-3xl mb-3 text-accent-pink">
               Couldn't verify.
             </h1>
             <p className="text-text-muted font-mono text-sm">{message}</p>

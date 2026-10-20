@@ -7,6 +7,20 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Changed — App-style UI refresh
+
+- **Shared UI kit** (`src/components/ui/kit.tsx`) — every page is now built from the same parts: page header, detail-page hero, section, list rows, media cards, link cards, stat tiles, ranked lists, search/select fields, pill tabs, pager, empty/loading states, and one attendance-status palette. Component classes in `globals.css` (`.card`, `.eyebrow`, `.h-page`, `.h-section`, `.field`) keep cards, headings and inputs identical everywhere. A `useListParams` hook replaces four copies of the URL page/search/filter logic, and `src/lib/format.ts` replaces per-page date helpers.
+- **Bolder headings** — Archivo at weight 800 replaces Antonio, in sentence case rather than all caps. Antonio and Caveat Brush are no longer loaded.
+- **Ticket-app layout** — shows are listed as rows with a date block (month in pink, big day, weekday/year), venue, supporting acts, status and a chevron; the Shows list is grouped under month headers. Artist, venue, show and festival pages open with a hero banner: the image blurred behind a dark gradient, a thumbnail, bold title, details and pill action buttons.
+- **App-first on phones** — sticky app bar with an account avatar, a taller bottom tab bar with an active indicator, bigger text and 44px+ tap targets, full-width search and filter selects, larger Prev/Next pager buttons. Nothing scrolls sideways any more: the Year in review year strip is a select on phones (wrapped pills on desktop) and the Stats heatmap fits a phone screen.
+- **Index pages** — Artists is a list of rows (show count first so it survives truncation); Venues and Festivals are photo/flyer cards with the same card style.
+- **Detail pages** — sections in a consistent order with bold section headings; the artist bio moved below the show list and collapses to four lines; a show with no flyer no longer shows an empty flyer box to visitors; maps sit directly under a "Location" heading.
+- **Account page** — admin tools shown as link cards; full-width sign-out button.
+
+### Fixed
+
+- **"+ Add festival" was shown to signed-out visitors** — the button now only appears for admins (the API already rejected non-admin requests).
+
 ### Added — Year in review
 
 - **Year in review** (`/year/:year`, `/year` opens the latest year) — a recap page for every year with attended shows. A year strip and prev/next arrows step between years, skipping years with no shows; the current year is labelled "so far".

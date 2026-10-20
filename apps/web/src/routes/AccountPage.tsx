@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ServicesPanel } from "@/components/ServicesPanel";
+import { LinkCard, PageHeader } from "@/components/ui/kit";
 
 export function AccountPage() {
   const { user, signOut } = useAuth();
@@ -44,23 +45,22 @@ export function AccountPage() {
   };
 
   return (
-    <div className="max-w-md">
-      <h1 className="font-display uppercase text-3xl mb-1">Account</h1>
-      <p className="text-sm text-text-muted mb-8">@{user?.username}</p>
+    <div className="mx-auto max-w-xl space-y-6">
+      <PageHeader eyebrow={`@${user?.username ?? ""}`} title="Account" />
 
       {/* Profile info — read-only */}
-      <div className="rounded-lg border border-border bg-surface p-5 mb-6 space-y-3">
-        <div className="text-xs font-mono uppercase tracking-wider text-text-muted mb-3">Profile</div>
-        <div className="flex justify-between text-sm">
+      <div className="card space-y-3 p-4 sm:p-5">
+        <h2 className="h-section mb-3">Profile</h2>
+        <div className="flex justify-between gap-3 text-[15px]">
           <span className="text-text-muted font-mono">Username</span>
           <span className="text-text-base font-mono">@{user?.username}</span>
         </div>
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between gap-3 text-[15px]">
           <span className="text-text-muted font-mono">Email</span>
           <span className="text-text-base font-mono">{user?.email}</span>
         </div>
         {user?.isAdmin && (
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between gap-3 text-[15px]">
             <span className="text-text-muted font-mono">Role</span>
             <span className="text-accent-lime font-mono text-xs">Admin</span>
           </div>
@@ -68,41 +68,41 @@ export function AccountPage() {
       </div>
 
       {/* Change password */}
-      <div className="rounded-lg border border-border bg-surface p-5">
-        <div className="text-xs font-mono uppercase tracking-wider text-text-muted mb-4">Change password</div>
+      <div className="card p-4 sm:p-5">
+        <h2 className="h-section mb-4">Change password</h2>
         <form onSubmit={(e) => void handleChangePassword(e)} className="space-y-3">
           <div>
-            <label className="block text-xs font-mono text-text-muted mb-1">Current password</label>
+            <label className="mb-1.5 block text-sm font-semibold text-text-muted">Current password</label>
             <input
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               required
               autoComplete="current-password"
-              className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base focus:outline-none focus:border-accent-lime"
+              className="field h-12 w-full sm:h-11"
             />
           </div>
           <div>
-            <label className="block text-xs font-mono text-text-muted mb-1">New password</label>
+            <label className="mb-1.5 block text-sm font-semibold text-text-muted">New password</label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
               autoComplete="new-password"
-              className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base focus:outline-none focus:border-accent-lime"
+              className="field h-12 w-full sm:h-11"
             />
             <p className="text-xs text-text-subtle mt-1 font-mono">Minimum 12 characters</p>
           </div>
           <div>
-            <label className="block text-xs font-mono text-text-muted mb-1">Confirm new password</label>
+            <label className="mb-1.5 block text-sm font-semibold text-text-muted">Confirm new password</label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               autoComplete="new-password"
-              className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base focus:outline-none focus:border-accent-lime"
+              className="field h-12 w-full sm:h-11"
             />
           </div>
 
@@ -112,7 +112,7 @@ export function AccountPage() {
           <button
             type="submit"
             disabled={saving}
-            className="text-xs font-mono px-4 py-2 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="h-12 w-full rounded-full bg-accent-lime text-[15px] font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50 sm:h-11 sm:w-auto sm:px-6"
           >
             {saving ? "Saving…" : "Update password"}
           </button>
@@ -121,29 +121,23 @@ export function AccountPage() {
 
       {user?.isAdmin && (
         <>
-          <div className="rounded-lg border border-border bg-surface p-5 mt-6">
-            <div className="text-xs font-mono uppercase tracking-wider text-text-muted mb-3">Admin</div>
-            <div className="flex flex-wrap gap-3">
-              <Link to="/admin/imports" className="text-accent-lime hover:underline font-mono text-sm">
-                → CSV imports
-              </Link>
-              <Link to="/admin/copy" className="text-accent-lime hover:underline font-mono text-sm">
-                → Copy editor
-              </Link>
+          <div className="space-y-3">
+            <h2 className="h-section px-0.5">Admin</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <LinkCard to="/admin/imports" eyebrow="Data" title="CSV imports" sub="Upload and track imports" />
+              <LinkCard to="/admin/copy" eyebrow="Site" title="Copy editor" sub="Edit public page text" />
             </div>
           </div>
-          <div className="mt-6">
-            <ServicesPanel />
-          </div>
+          <ServicesPanel />
         </>
       )}
 
       {/* Sign out — the only sign-out control on mobile, where the header has no room for one */}
-      <div className="mt-6 flex items-center justify-between gap-3">
-        <span className="text-xs text-text-subtle font-mono">v{__APP_VERSION__}</span>
-        <Button variant="secondary" size="sm" onClick={() => void signOut()}>
+      <div className="space-y-3">
+        <Button variant="secondary" onClick={() => void signOut()} className="h-12 w-full rounded-full text-[15px] text-accent-pink">
           Sign out
         </Button>
+        <p className="text-center text-xs text-text-subtle">Tinnitus A Go Go · v{__APP_VERSION__}</p>
       </div>
     </div>
   );

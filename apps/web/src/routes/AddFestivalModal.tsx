@@ -342,7 +342,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
       <div className="w-full max-w-lg bg-bg border border-border rounded-xl shadow-2xl my-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="font-display uppercase text-lg">Add festival</h2>
+          <h2 className="font-display text-lg">Add festival</h2>
           <button
             onClick={handleClose}
             className="text-text-subtle hover:text-text-base transition-colors text-xl font-mono w-8 h-8 flex items-center justify-center"

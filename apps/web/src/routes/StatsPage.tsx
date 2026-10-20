@@ -9,6 +9,9 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, type DeepStatsResponse } from "@/lib/api";
+import {
+  EmptyState, EventRow, LinkCard, List, Loading, PageHeader, RankedList, Section, StatGrid, StatTile, type RankedItem,
+} from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -37,40 +40,6 @@ function showName(headlinerHint: string | null | undefined, seriesName?: string 
   return "Untitled show";
 }
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Stat tile
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function StatTile({
-  label, value, sub, accent = "lime",
-}: {
-  label: string; value: string | number; sub?: string; accent?: "lime" | "pink" | "muted";
-}) {
-  const col = accent === "lime" ? "text-accent-lime" : accent === "pink" ? "text-accent-pink" : "text-text-base";
-  return (
-    <div className="rounded-lg border border-border bg-surface p-5">
-      <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-1">{label}</p>
-      <p className={`text-3xl font-mono font-bold ${col}`}>{value}</p>
-      {sub && <p className="text-xs text-text-subtle mt-1">{sub}</p>}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Section wrapper
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function Section({ title, children, className = "" }: {
-  title: string; children: React.ReactNode; className?: string;
-}) {
-  return (
-    <div className={`rounded-lg border border-border bg-surface p-5 ${className}`}>
-      <h2 className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-4">{title}</h2>
-      {children}
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Year bar chart — years as rows, split lime=attended / surface-2=rest
@@ -143,18 +112,18 @@ function Heatmap({ heatmap, byYear }: {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[460px]">
+    <div>
+      <div>
         {/* Month header */}
-        <div className="grid gap-0.5 mb-0.5" style={{ gridTemplateColumns: "36px repeat(12, 1fr)" }}>
+        <div className="grid gap-0.5 mb-0.5" style={{ gridTemplateColumns: "34px repeat(12, minmax(0, 1fr))" }}>
           <div />
           {MONTH_SHORT.map((m) => (
-            <div key={m} className="text-[9px] font-mono text-text-subtle text-center">{m}</div>
+            <div key={m} className="text-[9px] font-mono text-text-subtle text-center">{m.slice(0, 1)}<span className="hidden sm:inline">{m.slice(1)}</span></div>
           ))}
         </div>
         {/* Year rows — compact cells */}
         {years.map((year) => (
-          <div key={year} className="grid gap-0.5 mb-0.5" style={{ gridTemplateColumns: "36px repeat(12, 1fr)" }}>
+          <div key={year} className="grid gap-0.5 mb-0.5" style={{ gridTemplateColumns: "34px repeat(12, minmax(0, 1fr))" }}>
             <div className="text-[9px] font-mono text-text-muted text-right pr-1.5 flex items-center justify-end">{year}</div>
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
               const count = cellCount(year, m);
@@ -175,7 +144,7 @@ function Heatmap({ heatmap, byYear }: {
             })}
           </div>
         ))}
-        <p className="text-[9px] font-mono text-text-subtle mt-1.5">darker = more shows · hover for count</p>
+        <p className="text-[9px] font-mono text-text-subtle mt-1.5">brighter = more shows</p>
       </div>
     </div>
   );
@@ -211,95 +180,26 @@ export function MiniVBars({ data, labels, color = "#A8FF3E" }: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Ranked list — replaces horizontal bars for top artists + venues
-// ─────────────────────────────────────────────────────────────────────────────
-
-export type RankedItem = {
-  id: string;
-  name: string;
-  sub?: string;
-  count: number;
-  href: string;
-};
-
-export function RankedList({ items, color = "#A8FF3E" }: { items: RankedItem[]; color?: string }) {
-  if (items.length === 0) return <p className="text-xs text-text-subtle font-mono">No data yet.</p>;
-
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-      {items.map((item, i) => {
-        const rank = i + 1;
-        const isTop = rank <= 3;
-        const rankColor = rank === 1 ? "#A8FF3E" : rank === 2 ? "#7ec8e3" : rank === 3 ? "#FF3D6E" : undefined;
-        return (
-          <Link
-            key={item.id}
-            to={item.href}
-            className="group flex items-start gap-2.5 rounded-lg border border-border bg-surface-2 hover:border-accent-lime/50 p-3 transition-colors min-w-0"
-          >
-            {/* Rank badge */}
-            <span
-              className="shrink-0 text-sm font-mono font-bold leading-none mt-0.5 w-6 text-right"
-              style={{ color: isTop ? rankColor : "#525250" }}
-            >
-              {rank}
-            </span>
-            {/* Name + count */}
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-text-base group-hover:text-accent-lime transition-colors truncate leading-tight">
-                {item.name}
-              </p>
-              {item.sub && (
-                <p className="text-[10px] font-mono text-text-subtle truncate leading-tight mt-0.5">{item.sub}</p>
-              )}
-              <p className="text-[10px] font-mono mt-1" style={{ color }}>
-                {item.count} show{item.count !== 1 ? "s" : ""}
-              </p>
-            </div>
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // On This Day card
 // ─────────────────────────────────────────────────────────────────────────────
 
 function OnThisDay({ shows }: { shows: DeepStatsResponse["onThisDay"] }) {
   if (shows.length === 0) return null;
-
   return (
-    <div className="rounded-lg border border-accent-pink/40 bg-surface p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-accent-pink text-base">♪</span>
-        <h2 className="text-[10px] font-mono uppercase tracking-widest text-accent-pink">On This Day</h2>
-      </div>
-      <div className="space-y-3">
+    <section className="space-y-3">
+      <h2 className="h-section px-0.5 text-accent-pink">♪ On this day</h2>
+      <List className="border-accent-pink/40">
         {shows.map((s) => (
-          <div key={s.concertId} className="flex items-start gap-3">
-            <div className="shrink-0 mt-0.5">
-              <span className="text-[10px] font-mono text-text-subtle bg-surface-2 rounded px-1.5 py-0.5 whitespace-nowrap">
-                {yearsAgo(s.date)}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <Link
-                to={`/shows/${s.concertId}`}
-                className="text-sm font-medium text-text-base hover:text-accent-lime transition-colors truncate block"
-              >
-                {showName(s.headlinerHint, s.seriesName)}
-              </Link>
-              <p className="text-xs text-text-subtle font-mono">
-                {fmtDate(s.date)}
-                {s.venueName && ` · ${s.venueName}`}
-              </p>
-            </div>
-          </div>
+          <EventRow
+            key={s.concertId}
+            to={`/shows/${s.concertId}`}
+            date={s.date}
+            title={showName(s.headlinerHint, s.seriesName)}
+            subtitle={[yearsAgo(s.date), s.venueName].filter(Boolean).join(" · ")}
+          />
         ))}
-      </div>
-    </div>
+      </List>
+    </section>
   );
 }
 
@@ -382,17 +282,13 @@ export function StatsPage() {
 
   if (q.isLoading) {
     return (
-      <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">
-        Crunching the numbers…
-      </div>
+      <Loading label="Crunching the numbers…" />
     );
   }
 
   if (q.isError || !d) {
     return (
-      <div className="py-16 text-center font-mono text-sm text-accent-pink">
-        Couldn't load stats. Try refreshing.
-      </div>
+      <EmptyState tone="error" title="Couldn't load stats." body="Try refreshing." />
     );
   }
 
@@ -415,62 +311,49 @@ export function StatsPage() {
   }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <PageHeader eyebrow="Tinnitus A Go Go" title="The damage" />
+
       {/* On This Day — shown prominently when applicable */}
       {d.onThisDay.length > 0 && <OnThisDay shows={d.onThisDay} />}
 
       {/* ── Overview tiles ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatTile label="Shows attended" value={d.totalShows}   sub="shows"              accent="lime" />
-        <StatTile label="Artists seen"   value={d.totalArtists} sub="unique"             accent="muted" />
-        <StatTile label="Venues visited" value={d.totalVenues}  sub="unique"             accent="muted" />
-        <StatTile label="Years active"   value={d.yearsActive}  sub="span"               accent="muted" />
-      </div>
-
-      {/* First / latest show */}
-      {(d.firstShow || d.latestShow) && (
-        <div className="grid sm:grid-cols-2 gap-3">
-          {d.firstShow && (
-            <div className="rounded-lg border border-border bg-surface p-4">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-1">First show</p>
-              <Link to={`/shows/${d.firstShow.concertId}`} className="text-sm font-medium hover:text-accent-lime transition-colors block truncate">
-                {showName(d.firstShow.headlinerHint)}
-              </Link>
-              <p className="text-xs font-mono text-text-subtle">{fmtDate(d.firstShow.date)}</p>
-            </div>
-          )}
-          {d.latestShow && (
-            <div className="rounded-lg border border-border bg-surface p-4">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-1">Most recent</p>
-              <Link to={`/shows/${d.latestShow.concertId}`} className="text-sm font-medium hover:text-accent-lime transition-colors block truncate">
-                {showName(d.latestShow.headlinerHint)}
-              </Link>
-              <p className="text-xs font-mono text-text-subtle">{fmtDate(d.latestShow.date)}</p>
-            </div>
-          )}
-        </div>
-      )}
+      <StatGrid>
+        <StatTile label="Shows attended" value={d.totalShows} accent="lime" />
+        <StatTile label="Artists seen" value={d.totalArtists} />
+        <StatTile label="Venues" value={d.totalVenues} />
+        <StatTile label="Years active" value={d.yearsActive} />
+      </StatGrid>
 
       {/* ── Year in review entry point ───────────────────────────────────── */}
       {d.byYear.length > 0 && (
-        <Link
+        <LinkCard
           to={`/year/${d.byYear[0]!.year}`}
-          className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4 hover:border-accent-lime transition-colors"
-        >
-          <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-0.5">Year in review</p>
-            <p className="text-sm font-medium group-hover:text-accent-lime transition-colors">
-              Your {d.byYear[0]!.year}, and every year before it
-            </p>
-          </div>
-          <span className="font-mono text-accent-lime shrink-0">→</span>
-        </Link>
+          accent
+          eyebrow="Year in review"
+          title={`Your ${d.byYear[0]!.year}, and every year before it`}
+          sub="Top artists, new discoveries, every flyer"
+        />
+      )}
+
+      {/* First / latest show */}
+      {(d.firstShow || d.latestShow) && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {d.firstShow && (
+            <LinkCard to={`/shows/${d.firstShow.concertId}`} eyebrow="First show"
+              title={showName(d.firstShow.headlinerHint)} sub={fmtDate(d.firstShow.date)} />
+          )}
+          {d.latestShow && (
+            <LinkCard to={`/shows/${d.latestShow.concertId}`} eyebrow="Most recent"
+              title={showName(d.latestShow.headlinerHint)} sub={fmtDate(d.latestShow.date)} />
+          )}
+        </div>
       )}
 
       {/* ── Activity by year (full width) ───────────────────────────────── */}
       <Section title="Activity by year">
         <YearBars byYear={d.byYear} />
-        <p className="text-[10px] font-mono text-text-subtle mt-1 pl-14">tap a year for its review</p>
+        <p className="mt-2 pl-14 text-xs text-text-subtle">Tap a year for its review</p>
       </Section>
 
       {/* ── Heatmap ─────────────────────────────────────────────────────── */}
@@ -479,7 +362,7 @@ export function StatsPage() {
       </Section>
 
       {/* ── When do you go? ─────────────────────────────────────────────── */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid gap-6 sm:grid-cols-2 sm:gap-4">
         <Section title="Day of the week">
           <MiniVBars data={dowCounts} labels={DOW_LABELS} color="#A8FF3E" />
         </Section>
@@ -489,27 +372,27 @@ export function StatsPage() {
       </div>
 
       {/* ── Top artists ─────────────────────────────────────────────────── */}
-      <Section title="Most seen artists">
-        <RankedList items={topArtistItems} color="#A8FF3E" />
+      <Section title="Most seen artists" flush>
+        <RankedList items={topArtistItems} />
       </Section>
 
       {/* ── Top venues ──────────────────────────────────────────────────── */}
-      <Section title="Most visited venues">
-        <RankedList items={topVenueItems} color="#FF3D6E" />
+      <Section title="Most visited venues" flush>
+        <RankedList items={topVenueItems} />
       </Section>
 
       {/* ── Ticket prices ───────────────────────────────────────────────── */}
       {d.avgTicketCents != null && (
         <div className="grid sm:grid-cols-2 gap-3">
-          <div className="rounded-lg border border-border bg-surface p-5">
-            <p className="text-[10px] font-mono text-text-subtle uppercase tracking-widest mb-1">Average ticket</p>
+          <div className="card p-4 sm:p-5">
+            <p className="eyebrow mb-1">Average ticket</p>
             <p className="text-2xl font-mono font-bold text-accent-lime">
               ${(d.avgTicketCents / 100).toFixed(2)}
             </p>
           </div>
           {d.mostExpensiveShow && (
-            <div className="rounded-lg border border-border bg-surface p-5">
-              <p className="text-[10px] font-mono text-text-subtle uppercase tracking-widest mb-1">Most expensive</p>
+            <div className="card p-4 sm:p-5">
+              <p className="eyebrow mb-1">Most expensive</p>
               <p className="text-2xl font-mono font-bold text-accent-pink">
                 ${(d.mostExpensiveShow.amountCents / 100).toFixed(2)}{" "}
                 <span className="text-xs font-normal text-text-subtle">{d.mostExpensiveShow.currency}</span>

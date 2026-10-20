@@ -239,7 +239,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 | Video proc.    | ffmpeg (H.264 MP4 transcode + WebP poster frame) via BullMQ worker   |
 | LLM fallback   | `@anthropic-ai/sdk` — Claude Haiku for URL paste extraction (optional)|
 | Artist data    | Last.fm API — bio, genre, MusicBrainz ID enrichment (optional)       |
-| Fonts          | Antonio (display) · Caveat Brush (script) · Inter (body) · JetBrains Mono |
+| Fonts          | Archivo 800 (headings, `font-display`) · Inter (body) · JetBrains Mono |
 | Mail (dev)     | Mailpit                                                               |
 | Dev orchestr.  | Docker Compose                                                        |
 
@@ -336,14 +336,14 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │       │   │                         year, first/last show, busiest month, month + DOW
 │       │   │                         bars, repeat artists, first-time artists, venues,
 │       │   │                         festivals, most-heard songs, flyer wall
-│   │       │   ├── ArtistsPage.tsx       paginated artist card grid (EntityCard) with search
+│   │       │   ├── ArtistsPage.tsx       paginated artist rows (EntityRow) with search
 │   │       │   ├── ArtistPage.tsx        artist detail: image, bio, stats, concert history,
 │   │       │   │                         tagged photos section, setlists section; inline edit form
-│   │       │   ├── VenuesPage.tsx        paginated venue card grid (EntityCard) with search
+│   │       │   ├── VenuesPage.tsx        paginated venue photo cards (MediaCard) with search
 │   │       │   ├── VenuePage.tsx         venue detail: cover photo, stats, "Also known as"
 │   │       │   │                         aliases, full Google Maps embed, show history;
 │   │       │   │                         inline edit form for all fields
-│   │       │   ├── FestivalsPage.tsx     paginated festival card grid (EntityCard)
+│   │       │   ├── FestivalsPage.tsx     paginated festival flyer cards (MediaCard)
 │   │       │   ├── SeriesPage.tsx        festival detail: day-by-day lineup + stats
 │   │       │   ├── CopyEditorPage.tsx    admin CMS at /app/admin/copy: edit all landing-page
 │   │       │   │                         and UI copy in-place; grouped by section; instant
@@ -352,9 +352,11 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   │                         rating or notes in the last 14 days
 │   │       │   └── ImportsPage.tsx       admin: CSV import job queue with live status
 │   │       ├── components/
-│   │       │   ├── EntityCard.tsx        shared card component used by ArtistsPage,
-│   │       │   │                         VenuesPage, FestivalsPage — image/initials placeholder,
-│   │       │   │                         sub1/sub2 lines, 16:9 aspect ratio, placeholder colour theming
+│   │       │   ├── ui/kit.tsx            app UI kit every page is built from: PageHeader,
+│   │       │   │                         Hero (detail banner), Section, List + EventRow (ticket
+│   │       │   │                         date block) + EntityRow, MediaCard, LinkCard, StatTile,
+│   │       │   │                         RankedList, SearchField, SelectField, PillTabs, Pager,
+│   │       │   │                         EmptyState/Loading, STATUS palette + StatusBadge
 │   │       │   ├── PhotoCarousel.tsx     full-screen Swiper lightbox shared across the app:
 │   │       │   │                         touch swipe, mouse drag, keyboard ← →, Escape to close,
 │   │       │   │                         video slides with autoplay + controls, per-slide captions,
@@ -415,6 +417,8 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 | `accent-orange` | `#FF8C3A` | Available for future use |
 
 Body gradient: subtle lime bloom top, pink bloom bottom. `::selection` uses lime on dark.
+
+**Layout and components.** Pages are assembled from `src/components/ui/kit.tsx` plus a few component classes in `globals.css` (`.card`, `.eyebrow`, `.h-page`, `.h-section`, `.field`). Mobile first: a sticky app bar and bottom tab bar, full-width rows with 44px+ tap targets, 16px form fields, and nothing that scrolls sideways — filters become selects on phones and wrap as pills on desktop. Lists of shows use `EventRow` (ticket-style date block, title, venue, status, chevron); detail pages open with a `Hero` (blurred image backdrop, thumbnail, bold title). Headings use Archivo at weight 800 in sentence case.
 
 The logo (`Wordmark.tsx`) is an Illustrator-exported SVG (190 × 92.3 viewBox) embedded directly as React path data — no external font dependency. "TINNITUS" renders in white fill with `#a8ff3e` stroke; "a-go-go" in `#f87171` (red). The favicon (`public/favicon.svg`) uses the same path data scaled into a 32 × 32 dark rounded-rect. All auth, landing, admin, and imports pages render the `<Wordmark />` component.
 

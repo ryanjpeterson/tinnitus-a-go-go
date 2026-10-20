@@ -7,6 +7,15 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Changed — Shows named by their whole bill; festivals grouped
+
+- **Whole bill, not one headliner** — everywhere a show is named (Stats milestones, On this day, first/most recent show, Year in review, Shows list, show pages, venue history) it now reads as the full lineup in billing order, e.g. "Foo Fighters / Against Me!" (up to three names, then "+N"). Previously one artist was picked — for festival days often just the alphabetically first act.
+- **Festival days read as the festival** — a festival day is titled with its festival ("Warped Tour", "Bluesfest 2025"), with "Day 3 of 7" and that day's lineup underneath. One-day festivals skip the day label.
+- **Festival page: whole festival or one day** — the lineup has a view picker (a select on phones, pills on desktop): **Full lineup** (every artist once, tagged with their day), **All days** (day-by-day cards), or a single **Day N**. The choice is in the URL (`?day=all`, `?day=3`) so a day can be linked to.
+- **Festival-day show pages** — eyebrow reads "Festival · Day 2 of 7"; a **Festival days** list under the lineup jumps between days (the current one marked) or out to the full festival lineup.
+- **Year in review flyer wall** — a festival's days fold into one tile linking to the festival, labelled with how many days you went.
+- **API** — new `lib/show-info.ts` (`loadShowInfo`) returns each show's lineup, festival and day number. Deep stats and year-review shows gain an `info` object; `GET /concerts` items gain `festivalDay: { number, count }`; `GET /concerts/:id` gains `festivalDays` (every day of the festival with its lineup); venue detail concerts gain `info`.
+
 ### Changed — App-style UI refresh
 
 - **Shared UI kit** (`src/components/ui/kit.tsx`) — every page is now built from the same parts: page header, detail-page hero, section, list rows, media cards, link cards, stat tiles, ranked lists, search/select fields, pill tabs, pager, empty/loading states, and one attendance-status palette. Component classes in `globals.css` (`.card`, `.eyebrow`, `.h-page`, `.h-section`, `.field`) keep cards, headings and inputs identical everywhere. A `useListParams` hook replaces four copies of the URL page/search/filter logic, and `src/lib/format.ts` replaces per-page date helpers.

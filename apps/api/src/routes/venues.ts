@@ -21,6 +21,7 @@ import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
 import { slugify } from "@tagg/shared";
 import { requireUser, requireAdmin } from "../auth/middleware.js";
+import { loadShowInfo } from "../lib/show-info.js";
 
 /** Return a browser-accessible URL for a MinIO object key (no presign needed — bucket is public). */
 function mediaUrl(key: string): string {
@@ -197,6 +198,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
       : [{ count: 0 }];
     const uniqueArtists = uniqueArtistsResult[0]?.count ?? 0;
 
+    const showInfo = await loadShowInfo(concertRows.map((r) => r.concertId));
     const concerts = concertRows.map((r) => {
       const headliner = headlinerByConcert.get(r.concertId);
       return {
@@ -208,6 +210,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
         headlinerName: headliner?.name ?? r.headlinerHint ?? null,
         headlinerSlug: headliner?.slug ?? null,
         eventSeries: r.seriesName ? { name: r.seriesName } : null,
+        info: showInfo.get(r.concertId) ?? null,
       };
     });
 

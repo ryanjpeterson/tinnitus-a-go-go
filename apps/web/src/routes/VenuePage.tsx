@@ -9,6 +9,7 @@ import { api, type VenueAlias } from "@/lib/api";
 import { VenueMap } from "@/components/VenueMap";
 import { useAuth } from "@/lib/auth-context";
 import { fmtDate, plural } from "@/lib/format";
+import { showSubtitle, showTitle } from "@/lib/showTitle";
 import { Button } from "@/components/ui/button";
 import { EmptyState, EventRow, Hero, List, Loading, StatTile } from "@/components/ui/kit";
 
@@ -441,8 +442,8 @@ export function VenuePage() {
                 key={c.id}
                 to={`/shows/${c.id}`}
                 date={c.date}
-                title={c.headlinerName ?? c.headlinerHint ?? c.eventSeries?.name ?? "Unknown show"}
-                subtitle={c.headlinerName || c.headlinerHint ? c.eventSeries?.name : undefined}
+                title={showTitle(c.info, c.headlinerName ?? c.headlinerHint ?? c.eventSeries?.name)}
+                subtitle={showSubtitle(c.info) ?? (c.info?.type !== "festival_day" ? c.eventSeries?.name : undefined)}
                 status={c.attendance?.status}
               />
             ))}

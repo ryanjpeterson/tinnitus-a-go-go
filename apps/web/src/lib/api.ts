@@ -630,6 +630,8 @@ export interface ConcertListItem {
   eventSeries: ConcertSeries | null;
   attendance?: ConcertAttendance;  // Optional for public endpoints
   artists: ConcertArtist[];
+  /** Festival days only: which day of the festival this is. */
+  festivalDay?: { number: number; count: number } | null;
 }
 
 export interface ConcertDetail extends ConcertListItem {
@@ -650,6 +652,18 @@ export interface ConcertSetlistEntry {
 export interface ConcertDetailResponse {
   concert: ConcertDetail;
   setlists: Record<string, ConcertSetlistEntry>;
+  /** Every day of the festival this show belongs to (festival days only). */
+  festivalDays?: Array<{ number: number; date: string; concertId: string; lineup: string[] }>;
+}
+
+/** Full bill and festival-day position for naming a show (see lib/showTitle). */
+export interface ShowInfo {
+  type: "concert" | "festival_day";
+  lineup: string[];
+  seriesName: string | null;
+  seriesSlug: string | null;
+  dayNumber: number | null;
+  dayCount: number | null;
 }
 
 export interface ConcertListResponse {
@@ -853,6 +867,7 @@ export interface VenueDetailResponse {
     headlinerHint: string | null;
     headlinerName: string | null;
     headlinerSlug: string | null;
+    info?: ShowInfo | null;
     eventSeries: { name: string } | null;
     attendance?: { status: AttendanceStatus; rating: number | null };
   }>;
@@ -1131,6 +1146,7 @@ export interface YearReviewResponse {
     date: string;
     type: string;
     headliner: string | null;
+    info: ShowInfo | null;
     flyerUrl: string | null;
     series: { name: string; slug: string } | null;
     venue: { name: string; city: string | null; slug: string } | null;
@@ -1151,8 +1167,8 @@ export interface DeepStatsResponse {
   totalVenues: number;
   yearsActive: number;
   avgRating: number | null;
-  firstShow:  { concertId: string; date: string; headlinerHint: string | null } | null;
-  latestShow: { concertId: string; date: string; headlinerHint: string | null } | null;
+  firstShow:  { concertId: string; date: string; headlinerHint: string | null; info: ShowInfo | null } | null;
+  latestShow: { concertId: string; date: string; headlinerHint: string | null; info: ShowInfo | null } | null;
 
   byStatus:    Array<{ status: string; count: number }>;
   byYear:      Array<{ year: string; count: number; attended: number; avgRating: number | null }>;
@@ -1174,11 +1190,11 @@ export interface DeepStatsResponse {
 
   onThisDay: Array<{
     concertId: string; date: string; headlinerHint: string | null;
-    seriesName: string | null; status: string; venueName: string | null;
+    seriesName: string | null; status: string; venueName: string | null; info: ShowInfo | null;
   }>;
 
   milestones: Array<{
-    n: number; concertId: string; date: string; headlinerHint: string | null; seriesName: string | null;
+    n: number; concertId: string; date: string; headlinerHint: string | null; seriesName: string | null; info: ShowInfo | null;
   }>;
 
   avgTicketCents: number | null;

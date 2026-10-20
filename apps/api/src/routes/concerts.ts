@@ -25,6 +25,7 @@ import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
 import { requireUser, requireAdmin } from "../auth/middleware.js";
 import { slugify } from "@tagg/shared";
+import { BILLING_ORDER_SQL, loadShowInfo } from "../lib/show-info.js";
 
 /** Direct public URL for a MinIO object (bucket is set to anonymous download). */
 function mediaUrl(key: string): string {
@@ -304,8 +305,20 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       return { ...c, flyerInherited: false };
     });
 
+    // Festival days are labelled "Day N of M" in lists.
+    const dayInfo = await loadShowInfo(
+      concertRows.filter((r) => r.type === "festival_day").map((r) => r.concertId),
+    );
+    const concertsWithDays = concertsWithInheritedFlyers.map((c) => {
+      const info = dayInfo.get(c.id);
+      return {
+        ...c,
+        festivalDay: info?.dayNumber != null ? { number: info.dayNumber, count: info.dayCount ?? info.dayNumber } : null,
+      };
+    });
+
     return reply.send({
-      concerts: concertsWithInheritedFlyers,
+      concerts: concertsWithDays,
       total: total ?? 0,
       page,
       totalPages: Math.ceil((total ?? 0) / limit),
@@ -560,6 +573,19 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       }
     }
 
+    // For a festival day: every day of that festival, so the page can switch between them.
+    const festivalDays = concert.type === "festival_day" && concert.eventSeriesId
+      ? (await db.execute<{ concert_id: string; date: string; lineup: string[] | null }>(sql`
+          select distinct on (c.date) c.id as concert_id, c.date::text as date,
+            (select array_agg(a.name order by ${BILLING_ORDER_SQL})
+               from concert_artists ca join artists a on a.id = ca.artist_id
+              where ca.concert_id = c.id) as lineup
+          from concerts c
+          where c.event_series_id = ${concert.eventSeriesId} and c.type = 'festival_day'
+          order by c.date, c.id
+        `)).map((r, i) => ({ number: i + 1, date: r.date, concertId: r.concert_id, lineup: r.lineup ?? [] }))
+      : [];
+
     // The signed-in user's own attendance (same row PATCH /concerts/:id writes).
     // Omitted for anonymous visitors so personal notes and ticket prices stay private.
     const attendanceRow = req.user
@@ -621,6 +647,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         updatedAt: concert.updatedAt,
       },
       setlists: setlistsByArtist,
+      festivalDays,
     });
   });
 

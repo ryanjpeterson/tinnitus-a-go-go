@@ -13,7 +13,8 @@ import { VenueMap } from "@/components/VenueMap";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
 import type { CarouselItem } from "@/components/PhotoCarousel";
 import { useAuth } from "@/lib/auth-context";
-import { EmptyState, Hero, Loading, StatusBadge } from "@/components/ui/kit";
+import { EmptyState, EventRow, Hero, List, Loading, StatusBadge } from "@/components/ui/kit";
+import { billLine } from "@/lib/showTitle";
 import { Button } from "@/components/ui/button";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2716,7 +2717,7 @@ export function ConcertDetailPage() {
     );
   }
 
-  const { concert, setlists: savedSetlists } = concertQuery.data;
+  const { concert, setlists: savedSetlists, festivalDays = [] } = concertQuery.data;
 
   // Sort artists: headliner first, then by role order, then by setOrder
   const sortedArtists = [...concert.artists].sort((a, b) => {
@@ -2725,25 +2726,29 @@ export function ConcertDetailPage() {
     return (a.setOrder ?? 99) - (b.setOrder ?? 99);
   });
 
-  // Title: single headliner name, OR all co-headliners joined with " & "
-  const headliner   = sortedArtists.find((a) => a.role === "headliner");
-  const coHeadliners = sortedArtists.filter((a) => a.role === "co_headliner");
+  const isFestivalDay = concert.type === "festival_day" && !!concert.eventSeries;
+  const thisDay = festivalDays.find((d) => d.concertId === concert.id);
+  const multiDay = festivalDays.length > 1;
+
+  // Title: a festival day is named for its festival; a concert for its whole
+  // bill in billing order ("Foo Fighters / Against Me!").
   const title =
-    headliner?.name ??
-    (coHeadliners.length > 0 ? coHeadliners.map((a) => a.name).join(" & ") : null) ??
-    sortedArtists[0]?.name ??
+    (isFestivalDay ? concert.eventSeries!.name : null) ??
+    (billLine(sortedArtists.map((a) => a.name)) || null) ??
     concert.headlinerHint ??
     concert.eventSeries?.name ??
     "Unknown show";
-
-  const isFestivalDay = concert.type === "festival_day" && !!concert.eventSeries;
 
   return (
     <div>
       <Hero
         back={{ to: "/shows", label: "Shows" }}
         imageUrl={concert.flyerUrl}
-        eyebrow={concert.eventSeries ? concert.eventSeries.name : "Concert"}
+        eyebrow={
+          isFestivalDay
+            ? (thisDay && multiDay ? `Festival · Day ${thisDay.number} of ${festivalDays.length}` : "Festival")
+            : (concert.eventSeries ? concert.eventSeries.name : "Concert")
+        }
         title={title}
         accent={isFestivalDay ? "yellow" : "lime"}
         actions={
@@ -2791,6 +2796,31 @@ export function ConcertDetailPage() {
 
           {/* Lineup */}
           <LineupEditor concert={concert} isAdmin={isAdmin} />
+
+          {/* Festival days — jump between days, or out to the whole festival */}
+          {isFestivalDay && multiDay && (
+            <section className="space-y-3">
+              <div className="flex items-end justify-between gap-3 px-0.5">
+                <h2 className="h-section">Festival days</h2>
+                <Link to={`/festivals/${concert.eventSeries!.slug}`} className="text-sm font-semibold text-text-muted hover:text-accent-lime">
+                  Full lineup ›
+                </Link>
+              </div>
+              <List>
+                {festivalDays.map((d) => (
+                  <div key={d.concertId} className={d.concertId === concert.id ? "bg-lime-950/30" : undefined}>
+                    <EventRow
+                      to={`/shows/${d.concertId}`}
+                      date={d.date}
+                      showYear={false}
+                      title={d.concertId === concert.id ? `Day ${d.number} · you're here` : `Day ${d.number}`}
+                      subtitle={billLine(d.lineup, 4, ", ") || "No lineup yet"}
+                    />
+                  </div>
+                ))}
+              </List>
+            </section>
+          )}
 
           {/* Attendance (admin only) */}
           {isAdmin && <AttendanceEditor key={concert.id} concertId={concert.id} attendance={concert.attendance} />}

@@ -3,14 +3,14 @@
  */
 
 import { useState, useRef, useEffect } from "react";
-import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
+import { Link, useParams, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { api, type FestivalSet, type ArtistListItem } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { Chevron, DateBlock, EmptyState, Hero, Loading, StatTile, StatusBadge } from "@/components/ui/kit";
+import { Chevron, DateBlock, EmptyState, Hero, Loading, PillTabs, SelectField, StatTile, StatusBadge } from "@/components/ui/kit";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
@@ -107,6 +107,7 @@ export function FestivalDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const qc = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.isAdmin ?? false;
@@ -337,6 +338,41 @@ export function FestivalDetailPage() {
   const statusColor = attendance ? STATUS_COLORS[attendance.status] ?? "" : "";
 
   const flyerBusy = uploadingFlyer || flyerUrlImporting;
+
+  // Lineup view: the whole festival at once (default), every day stacked, or one day.
+  // Kept in ?day= (all | 1..n) so a specific day can be linked to.
+  const dayEntries = Object.entries(setsByDate);
+  const dayParam = searchParams.get("day");
+  type LineupView = "lineup" | "days" | `${number}`;
+  const lineupView: LineupView =
+    dayEntries.length <= 1 ? "days"
+    : dayParam === "all" ? "days"
+    : dayParam && Number(dayParam) >= 1 && Number(dayParam) <= dayEntries.length ? (dayParam as LineupView)
+    : "lineup";
+  const setLineupView = (v: LineupView): void => {
+    setSearchParams((cur) => {
+      const next = new URLSearchParams(cur);
+      if (v === "lineup") next.delete("day");
+      else next.set("day", v === "days" ? "all" : v);
+      return next;
+    }, { replace: true });
+  };
+  const viewOptions: { value: LineupView; label: string }[] = [
+    { value: "lineup", label: `Full lineup · ${stats.totalArtists}` },
+    { value: "days", label: "All days" },
+    ...dayEntries.map(([date, ds], i) => ({
+      value: String(i + 1) as LineupView,
+      label: date === "unknown" ? `Date TBD · ${ds.length}` : `Day ${i + 1} · ${fmtDateShort(date)}`,
+    })),
+  ];
+  // Whole-festival lineup: each artist once, in day then set order, tagged with their day.
+  const fullLineup = (() => {
+    const seen = new Map<string, { set: FestivalSet; day: number }>();
+    dayEntries.forEach(([, ds], i) => ds.forEach((set: FestivalSet) => {
+      if (!seen.has(set.artist.id)) seen.set(set.artist.id, { set, day: i + 1 });
+    }));
+    return [...seen.values()];
+  })();
   const dateRange = (festival.startDate || festival.endDate)
     ? `${fmtDate(festival.startDate)}${festival.endDate && festival.endDate !== festival.startDate ? ` – ${fmtDate(festival.endDate)}` : ""}`
     : null;
@@ -601,7 +637,42 @@ export function FestivalDetailPage() {
           </div>
         ) : sets.length > 0 ? (
           <div className="space-y-3">
+            {dayEntries.length > 1 && (
+              <>
+                <SelectField label="Lineup view" className="sm:hidden" value={lineupView} options={viewOptions} onChange={setLineupView} />
+                <div className="hidden sm:block">
+                  <PillTabs value={lineupView} options={viewOptions.map((o) => ({ ...o, label: o.label.replace(/ · .*$/, "") }))} onChange={setLineupView} />
+                </div>
+              </>
+            )}
+
+            {lineupView === "lineup" && (
+              <div className="card p-4 sm:p-5">
+                <div className="flex flex-wrap gap-2">
+                  {fullLineup.map(({ set, day }) => (
+                    <Link
+                      key={set.artist.id}
+                      id={`set-${set.artist.slug}`}
+                      to={`/artists/${set.artist.slug}`}
+                      className={clsx(
+                        "inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition-all scroll-mt-24",
+                        highlightedSet === `set-${set.artist.slug}`
+                          ? "border-accent-lime bg-lime-950 text-accent-lime ring-2 ring-accent-lime/50"
+                          : "border-border bg-surface-2 text-text-muted hover:border-accent-lime hover:text-accent-lime",
+                      )}
+                    >
+                      {set.artist.name}
+                      <span className="text-xs text-text-subtle">D{day}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {Object.entries(setsByDate).map(([date, dateSets], dayIdx) => {
+              // "lineup" shows the combined list above; a day number shows just that day.
+              if (lineupView === "lineup") return null;
+              if (lineupView !== "days" && lineupView !== String(dayIdx + 1)) return null;
               const concert = concertsByDate[date];
               const concertUrl = concert?.slug
                 ? `/shows/${concert.slug}`
@@ -618,7 +689,10 @@ export function FestivalDetailPage() {
                   {concertUrl && date !== "unknown" ? (
                     <Link to={concertUrl} className="group flex min-h-[64px] items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface-2/70">
                       <DateBlock date={date} />
-                      <span className="flex-1 text-[15px] font-semibold group-hover:text-accent-lime">Day {dayIdx + 1}</span>
+                      <span className="flex-1 text-[15px] font-semibold group-hover:text-accent-lime">
+                        Day {dayIdx + 1}
+                        <span className="block text-sm font-normal text-text-subtle">Open this day</span>
+                      </span>
                       <span className="text-sm text-text-subtle">{dateSets.length} artist{dateSets.length !== 1 ? "s" : ""}</span>
                       <Chevron className="text-text-subtle group-hover:text-accent-lime" />
                     </Link>

@@ -9,8 +9,9 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, type DeepStatsResponse } from "@/lib/api";
+import { showSubtitle, showTitle } from "@/lib/showTitle";
 import {
-  EmptyState, EventRow, LinkCard, List, Loading, PageHeader, RankedList, Section, StatGrid, StatTile, type RankedItem,
+  Chevron, EmptyState, EventRow, LinkCard, List, Loading, PageHeader, RankedList, Section, StatGrid, StatTile, type RankedItem,
 } from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -194,8 +195,9 @@ function OnThisDay({ shows }: { shows: DeepStatsResponse["onThisDay"] }) {
             key={s.concertId}
             to={`/shows/${s.concertId}`}
             date={s.date}
-            title={showName(s.headlinerHint, s.seriesName)}
+            title={showTitle(s.info, showName(s.headlinerHint, s.seriesName))}
             subtitle={[yearsAgo(s.date), s.venueName].filter(Boolean).join(" · ")}
+            meta={showSubtitle(s.info)}
           />
         ))}
       </List>
@@ -208,7 +210,7 @@ function OnThisDay({ shows }: { shows: DeepStatsResponse["onThisDay"] }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Milestones({ milestones }: { milestones: DeepStatsResponse["milestones"] }) {
-  if (milestones.length === 0) return <p className="text-xs text-text-subtle font-mono">No attended shows yet.</p>;
+  if (milestones.length === 0) return <p className="p-4 text-sm text-text-subtle">No attended shows yet.</p>;
 
   const ordinal = (n: number) => {
     if (n === 1) return "1st";
@@ -224,26 +226,28 @@ function Milestones({ milestones }: { milestones: DeepStatsResponse["milestones"
 
   return (
     <div className="relative">
-      <div className="absolute left-[15px] top-3 bottom-3 w-px bg-border" />
-      <div className="space-y-4">
-        {milestones.map((m) => (
-          <div key={m.n} className="flex items-start gap-3 relative">
-            <div className="w-8 h-8 rounded-full bg-surface-2 border border-accent-lime/50 flex items-center justify-center shrink-0 z-10">
-              <span className="text-[9px] font-mono text-accent-lime font-bold leading-none text-center">
+      {/* Timeline spine behind the badges */}
+      <div className="absolute bottom-8 left-[37px] top-8 w-px bg-border" />
+      <div className="divide-y divide-border">
+        {milestones.map((m) => {
+          const sub = showSubtitle(m.info);
+          return (
+            <Link key={m.n} to={`/shows/${m.concertId}`}
+              className="group relative flex min-h-[76px] items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-2/70">
+              <span className="z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-accent-lime/60 bg-surface-2 text-xs font-bold text-accent-lime">
                 {ordinal(m.n)}
               </span>
-            </div>
-            <div className="min-w-0 pt-0.5">
-              <Link
-                to={`/shows/${m.concertId}`}
-                className="text-sm font-medium text-text-base hover:text-accent-lime transition-colors block truncate"
-              >
-                {showName(m.headlinerHint, m.seriesName)}
-              </Link>
-              <p className="text-[10px] font-mono text-text-subtle">{fmtDate(m.date)}</p>
-            </div>
-          </div>
-        ))}
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-text-base group-hover:text-accent-lime">
+                  {showTitle(m.info, showName(m.headlinerHint, m.seriesName))}
+                </p>
+                {sub && <p className="truncate text-sm text-text-muted">{sub}</p>}
+                <p className="text-xs text-text-subtle">{fmtDate(m.date)}</p>
+              </div>
+              <Chevron className="text-text-subtle group-hover:text-accent-lime" />
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
@@ -341,11 +345,13 @@ export function StatsPage() {
         <div className="grid gap-3 sm:grid-cols-2">
           {d.firstShow && (
             <LinkCard to={`/shows/${d.firstShow.concertId}`} eyebrow="First show"
-              title={showName(d.firstShow.headlinerHint)} sub={fmtDate(d.firstShow.date)} />
+              title={showTitle(d.firstShow.info, showName(d.firstShow.headlinerHint))}
+              sub={[fmtDate(d.firstShow.date), showSubtitle(d.firstShow.info)].filter(Boolean).join(" · ")} />
           )}
           {d.latestShow && (
             <LinkCard to={`/shows/${d.latestShow.concertId}`} eyebrow="Most recent"
-              title={showName(d.latestShow.headlinerHint)} sub={fmtDate(d.latestShow.date)} />
+              title={showTitle(d.latestShow.info, showName(d.latestShow.headlinerHint))}
+              sub={[fmtDate(d.latestShow.date), showSubtitle(d.latestShow.info)].filter(Boolean).join(" · ")} />
           )}
         </div>
       )}
@@ -409,7 +415,7 @@ export function StatsPage() {
       )}
 
       {/* ── Milestones ──────────────────────────────────────────────────── */}
-      <Section title="Milestones">
+      <Section title="Milestones" flush>
         <Milestones milestones={d.milestones} />
       </Section>
 

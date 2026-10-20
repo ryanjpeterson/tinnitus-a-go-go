@@ -12,6 +12,7 @@ import { api, type ConcertListItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useListParams } from "@/lib/useListParams";
 import { monthLabel } from "@/lib/format";
+import { billLine } from "@/lib/showTitle";
 import { Button } from "@/components/ui/button";
 import {
   EmptyState, EventRow, List, ListGroupLabel, Loading, PageHeader, Pager, PillTabs, SearchField, SelectField,
@@ -44,20 +45,35 @@ const PAGE_SIZE = 24;
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function concertHeadliner(c: ConcertListItem): string {
-  const top = c.artists.filter((a) => a.role === "headliner" || a.role === "co_headliner");
-  if (top.length > 0) return top.map((a) => a.name).join(" & ");
-  return c.headlinerHint ?? c.artists[0]?.name ?? c.eventSeries?.name ?? "Unknown";
+const BILLING_RANK: Record<string, number> = { headliner: 0, co_headliner: 1, support: 2, opener: 3 };
+
+/** Every billed artist in billing order. */
+function lineup(c: ConcertListItem): string[] {
+  return [...c.artists]
+    .sort((a, b) => (BILLING_RANK[a.role] ?? 4) - (BILLING_RANK[b.role] ?? 4) || (a.setOrder ?? 99) - (b.setOrder ?? 99))
+    .map((a) => a.name);
 }
 
-const SUPPORT_ROLES = new Set(["support", "opener", "festival_set"]); // legacy values kept for existing data display
-
-function supportingActs(c: ConcertListItem): string {
-  const all = c.artists.filter((a) => SUPPORT_ROLES.has(a.role));
-  if (all.length === 0) return "";
-  const shown = all.slice(0, 3).map((a) => a.name);
-  const extra = all.length - shown.length;
-  return "with " + shown.join(", ") + (extra > 0 ? ` +${extra}` : "");
+/**
+ * Row text. Concerts: the bill as the title, venue below.
+ * Festival days: the festival as the title, "Day 2 of 7 · venue" below, that day's lineup last.
+ */
+function rowText(c: ConcertListItem): { title: string; subtitle?: string; meta?: string } {
+  const names = lineup(c);
+  const venue = c.venue ? `${c.venue.name}${c.venue.city ? ` · ${c.venue.city}` : ""}` : undefined;
+  if (c.type === "festival_day" && c.eventSeries) {
+    const day = c.festivalDay && c.festivalDay.count > 1 ? `Day ${c.festivalDay.number} of ${c.festivalDay.count}` : null;
+    return {
+      title: c.eventSeries.name,
+      subtitle: [day, venue].filter(Boolean).join(" · ") || undefined,
+      meta: billLine(names, 4, ", ") || undefined,
+    };
+  }
+  return {
+    title: billLine(names) || c.headlinerHint || c.eventSeries?.name || "Unknown",
+    subtitle: venue ?? c.eventSeries?.name,
+    meta: c.venue && c.eventSeries ? c.eventSeries.name : undefined,
+  };
 }
 
 /** Consecutive concerts sharing a month, in list order. */
@@ -192,9 +208,7 @@ export function ConcertsPage() {
                     date={c.date}
                     showYear={false}
                     approximate={c.dateIsApproximate}
-                    title={concertHeadliner(c)}
-                    subtitle={c.venue ? `${c.venue.name}${c.venue.city ? ` · ${c.venue.city}` : ""}` : c.eventSeries?.name}
-                    meta={[c.venue && c.eventSeries ? c.eventSeries.name : null, supportingActs(c) || null].filter(Boolean).join(" · ") || undefined}
+                    {...rowText(c)}
                     imageUrl={c.flyerUrl}
                     status={c.attendance?.status}
                   />

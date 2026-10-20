@@ -15,6 +15,7 @@ import { sql } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
+import { loadShowInfo } from "../lib/show-info.js";
 
 export async function statsRoutes(app: FastifyInstance): Promise<void> {
   // Public endpoint - shows aggregate stats for attended concerts only
@@ -294,6 +295,15 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
         years_active: number;
       }>)[0] ?? null;
 
+      // Full lineups / festival-day numbers for every show named below.
+      const info = await loadShowInfo([
+        ...[...onThisDayRows].map((r) => r.concert_id),
+        ...[...milestoneRows].map((r) => r.concert_id),
+        ...(overview?.first_id ? [overview.first_id] : []),
+        ...(overview?.last_id ? [overview.last_id] : []),
+      ]);
+      const infoFor = (id: string) => info.get(id) ?? null;
+
       return reply.send({
         // Overview totals (attended shows only)
         totalShows:     overview?.total       ?? 0,
@@ -303,10 +313,10 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
         yearsActive:    overview?.years_active ?? 0,
         avgRating:      null,
         firstShow: overview?.first_id
-          ? { concertId: overview.first_id, date: overview.first_date!, headlinerHint: overview.first_hint }
+          ? { concertId: overview.first_id, date: overview.first_date!, headlinerHint: overview.first_hint, info: infoFor(overview.first_id) }
           : null,
         latestShow: overview?.last_id
-          ? { concertId: overview.last_id, date: overview.last_date!, headlinerHint: overview.last_hint }
+          ? { concertId: overview.last_id, date: overview.last_date!, headlinerHint: overview.last_hint, info: infoFor(overview.last_id) }
           : null,
 
         // Breakdowns (attended only)
@@ -355,6 +365,7 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
           seriesName:    r.series_name,
           status:        "attended",
           venueName:     r.venue_name,
+          info:          infoFor(r.concert_id),
         })),
 
         milestones: ([...milestoneRows] as Array<{
@@ -365,6 +376,7 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
           date:          r.date,
           headlinerHint: r.headliner_hint,
           seriesName:    r.series_name,
+          info:          infoFor(r.concert_id),
         })),
 
         // Money
@@ -562,6 +574,7 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
 
     const years = [...yearRows];
     const totals = [...totalsRows][0];
+    const showInfo = await loadShowInfo([...showRows].map((r) => r.id));
     const prevYearCount = years.find((y) => y.year === year - 1)?.count ?? null;
 
     return reply.send({
@@ -585,6 +598,7 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
           date: r.date,
           type: r.type,
           headliner: r.headliner,
+          info: showInfo.get(r.id) ?? null,
           flyerUrl: key ? mediaUrl(key) : null,
           series: r.series_slug ? { name: r.series_name!, slug: r.series_slug } : null,
           venue: r.venue_slug ? { name: r.venue_name!, city: r.venue_city, slug: r.venue_slug } : null,

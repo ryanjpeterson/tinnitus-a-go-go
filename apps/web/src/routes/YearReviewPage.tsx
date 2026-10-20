@@ -14,6 +14,7 @@ import {
   BackButton, Chevron, EmptyState, LinkCard, Loading, RankedList, Section, SelectField, StatGrid, StatTile, type RankedItem,
 } from "@/components/ui/kit";
 import { MiniVBars } from "./StatsPage";
+import { dayLabel, showTitle } from "@/lib/showTitle";
 
 const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTH_LONG  = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -90,31 +91,70 @@ function YearPicker({ years, current }: { years: YearReviewResponse["years"]; cu
 // Flyer wall — every show of the year in date order
 // ─────────────────────────────────────────────────────────────────────────────
 
+type WallTile = {
+  key: string;
+  to: string;
+  name: string;
+  date: string;
+  flyerUrl: string | null;
+  festival: boolean;
+  /** Festival tiles: how many of its days were attended this year. */
+  days: number;
+};
+
+/** One tile per concert, but a festival's days fold into a single festival tile. */
+function wallTiles(shows: YearReviewResponse["shows"]): WallTile[] {
+  const tiles: WallTile[] = [];
+  const festivalTiles = new Map<string, WallTile>();
+  for (const s of shows) {
+    if (s.type === "festival_day" && s.series) {
+      const existing = festivalTiles.get(s.series.slug);
+      if (existing) {
+        existing.days += 1;
+        existing.flyerUrl ??= s.flyerUrl;
+        continue;
+      }
+      const tile: WallTile = {
+        key: s.series.slug, to: `/festivals/${s.series.slug}`, name: s.series.name,
+        date: s.date, flyerUrl: s.flyerUrl, festival: true, days: 1,
+      };
+      festivalTiles.set(s.series.slug, tile);
+      tiles.push(tile);
+    } else {
+      tiles.push({
+        key: s.concertId, to: `/shows/${s.concertId}`, name: showTitle(s.info, s.headliner ?? s.series?.name),
+        date: s.date, flyerUrl: s.flyerUrl, festival: false, days: 1,
+      });
+    }
+  }
+  return tiles;
+}
+
 function FlyerWall({ shows }: { shows: YearReviewResponse["shows"] }) {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-      {shows.map((s) => {
-        const name = s.headliner ?? s.series?.name ?? "Untitled show";
-        return (
-          <Link
-            key={s.concertId}
-            to={`/shows/${s.concertId}`}
-            className="group relative aspect-[3/4] overflow-hidden rounded border border-border bg-surface-2 hover:border-accent-lime transition-colors"
-            title={`${name} · ${fmtDate(s.date)}`}
-          >
-            {s.flyerUrl ? (
-              <img src={s.flyerUrl} alt={name} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
-            ) : (
-              <div className={`absolute inset-0 flex items-center justify-center p-2 pb-5 text-center ${s.type === "festival_day" ? "bg-yellow-950/60" : "bg-lime-950/40"}`}>
-                <span className="font-display text-sm text-text-muted leading-tight line-clamp-4 break-words">{name}</span>
-              </div>
-            )}
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-1.5 pt-4 pb-1">
-              <p className="text-[10px] font-mono text-white/90 leading-tight truncate">{fmtDate(s.date)}</p>
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+      {wallTiles(shows).map((t) => (
+        <Link
+          key={t.key}
+          to={t.to}
+          className="group relative aspect-[3/4] overflow-hidden rounded-lg border border-border bg-surface-2 transition-colors hover:border-accent-lime"
+          title={`${t.name} · ${fmtDate(t.date)}`}
+        >
+          {t.flyerUrl ? (
+            <img src={t.flyerUrl} alt={t.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <div className={`absolute inset-0 flex items-center justify-center p-2 pb-6 text-center ${t.festival ? "bg-yellow-950/60" : "bg-lime-950/40"}`}>
+              <span className="line-clamp-4 break-words font-display text-sm leading-tight text-text-muted">{t.name}</span>
             </div>
-          </Link>
-        );
-      })}
+          )}
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-2 pb-1.5 pt-5">
+            <p className="truncate text-[11px] font-semibold leading-tight text-white/90">
+              {fmtDate(t.date)}
+              {t.festival && <span className="text-yellow-300"> · {t.days > 1 ? `${t.days} days` : "festival"}</span>}
+            </p>
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }
@@ -230,15 +270,15 @@ export function YearReviewPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <LinkCard
           eyebrow="Opened the year"
-          title={first.headliner ?? first.series?.name ?? "Untitled show"}
-          sub={`${fmtDate(first.date)}${first.venue ? ` · ${first.venue.name}` : ""}`}
+          title={showTitle(first.info, first.headliner ?? first.series?.name)}
+          sub={[fmtDate(first.date), dayLabel(first.info), first.venue?.name].filter(Boolean).join(" · ")}
           to={`/shows/${first.concertId}`}
         />
         {d.shows.length > 1 && (
           <LinkCard
             eyebrow={isCurrentYear ? "Latest show" : "Closed it out"}
-            title={last.headliner ?? last.series?.name ?? "Untitled show"}
-            sub={`${fmtDate(last.date)}${last.venue ? ` · ${last.venue.name}` : ""}`}
+            title={showTitle(last.info, last.headliner ?? last.series?.name)}
+            sub={[fmtDate(last.date), dayLabel(last.info), last.venue?.name].filter(Boolean).join(" · ")}
             to={`/shows/${last.concertId}`}
           />
         )}

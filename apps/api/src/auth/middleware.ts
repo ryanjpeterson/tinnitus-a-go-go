@@ -37,17 +37,19 @@ export async function attachUser(req: FastifyRequest, reply: FastifyReply): Prom
 export async function requireUser(
   req: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> {
+): Promise<FastifyReply | void> {
   if (!req.user) {
-    reply.code(401).send({ error: "Authentication required." });
+    // Async hooks must return the reply after sending, or Fastify carries on
+    // to the next hook / handler.
+    return reply.code(401).send({ error: "Authentication required." });
   }
 }
 
 export async function requireAdmin(
   req: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> {
+): Promise<FastifyReply | void> {
   if (!req.user || !req.user.isAdmin) {
-    reply.code(403).send({ error: "Forbidden." });
+    return reply.code(403).send({ error: "Forbidden." });
   }
 }

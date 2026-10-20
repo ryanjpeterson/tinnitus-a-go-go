@@ -1590,14 +1590,16 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
 function AttendanceEditor({ concertId, attendance }: { concertId: string; attendance: ConcertDetail["attendance"] }) {
   const qc = useQueryClient();
   const [notes, setNotes] = useState(attendance?.personalNotes ?? "");
-  const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>(attendance?.status ?? "interested");
+  // "" = not logged yet. Starts on the saved status so the picker shows the real value.
+  const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus | "">(attendance?.status ?? "");
 
   // Derived from the saved values, so reverting an edit by hand turns the
   // button back off instead of leaving a "Save changes" that does nothing.
   const updates: Parameters<typeof api.patchConcert>[1] = {};
-  if (selectedStatus !== attendance?.status) updates.status = selectedStatus;
+  if (selectedStatus !== "" && selectedStatus !== attendance?.status) updates.status = selectedStatus;
   if (notes !== (attendance?.personalNotes ?? "")) updates.personalNotes = notes || null;
-  const hasChanges = Object.keys(updates).length > 0;
+  // A show with no attendance yet needs a status before anything can be saved.
+  const hasChanges = Object.keys(updates).length > 0 && selectedStatus !== "";
 
   const patch = useMutation({
     mutationFn: (body: Parameters<typeof api.patchConcert>[1]) => api.patchConcert(concertId, body),
@@ -1625,9 +1627,10 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
           <label className="text-xs text-text-muted block mb-1">Status</label>
           <select
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value as AttendanceStatus)}
+            onChange={(e) => setSelectedStatus(e.target.value as AttendanceStatus | "")}
             className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime"
           >
+            {!attendance && <option value="" disabled>Not logged — pick a status</option>}
             {(["attended","attending","interested","missed","cancelled","dismissed"] as AttendanceStatus[]).map(
               (s) => <option key={s} value={s}>{STATUS_CHIP[s].label}</option>,
             )}

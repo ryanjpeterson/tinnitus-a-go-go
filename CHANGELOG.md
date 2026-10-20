@@ -7,6 +7,22 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Fixed — Attendance, Shows list, hardening
+
+- **Attendance picker showed "Interested" on every show** — `GET /concerts/:id` never returned attendance, so the editor always fell back to its default. The endpoint now returns the signed-in user's own attendance (omitted for anonymous visitors, so notes and ticket prices stay private). The picker opens on the saved status; a show with nothing logged shows "Not logged — pick a status", and **Save changes** stays disabled until a value actually differs from what's saved.
+- **Search could yank you back to the list** — the 300 ms search debounce is cancelled when leaving the Shows page, and it now merges into the current URL params so a status/sort change made while typing isn't lost.
+- **CSV export** — available on mobile too, shows "Exporting…" and an error message on failure, and no longer revokes the download URL before Safari has started the download.
+- **Past the last page** — `?page=` beyond the end now says how many pages there are with a link back to page 1, instead of "No shows yet. Import your CSV…".
+- **Zoom and rotation** — removed `user-scalable=no` (pinch-zoom works on photos and flyers again) and the portrait-only manifest lock (landscape video in the installed app). Form fields are 16px on phones so iOS doesn't auto-zoom when you tap into them.
+- **Service worker** — direct navigations to `/api/*` and `/tagg-media/*` now go to the server instead of being answered with the app shell.
+- **URL parser hardening** — `POST /concerts/parse-url` is admin-only and goes through a new `safeFetchText` helper (`apps/api/src/lib/safe-fetch.ts`) that refuses loopback, private, link-local and CGNAT/Tailscale addresses (checked again on every redirect), with the 10 s timeout covering the full body download.
+- **Auth hooks** — `requireUser` / `requireAdmin` now `return reply` after sending 401/403, as Fastify 5 expects of async hooks.
+
+### Changed
+
+- **Admin tools moved to the Account page** — the CSV imports and copy editor links and the services/health panel lived on an unused dashboard and were unreachable from the UI; they're now on `/account` for admins. The services panel is its own component (`src/components/ServicesPanel.tsx`). The unused `Dashboard`/`Tile` components and AppShell's now-unneeded stats query were removed.
+- **Version string** — the hand-edited `v2026.05.31` footer is replaced by the build date (`__APP_VERSION__`, injected by Vite), shown on the Account page.
+
 ### Fixed — Mobile / PWA polish
 
 - **Sign out on mobile** — the mobile header only links to the account page, which had no sign-out control, so there was no way to sign out on a phone. The account page now has a **Sign out** button. The unused full-screen `MobileMenu` overlay was removed from `AppShell`.

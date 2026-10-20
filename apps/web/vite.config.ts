@@ -4,6 +4,11 @@ import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
 
 export default defineConfig({
+  // Build date as YYYY.MM.DD, shown on the account page — replaces a footer
+  // version string that had to be bumped by hand and kept going stale.
+  define: {
+    __APP_VERSION__: JSON.stringify(new Date().toISOString().slice(0, 10).replace(/-/g, ".")),
+  },
   plugins: [
     react(),
     VitePWA({
@@ -16,7 +21,6 @@ export default defineConfig({
         theme_color: "#0B0B0C",
         background_color: "#0B0B0C",
         display: "standalone",
-        orientation: "portrait-primary",
         start_url: "/",
         scope: "/",
         icons: [
@@ -40,6 +44,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+        // Opening /api/... or media directly (e.g. the services panel's health
+        // link) must hit the server, not get the SPA shell from the precache.
+        navigateFallbackDenylist: [/^\/api\//, /^\/tagg-media\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

@@ -560,6 +560,28 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       }
     }
 
+    // The signed-in user's own attendance (same row PATCH /concerts/:id writes).
+    // Omitted for anonymous visitors so personal notes and ticket prices stay private.
+    const attendanceRow = req.user
+      ? await db.query.concertAttendees.findFirst({
+          where: and(
+            eq(schema.concertAttendees.userId, req.user.id),
+            eq(schema.concertAttendees.concertId, concert.id),
+          ),
+        })
+      : undefined;
+    const attendance = attendanceRow
+      ? {
+          status: attendanceRow.status,
+          rating: attendanceRow.rating,
+          personalNotes: attendanceRow.personalNotes,
+          ticketPricePaid: attendanceRow.ticketPricePaid,
+          ticketPriceCurrency: attendanceRow.ticketPriceCurrency,
+          rsvpAt: attendanceRow.rsvpAt,
+          attendedConfirmedAt: attendanceRow.attendedConfirmedAt,
+        }
+      : undefined;
+
     return reply.send({
       concert: {
         id: concert.id,
@@ -594,6 +616,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
           setOrder: ca.setOrder,
           appearanceNotes: ca.appearanceNotes,
         })),
+        attendance,
         createdAt: concert.createdAt,
         updatedAt: concert.updatedAt,
       },

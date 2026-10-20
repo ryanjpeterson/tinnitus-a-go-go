@@ -1,11 +1,13 @@
 /**
- * Account settings — password change and sign out.
+ * Account settings — password change, admin tools, and sign out.
  */
 
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ServicesPanel } from "@/components/ServicesPanel";
 
 export function AccountPage() {
   const { user, signOut } = useAuth();
@@ -117,8 +119,28 @@ export function AccountPage() {
         </form>
       </div>
 
+      {user?.isAdmin && (
+        <>
+          <div className="rounded-lg border border-border bg-surface p-5 mt-6">
+            <div className="text-xs font-mono uppercase tracking-wider text-text-muted mb-3">Admin</div>
+            <div className="flex flex-wrap gap-3">
+              <Link to="/admin/imports" className="text-accent-lime hover:underline font-mono text-sm">
+                → CSV imports
+              </Link>
+              <Link to="/admin/copy" className="text-accent-lime hover:underline font-mono text-sm">
+                → Copy editor
+              </Link>
+            </div>
+          </div>
+          <div className="mt-6">
+            <ServicesPanel />
+          </div>
+        </>
+      )}
+
       {/* Sign out — the only sign-out control on mobile, where the header has no room for one */}
-      <div className="mt-6 flex justify-end">
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <span className="text-xs text-text-subtle font-mono">v{__APP_VERSION__}</span>
         <Button variant="secondary" size="sm" onClick={() => void signOut()}>
           Sign out
         </Button>

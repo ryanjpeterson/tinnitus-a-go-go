@@ -18,7 +18,8 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "../lib/env.js";
-import { requireUser } from "../auth/middleware.js";
+import { requireAdmin } from "../auth/middleware.js";
+import { safeFetchText, UnsafeUrlError } from "../lib/safe-fetch.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -302,7 +303,9 @@ ${text}`,
 // ─── Route plugin ──────────────────────────────────────────────────────────────
 
 export async function parseUrlRoutes(app: FastifyInstance): Promise<void> {
-  app.addHook("preHandler", requireUser);
+  // Admin-only: only the Add show modal uses this, and it makes the server
+  // fetch arbitrary URLs.
+  app.addHook("preHandler", requireAdmin);
 
   const bodySchema = z.object({
     url: z.string().url().max(2048),
@@ -320,13 +323,13 @@ export async function parseUrlRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "Only HTTP/HTTPS URLs are supported." });
     }
 
-    // Fetch the target page with a browser-like UA and a 10 s timeout
+    // Fetch the target page with a browser-like UA. safeFetchText refuses
+    // internal addresses (incl. after redirects) and the 10 s timeout covers
+    // the body download, not just the headers.
     let html: string;
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10_000);
-      const res = await fetch(url, {
-        signal: controller.signal,
+      const res = await safeFetchText(url, {
+        timeoutMs: 10_000,
         headers: {
           "User-Agent":
             "Mozilla/5.0 (compatible; TinnitusBot/1.0; +https://tinnitus)",
@@ -335,14 +338,16 @@ export async function parseUrlRoutes(app: FastifyInstance): Promise<void> {
           "Accept-Language": "en-US,en;q=0.5",
         },
       });
-      clearTimeout(timer);
       if (!res.ok) {
         return reply
           .code(422)
           .send({ error: `Page returned HTTP ${res.status}. Can't parse it.` });
       }
-      html = await res.text();
+      html = res.text;
     } catch (err) {
+      if (err instanceof UnsafeUrlError) {
+        return reply.code(400).send({ error: err.message });
+      }
       const msg = err instanceof Error ? err.message : String(err);
       return reply.code(422).send({ error: `Could not fetch the URL: ${msg}` });
     }

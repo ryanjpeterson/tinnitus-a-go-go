@@ -207,6 +207,8 @@ export function ConcertsPage() {
   const isAdmin = user?.isAdmin ?? false;
   const [searchParams, setSearchParams] = useSearchParams();
   const [addOpen, setAddOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // ── Derive state from URL params ──────────────────────────────────────────
   const page         = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
@@ -224,6 +226,12 @@ export function ConcertsPage() {
     setInputQ(urlQ);
   }, [urlQ]);
 
+  // Cancel a pending search write on unmount — otherwise it fires after you've
+  // opened a show and navigates you back to /shows?q=…
+  useEffect(() => () => {
+    if (searchTimer.current != null) clearTimeout(searchTimer.current);
+  }, []);
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   /** Set params, always resetting to page 1. Replaces history (filter changes aren't navigation). */
@@ -240,9 +248,11 @@ export function ConcertsPage() {
     setInputQ(val);
     if (searchTimer.current != null) clearTimeout(searchTimer.current);
     // Write to URL after 300 ms; use replace so typing doesn't spam history
+    // Functional update merges into the params as they are when the timer
+    // fires, so a status/sort change made while typing isn't overwritten.
     searchTimer.current = setTimeout(() => {
       setSearchParams(
-        mergeParams(searchParams, { q: val.trim() || undefined, page: undefined }),
+        (current) => mergeParams(current, { q: val.trim() || undefined, page: undefined }),
         { replace: true },
       );
     }, 300);
@@ -261,13 +271,22 @@ export function ConcertsPage() {
   const { concerts = [], total = 0, totalPages = 0 } = concertsQuery.data ?? {};
 
   const handleExport = async (): Promise<void> => {
-    const blob = await api.exportCsv();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `concerts-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    setExporting(true);
+    setExportError(null);
+    try {
+      const blob = await api.exportCsv();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `concerts-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      // Safari starts the download asynchronously; revoking immediately can cancel it.
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch {
+      setExportError("Export failed.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -296,12 +315,14 @@ export function ConcertsPage() {
           {isAdmin && (
             <button
               onClick={() => void handleExport()}
-              className="hidden sm:block text-xs font-mono text-text-muted hover:text-accent-lime transition-colors border border-border rounded px-3 py-1.5 shrink-0"
+              disabled={exporting}
+              className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors border border-border rounded px-3 py-1.5 shrink-0 disabled:opacity-50"
             >
-              Export ↓
+              {exporting ? "Exporting…" : "Export ↓"}
             </button>
           )}
         </div>
+        {exportError && <p className="text-xs font-mono text-accent-pink">{exportError}</p>}
 
         {/* Row 2: status filter (admin only) + sort */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -366,6 +387,12 @@ export function ConcertsPage() {
         <div className="py-16 text-center text-text-subtle font-mono text-sm animate-pulse">Loading…</div>
       ) : concertsQuery.isError ? (
         <div className="py-16 text-center text-accent-pink font-mono text-sm">Failed to load shows.</div>
+      ) : concerts.length === 0 && page > 1 && total > 0 ? (
+        <div className="py-16 text-center text-text-subtle font-mono text-sm">
+          {/* API reports totalPages: 0 for an empty page, so derive it from total */}
+          Nothing on page {page} — there {total <= PAGE_SIZE ? "is only 1 page" : `are only ${Math.ceil(total / PAGE_SIZE)} pages`}.{" "}
+          <button onClick={() => setPage(1)} className="underline hover:text-accent-lime">Back to page 1</button>
+        </div>
       ) : concerts.length === 0 ? (
         <div className="py-16 text-center text-text-subtle font-mono text-sm">
           {statusFilter || urlQ ? "No shows match your filter." : "No shows yet. Import your CSV or add your first show."}

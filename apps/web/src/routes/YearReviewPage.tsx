@@ -368,7 +368,7 @@ export function YearReviewPage() {
             <ol className="space-y-1.5">
               {d.topSongs.map((s, i) => (
                 <li key={`${s.song}-${s.artistSlug ?? i}`} className="flex items-baseline gap-3 text-[15px]">
-                  <span className="w-5 shrink-0 text-right text-xs font-mono text-text-subtle">{i + 1}</span>
+                  <span className="w-5 shrink-0 text-right text-sm text-text-subtle">{i + 1}</span>
                   <span className="min-w-0 flex-1 truncate">
                     {s.song}
                     {s.artistName && (
@@ -380,12 +380,12 @@ export function YearReviewPage() {
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 text-xs font-mono text-accent-lime">{s.count}×</span>
+                  <span className="shrink-0 text-sm text-accent-lime">{s.count}×</span>
                 </li>
               ))}
             </ol>
           ) : (
-            <p className="text-xs font-mono text-text-subtle">No song came up more than once — every set was a one-off.</p>
+            <p className="text-sm text-text-subtle">No song came up more than once — every set was a one-off.</p>
           )}
         </Section>
       )}

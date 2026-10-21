@@ -13,7 +13,7 @@ import { VenueMap } from "@/components/VenueMap";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
 import type { CarouselItem } from "@/components/PhotoCarousel";
 import { useAuth } from "@/lib/auth-context";
-import { EmptyState, EventRow, Hero, List, Loading, StatusBadge } from "@/components/ui/kit";
+import { Chevron, EmptyState, EventRow, Hero, List, Loading, StatusBadge } from "@/components/ui/kit";
 import { billLine } from "@/lib/showTitle";
 import { Button } from "@/components/ui/button";
 
@@ -202,7 +202,7 @@ function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; is
       {/* Drag-over overlay */}
       {isDragging && (
         <div className="absolute inset-0 z-10 border-2 border-dashed border-accent-lime bg-accent-lime/5 flex items-center justify-center pointer-events-none rounded-lg">
-          <span className="text-sm font-mono text-accent-lime font-bold">Drop flyer</span>
+          <span className="text-sm text-accent-lime font-bold">Drop flyer</span>
         </div>
       )}
       {/* Image area — square on mobile/tablet, portrait (2:3) on desktop */}
@@ -219,7 +219,7 @@ function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; is
               className="w-full h-full object-cover lg:object-contain"
             />
             {/* Expand hint */}
-            <span className="absolute bottom-2 right-2 bg-black/50 text-white/70 text-[10px] font-mono px-1.5 py-0.5 rounded pointer-events-none">
+            <span className="absolute bottom-2 right-2 bg-black/50 text-white/70 text-xs px-1.5 py-0.5 rounded pointer-events-none">
               ⤢ full
             </span>
           </button>
@@ -231,7 +231,7 @@ function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; is
               <circle cx="34" cy="32" r="4" stroke="currentColor" strokeWidth="2"/>
               <path d="M38 36l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
-            <span className="text-xs font-mono opacity-40">No flyer</span>
+            <span className="text-xs opacity-40">No flyer</span>
           </div>
         )}
       </div>
@@ -243,7 +243,7 @@ function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; is
           onClick={() => setFlyerModal(false)}
         >
           <button
-            className="absolute top-4 right-4 text-white/70 hover:text-white text-2xl font-mono w-10 h-10 flex items-center justify-center"
+            className="absolute top-4 right-4 text-white/70 hover:text-white text-2xl w-10 h-10 flex items-center justify-center"
             onClick={() => setFlyerModal(false)}
           >×</button>
           <img
@@ -261,7 +261,7 @@ function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; is
         <div className="px-3 py-2.5 border-t border-border space-y-2">
           <div className="flex items-center gap-2">
             <label className={clsx(
-              "flex-1 text-center text-xs font-mono px-2 py-1.5 rounded border cursor-pointer transition-colors",
+              "flex-1 text-center text-xs  px-2 py-1.5 rounded border cursor-pointer transition-colors",
               uploading || urlImporting
                 ? "border-border text-text-subtle cursor-not-allowed"
                 : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
@@ -280,7 +280,7 @@ function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; is
               onClick={() => setShowUrlInput((v) => !v)}
               disabled={uploading || urlImporting}
               className={clsx(
-                "text-xs font-mono px-2 py-1.5 rounded border transition-colors",
+                "text-xs  px-2 py-1.5 rounded border transition-colors",
                 showUrlInput
                   ? "border-accent-lime text-accent-lime"
                   : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
@@ -293,7 +293,7 @@ function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; is
             {currentUrl && !uploading && !urlImporting && (
               <button
                 onClick={() => void handleRemove()}
-                className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors px-2 py-1.5"
+                className="link-action hover:text-accent-pink"
               >
                 Remove
               </button>
@@ -310,12 +310,12 @@ function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; is
                 onChange={(e) => setUrlInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleUrlImport(); } }}
                 disabled={urlImporting}
-                className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime disabled:opacity-50"
+                className="flex-1 field h-11"
               />
               <button
                 onClick={() => void handleUrlImport()}
                 disabled={urlImporting || !urlInput.trim()}
-                className="text-xs font-mono px-2 py-1 rounded bg-surface-2 border border-border text-text-muted hover:text-accent-lime hover:border-accent-lime transition-colors disabled:opacity-40"
+                className="btn btn-sm btn-secondary"
               >
                 {urlImporting ? "Importing…" : "Import"}
               </button>
@@ -324,7 +324,7 @@ function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; is
         </div>
       )}
 
-      {isAdmin && error && <p className="text-xs text-accent-pink px-3 pb-2 font-mono">{error}</p>}
+      {isAdmin && error && <p className="text-sm text-accent-pink px-3 pb-2">{error}</p>}
     </div>
   );
 }
@@ -725,15 +725,15 @@ function PhotoGallery({
         <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col items-center justify-center gap-4 backdrop-blur-sm">
           <div className="w-72 text-center px-6 py-8 rounded-2xl bg-bg/90 border border-border shadow-2xl">
             <div className="w-12 h-12 border-[3px] border-accent-lime/20 border-t-accent-lime rounded-full animate-spin mx-auto mb-5" />
-            <p className="text-sm font-mono text-text-base mb-1">
+            <p className="text-sm text-text-base mb-1">
               {batchTotal > 1
                 ? `Photo ${batchCurrent} of ${batchTotal}`
                 : (batchPhase === "processing" ? "Processing…" : "Uploading…")}
             </p>
             {batchFileName && (
-              <p className="text-xs font-mono text-text-subtle truncate max-w-full mb-1">{batchFileName}</p>
+              <p className="text-sm text-text-subtle truncate max-w-full mb-1">{batchFileName}</p>
             )}
-            <p className="text-xs font-mono text-text-subtle mb-4">
+            <p className="text-sm text-text-subtle mb-4">
               {batchPhase === "processing"
                 ? "Worker processing…"
                 : (globalUploadPercent !== null ? `${globalUploadPercent}%` : "Please wait")}
@@ -758,7 +758,7 @@ function PhotoGallery({
               <path d="M12 2v13m0-13L8 6m4-4l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
-            <span className="text-sm font-mono text-accent-lime font-bold">Drop to upload</span>
+            <span className="text-sm text-accent-lime font-bold">Drop to upload</span>
           </div>
         </div>
       )}
@@ -774,7 +774,7 @@ function PhotoGallery({
                   <button
                     onClick={() => void enterTagging()}
                     disabled={loadingTags}
-                    className="text-xs font-mono text-text-subtle hover:text-accent-lime border border-border rounded px-2.5 py-1.5 transition-colors disabled:opacity-50"
+                    className="btn btn-sm btn-secondary"
                   >
                     {loadingTags ? "Loading…" : "⊕ Tag artists"}
                   </button>
@@ -782,21 +782,21 @@ function PhotoGallery({
                 {photos.length > 1 && (
                   <button
                     onClick={enterReorder}
-                    className="text-xs font-mono text-text-subtle hover:text-accent-lime border border-border rounded px-2.5 py-1.5 transition-colors"
+                    className="btn btn-sm btn-secondary"
                   >
                     ⇄ Reorder
                   </button>
                 )}
                 {isFutureEvent ? (
                   <span
-                    className="text-xs font-mono text-text-subtle border border-dashed border-border rounded px-3 py-1.5 cursor-not-allowed"
+                    className="text-sm text-text-subtle border border-dashed border-border rounded px-3 py-1.5 cursor-not-allowed"
                     title="Media can be added on or after the event date"
                   >
                     + Add media
                   </span>
                 ) : (
                   <label className={clsx(
-                    "text-xs font-mono px-3 py-1.5 rounded border cursor-pointer transition-colors",
+                    "text-xs  px-3 py-1.5 rounded border cursor-pointer transition-colors",
                     uploading
                       ? "border-border text-text-subtle cursor-not-allowed"
                       : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
@@ -820,14 +820,14 @@ function PhotoGallery({
               <>
                 <button
                   onClick={cancelReorder}
-                  className="text-xs font-mono text-text-subtle hover:text-text-base border border-border rounded px-2.5 py-1.5 transition-colors"
+                  className="btn btn-sm btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => void saveOrder()}
                   disabled={savingOrder}
-                  className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="btn btn-sm btn-primary"
                 >
                   {savingOrder ? "Saving…" : "Save order"}
                 </button>
@@ -836,7 +836,7 @@ function PhotoGallery({
               /* tagging mode header controls */
               <button
                 onClick={exitTagging}
-                className="text-xs font-mono text-text-subtle hover:text-text-base border border-border rounded px-2.5 py-1.5 transition-colors"
+                className="btn btn-sm btn-secondary"
               >
                 Done tagging
               </button>
@@ -848,10 +848,10 @@ function PhotoGallery({
       {/* Tagging mode: artist selector + assign controls (admin only) */}
       {isAdmin && tagging && (
         <div className="mb-4 rounded-lg border border-accent-lime/30 bg-surface-2 p-3 space-y-3">
-          <p className="text-xs font-mono text-text-muted uppercase tracking-wider">Tag artists in photos</p>
+          <p className="eyebrow">Tag artists in photos</p>
           <div className="flex gap-2 items-center flex-wrap">
             <div className="flex-1 min-w-[160px]">
-              <label className="text-xs text-text-subtle font-mono block mb-1">Tagging artist</label>
+              <label className="text-xs text-text-subtle block mb-1">Tagging artist</label>
               <select
                 value={tagArtistId}
                 onChange={(e) => {
@@ -859,7 +859,7 @@ function PhotoGallery({
                   setSelectedForTag(new Set());
                   setTagSaveMsg(null);
                 }}
-                className="w-full rounded border border-border bg-surface px-2.5 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime"
+                className="w-full field h-11"
               >
                 {concertArtists.map((a) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
@@ -870,7 +870,7 @@ function PhotoGallery({
               <button
                 onClick={() => void handleAssignTags()}
                 disabled={savingTags || selectedForTag.size === 0 || !tagArtistId}
-                className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn btn-sm btn-primary"
               >
                 {savingTags
                   ? "Saving…"
@@ -880,9 +880,9 @@ function PhotoGallery({
               </button>
             </div>
           </div>
-          {tagSaveMsg && <p className="text-xs font-mono text-accent-lime">{tagSaveMsg}</p>}
-          {tagError && <p className="text-xs font-mono text-accent-pink">{tagError}</p>}
-          <p className="text-xs text-text-subtle font-mono">
+          {tagSaveMsg && <p className="text-sm text-accent-lime">{tagSaveMsg}</p>}
+          {tagError && <p className="text-sm text-accent-pink">{tagError}</p>}
+          <p className="text-sm text-text-subtle">
             Tap photos to select • Click "Tag N photos" to assign • Switch artist to tag another pass
           </p>
         </div>
@@ -890,17 +890,17 @@ function PhotoGallery({
 
       {/* Future event notice */}
       {isFutureEvent && (
-        <p className="text-xs text-text-subtle font-mono mb-3 italic">
+        <p className="text-sm text-text-subtle mb-3 italic">
           Media upload opens on the event date ({concertDate}).
         </p>
       )}
 
       {uploadError && (
-        <p className="text-xs text-accent-pink mb-3 font-mono">{uploadError}</p>
+        <p className="text-sm text-accent-pink mb-3">{uploadError}</p>
       )}
 
       {displayPhotos.length === 0 ? (
-        <p className="text-xs text-text-subtle font-mono py-4 text-center border border-dashed border-border rounded-lg">
+        <p className="text-sm text-text-subtle py-4 text-center border border-dashed border-border rounded-lg">
           No media yet{isFutureEvent ? " — add it after the show." : " — drop a photo or video to get started."}
         </p>
       ) : (
@@ -931,7 +931,7 @@ function PhotoGallery({
                   )}
                 >
                   {p.processing ? (
-                    <div className="w-full h-full flex items-center justify-center text-text-subtle text-xs font-mono animate-pulse">…</div>
+                    <div className="w-full h-full flex items-center justify-center text-text-subtle text-sm animate-pulse">…</div>
                   ) : p.kind === "video" ? (
                     <>
                       {p.urls.thumb ? (
@@ -972,7 +972,7 @@ function PhotoGallery({
                           key={artistId}
                           onClick={(e) => { e.stopPropagation(); void handleRemoveTagFromPhoto(p.id, artistId); }}
                           title={`Remove ${artist.name} tag`}
-                          className="text-[9px] font-mono bg-accent-lime/80 text-bg rounded px-0.5 leading-4 hover:bg-accent-pink/80 hover:text-white transition-colors"
+                          className="text-xs bg-accent-lime/80 text-bg rounded px-0.5 leading-4 hover:bg-accent-pink/80 hover:text-white transition-colors"
                         >
                           {initials}
                         </button>
@@ -984,18 +984,18 @@ function PhotoGallery({
                 {/* Confirm-delete overlay */}
                 {!tagging && confirmDeleteId === p.id && (
                   <div className="absolute inset-0 rounded bg-black/75 flex flex-col items-center justify-center gap-1.5 z-10">
-                    <span className="text-xs text-white font-mono">Delete?</span>
+                    <span className="text-xs text-white">Delete?</span>
                     <div className="flex gap-1">
                       <button
                         onClick={() => void handleDelete(p.id)}
                         disabled={deleting}
-                        className="text-xs font-mono px-2 py-0.5 rounded bg-accent-pink text-white hover:opacity-90 disabled:opacity-50"
+                        className="text-xs px-2 py-0.5 rounded bg-accent-pink text-white hover:opacity-90 disabled:opacity-50"
                       >
                         {deleting ? "…" : "Yes"}
                       </button>
                       <button
                         onClick={() => setConfirmDeleteId(null)}
-                        className="text-xs font-mono px-2 py-0.5 rounded border border-border text-white hover:bg-surface-2"
+                        className="btn btn-sm btn-secondary"
                       >
                         No
                       </button>
@@ -1020,14 +1020,14 @@ function PhotoGallery({
                     <button
                       onClick={() => movePhoto(p.id, -1)}
                       disabled={idx === 0}
-                      className="text-white text-xs font-mono w-5 h-5 flex items-center justify-center disabled:opacity-20 hover:text-accent-lime transition-colors"
+                      className="w-5 h-5 link-action"
                       title="Move left"
                     >←</button>
-                    <span className="text-white text-xs font-mono opacity-50">{idx + 1}</span>
+                    <span className="text-white text-xs opacity-50">{idx + 1}</span>
                     <button
                       onClick={() => movePhoto(p.id, 1)}
                       disabled={idx === displayPhotos.length - 1}
-                      className="text-white text-xs font-mono w-5 h-5 flex items-center justify-center disabled:opacity-20 hover:text-accent-lime transition-colors"
+                      className="w-5 h-5 link-action"
                       title="Move right"
                     >→</button>
                   </div>
@@ -1041,7 +1041,7 @@ function PhotoGallery({
       {/* Per-artist upload zones — only when concert has artists and event has passed */}
       {!isFutureEvent && concertArtists.length > 0 && !tagging && !reordering && (
         <div className="mt-4 pt-3 border-t border-border">
-          <p className="text-[10px] font-mono uppercase tracking-widest text-text-subtle mb-2">
+          <p className="mb-2 eyebrow">
             Upload by artist <span className="normal-case opacity-60">— media auto-tagged on upload</span>
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -1167,15 +1167,15 @@ function ArtistUploadZone({
         disabled={isFutureEvent || uploading}
         onChange={(e) => void handleUpload(e.target.files)}
       />
-      <p className="text-xs font-mono font-medium text-text-muted truncate leading-tight mb-0.5">{artist.name}</p>
+      <p className="text-sm font-medium text-text-muted truncate leading-tight mb-0.5">{artist.name}</p>
       {uploading ? (
-        <p className="text-[10px] font-mono text-accent-lime animate-pulse">Uploading…</p>
+        <p className="text-sm text-accent-lime animate-pulse">Uploading…</p>
       ) : uploadCount > 0 ? (
-        <p className="text-[10px] font-mono text-accent-lime">+{uploadCount} tagged</p>
+        <p className="text-sm text-accent-lime">+{uploadCount} tagged</p>
       ) : (
-        <p className="text-[10px] font-mono text-text-subtle">Drop or click</p>
+        <p className="text-sm text-text-subtle">Drop or click</p>
       )}
-      {error && <p className="text-[10px] font-mono text-accent-pink mt-0.5 truncate">{error}</p>}
+      {error && <p className="text-sm text-accent-pink mt-0.5 truncate">{error}</p>}
     </div>
   );
 }
@@ -1237,7 +1237,7 @@ function VenueAutocomplete({
         onFocus={() => results.length > 0 && setShowDrop(true)}
         onBlur={() => setTimeout(() => setShowDrop(false), 150)}
         placeholder={placeholder}
-        className={inputClassName ?? "w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"}
+        className={inputClassName ?? "field h-11 w-full"}
       />
       {showDrop && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 z-40 mt-1 bg-surface border border-border rounded-lg shadow-xl py-1 max-h-40 overflow-y-auto">
@@ -1248,7 +1248,7 @@ function VenueAutocomplete({
               className="w-full text-left px-3 py-2 text-sm hover:bg-surface-2 transition-colors flex items-center justify-between gap-2"
             >
               <span className="text-text-base truncate">{v.name}</span>
-              <span className="text-xs text-text-subtle font-mono shrink-0">
+              <span className="text-sm text-text-subtle shrink-0">
                 {[v.city, v.region].filter(Boolean).join(", ")}
               </span>
             </button>
@@ -1358,23 +1358,23 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
         {!editing ? (
           <button
             onClick={enterEdit}
-            className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+            className="link-action"
           >
             Edit
           </button>
         ) : (
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            {saveError && <span className="text-xs text-accent-pink font-mono">{saveError}</span>}
+            {saveError && <span className="text-sm text-accent-pink">{saveError}</span>}
             <button
               onClick={() => setEditing(false)}
-              className="text-xs font-mono text-text-subtle hover:text-text-base transition-colors"
+              className="text-xs text-text-subtle hover:text-text-base transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={() => void handleSave()}
               disabled={saving}
-              className="text-xs font-mono px-3 py-1 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="btn btn-sm btn-primary"
             >
               {saving ? "Saving…" : "Save"}
             </button>
@@ -1386,25 +1386,25 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
         /* ── Read mode ── */
         <dl className="space-y-1.5 text-sm">
           <div className="flex items-baseline gap-2">
-            <dt className="text-xs text-text-subtle font-mono w-16 shrink-0">Date</dt>
-            <dd className="text-text-base font-mono">
+            <dt className="text-xs text-text-subtle w-16 shrink-0">Date</dt>
+            <dd className="text-text-base">
               {fmtDateLong(concert.date)}
               {concert.dateIsApproximate && (
-                <span className="ml-2 text-xs text-text-subtle">(approx.)</span>
+                <span className="ml-2 text-sm text-text-subtle">(approx.)</span>
               )}
             </dd>
           </div>
           <div className="flex items-baseline gap-2">
-            <dt className="text-xs text-text-subtle font-mono w-16 shrink-0">Type</dt>
+            <dt className="text-xs text-text-subtle w-16 shrink-0">Type</dt>
             <dd>
-              <span className="text-xs font-mono px-1.5 py-0.5 rounded border border-border text-text-muted">
+              <span className="text-sm px-1.5 py-0.5 rounded border border-border text-text-muted">
                 {concert.type === "festival_day" ? "Festival day" : "Concert"}
               </span>
             </dd>
           </div>
           {concert.venue && (
             <div className="flex items-baseline gap-2">
-              <dt className="text-xs text-text-subtle font-mono w-16 shrink-0">Venue</dt>
+              <dt className="text-xs text-text-subtle w-16 shrink-0">Venue</dt>
               <dd className="text-text-base">
                 {concert.venue.name}
                 {concert.venue.city && <span className="text-text-subtle"> · {concert.venue.city}</span>}
@@ -1414,7 +1414,7 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
           )}
           {concert.eventSeries && (
             <div className="flex items-baseline gap-2">
-              <dt className="text-xs text-text-subtle font-mono w-16 shrink-0">
+              <dt className="text-xs text-text-subtle w-16 shrink-0">
                 {concert.type === "festival_day" ? "Festival" : "Tour"}
               </dt>
               <dd className="text-text-base">
@@ -1424,19 +1424,19 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
           )}
           {concert.eventNotes && (
             <div className="flex items-baseline gap-2">
-              <dt className="text-xs text-text-subtle font-mono w-16 shrink-0">Notes</dt>
+              <dt className="text-xs text-text-subtle w-16 shrink-0">Notes</dt>
               <dd className="text-text-base italic text-sm">{concert.eventNotes}</dd>
             </div>
           )}
           {concert.sourceUrl && (
             <div className="flex items-baseline gap-2">
-              <dt className="text-xs text-text-subtle font-mono w-16 shrink-0">Source</dt>
+              <dt className="text-xs text-text-subtle w-16 shrink-0">Source</dt>
               <dd>
                 <a
                   href={concert.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors truncate block max-w-xs"
+                  className="truncate block max-w-xs link-action"
                 >
                   {concert.sourceUrl} ↗
                 </a>
@@ -1450,12 +1450,12 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
           {/* Date + approximate */}
           <div className="flex gap-3 items-end">
             <div className="flex-1">
-              <label className="block text-xs text-text-muted font-mono mb-1">Date</label>
+              <label className="block mb-1 label">Date</label>
               <input
                 type="date"
                 value={form.date}
                 onChange={(e) => setField("date", e.target.value)}
-                className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime [color-scheme:dark]"
+                className="w-full [color-scheme:dark] field h-11"
               />
             </div>
             <label className="flex items-center gap-2 mb-1.5 cursor-pointer">
@@ -1465,13 +1465,13 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
                 onChange={(e) => setField("dateIsApproximate", e.target.checked)}
                 className="accent-accent-lime"
               />
-              <span className="text-xs text-text-muted font-mono">Approximate</span>
+              <span className="text-sm text-text-muted">Approximate</span>
             </label>
           </div>
 
           {/* Type */}
           <div>
-            <label className="block text-xs text-text-muted font-mono mb-1">Type</label>
+            <label className="block mb-1 label">Type</label>
             <div className="flex rounded border border-border overflow-hidden w-fit">
               {(["concert", "festival_day"] as const).map((t) => (
                 <button
@@ -1479,7 +1479,7 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
                   type="button"
                   onClick={() => handleTypeChange(t)}
                   className={clsx(
-                    "px-3 py-1.5 text-xs font-mono transition-colors",
+                    "px-3 py-1.5 text-xs  transition-colors",
                     form.type === t
                       ? "bg-accent-lime text-bg font-bold"
                       : "bg-surface-2 text-text-muted hover:text-text-base",
@@ -1494,7 +1494,7 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
           {/* Venue with autocomplete */}
           <div className="flex gap-2">
             <div className="flex-[2]">
-              <label className="block text-xs text-text-muted font-mono mb-1">Venue name</label>
+              <label className="block mb-1 label">Venue name</label>
               <VenueAutocomplete
                 value={form.venueName}
                 onChange={(v) => setField("venueName", v)}
@@ -1507,23 +1507,23 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
               />
             </div>
             <div className="flex-1">
-              <label className="block text-xs text-text-muted font-mono mb-1">City</label>
+              <label className="block mb-1 label">City</label>
               <input
                 type="text"
                 value={form.venueCity}
                 onChange={(e) => setField("venueCity", e.target.value)}
                 placeholder="City"
-                className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                className="w-full field h-11"
               />
             </div>
             <div className="flex-1">
-              <label className="block text-xs text-text-muted font-mono mb-1">State/province</label>
+              <label className="block mb-1 label">State/province</label>
               <input
                 type="text"
                 value={form.venueRegion}
                 onChange={(e) => setField("venueRegion", e.target.value)}
                 placeholder="State / province"
-                className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                className="w-full field h-11"
               />
             </div>
           </div>
@@ -1531,7 +1531,7 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
           {/* Type-driven: Event name (concert) or Festival name + year (festival_day) */}
           {form.type === "concert" ? (
             <div>
-              <label className="block text-xs text-text-muted font-mono mb-1">
+              <label className="block mb-1 label">
                 Event name <span className="text-text-subtle">(optional — e.g. The Eras Tour)</span>
               </label>
               <input
@@ -1539,12 +1539,12 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
                 value={form.eventSeriesName}
                 onChange={(e) => setField("eventSeriesName", e.target.value)}
                 placeholder="Event name…"
-                className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                className="w-full field h-11"
               />
             </div>
           ) : (
             <div>
-              <label className="block text-xs text-text-muted font-mono mb-1">
+              <label className="block mb-1 label">
                 Festival name <span className="text-accent-pink">*</span>
               </label>
               <input
@@ -1552,32 +1552,32 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
                 value={form.eventSeriesName}
                 onChange={(e) => setField("eventSeriesName", e.target.value)}
                 placeholder="Festival name…"
-                className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                className="w-full field h-11"
               />
             </div>
           )}
 
           {/* Event notes */}
           <div>
-            <label className="block text-xs text-text-muted font-mono mb-1">Event notes (shared)</label>
+            <label className="block mb-1 label">Event notes (shared)</label>
             <textarea
               rows={2}
               value={form.eventNotes}
               onChange={(e) => setField("eventNotes", e.target.value)}
               placeholder="Notes visible to all attendees…"
-              className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime resize-none"
+              className="w-full resize-none field py-2.5"
             />
           </div>
 
           {/* Source URL */}
           <div>
-            <label className="block text-xs text-text-muted font-mono mb-1">Source URL</label>
+            <label className="block mb-1 label">Source URL</label>
             <input
               type="url"
               value={form.sourceUrl}
               onChange={(e) => setField("sourceUrl", e.target.value)}
               placeholder="https://…"
-              className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+              className="w-full field h-11"
             />
           </div>
         </div>
@@ -1627,11 +1627,11 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
 
       <div className="space-y-3">
         <div>
-          <label className="text-xs text-text-muted block mb-1">Status</label>
+          <label className="block mb-1 label">Status</label>
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value as AttendanceStatus | "")}
-            className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime"
+            className="w-full field h-11"
           >
             {!attendance && <option value="" disabled>Not logged — pick a status</option>}
             {(["attended","attending","interested","missed","cancelled","dismissed"] as AttendanceStatus[]).map(
@@ -1641,24 +1641,24 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
         </div>
 
         <div>
-          <label className="text-xs text-text-muted block mb-1">Personal notes</label>
+          <label className="block mb-1 label">Personal notes</label>
           <textarea
             rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Add your notes about this show..."
-            className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime resize-none"
+            className="w-full resize-none field py-2.5"
           />
         </div>
 
         {attendance?.ticketPricePaid != null && (
-          <div className="text-xs text-text-subtle font-mono">
+          <div className="text-sm text-text-subtle">
             Ticket: {(attendance.ticketPricePaid / 100).toFixed(2)} {attendance.ticketPriceCurrency ?? ""}
           </div>
         )}
 
         {patch.isError && (
-          <p className="text-xs font-mono text-accent-pink">
+          <p className="text-sm text-accent-pink">
             {patch.error instanceof Error ? patch.error.message : "Failed to save."}
           </p>
         )}
@@ -1667,7 +1667,7 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
           onClick={handleSave}
           disabled={patch.isPending || !hasChanges}
           className={clsx(
-            "text-xs font-mono px-4 py-1.5 rounded font-bold transition-opacity disabled:opacity-50",
+            "text-xs  px-4 py-1.5 rounded font-bold transition-opacity disabled:opacity-50",
             hasChanges
               ? "bg-accent-lime text-bg hover:opacity-90"
               : "bg-surface-2 text-text-muted"
@@ -2031,20 +2031,20 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
           !editing ? (
             <button
               onClick={enterEdit}
-              className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+              className="link-action"
             >
               Edit
             </button>
           ) : (
             <div className="flex items-center gap-2 flex-wrap justify-end">
-              {saveError && <span className="text-xs text-accent-pink font-mono">{saveError}</span>}
-              <button onClick={cancelEdit} className="text-xs font-mono text-text-subtle hover:text-text-base transition-colors">
+              {saveError && <span className="text-sm text-accent-pink">{saveError}</span>}
+              <button onClick={cancelEdit} className="btn btn-sm btn-ghost">
                 Cancel
               </button>
               <button
                 onClick={() => void handleSave()}
                 disabled={saving}
-                className="text-xs font-mono px-3 py-1 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="btn btn-sm btn-primary"
               >
                 {saving ? "Saving…" : "Save changes"}
               </button>
@@ -2057,41 +2057,33 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
         /* ── Read mode ── */
         <>
           {sortedArtists.length === 0 ? (
-            <p className="text-xs text-text-subtle">No artists recorded.</p>
+            <p className="text-sm text-text-subtle">No artists recorded.</p>
           ) : (
-            <ul className="space-y-2">
-              {sortedArtists.map((a) => (
-                <li key={a.id} className="flex items-baseline justify-between gap-2">
-                  <div className="flex items-baseline gap-2 min-w-0">
-                    {(a.role === "headliner" || a.role === "co_headliner") && (
-                      <span className="text-accent-lime text-xs font-mono shrink-0">★</span>
-                    )}
-                    <Link
-                      to={`/artists/${a.slug}`}
-                      className="text-sm text-text-base hover:text-accent-lime transition-colors truncate"
-                    >
-                      {a.name}
+            // Billing order says who headlined: top-billed names are larger, support below.
+            <ul className="-mx-2">
+              {sortedArtists.map((a) => {
+                const top = a.role === "headliner" || a.role === "co_headliner";
+                return (
+                  <li key={a.id}>
+                    <Link to={`/artists/${a.slug}`}
+                      className="group flex min-h-[44px] items-center justify-between gap-3 rounded-lg px-2 transition-colors hover:bg-surface-2/70">
+                      <span className={top ? "truncate text-base font-semibold" : "truncate text-[15px] text-text-muted"}>{a.name}</span>
+                      <Chevron className="text-text-subtle group-hover:text-accent-lime" />
                     </Link>
-                  </div>
-                  {/* Only show role label for non-support roles — support is implicit */}
-                  {a.role !== "support" && a.role !== "opener" && a.role !== "festival_set" && (
-                    <span className="text-xs text-text-subtle font-mono shrink-0">
-                      {ROLE_LABEL[a.role] ?? a.role}
-                    </span>
-                  )}
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
           {concert.eventNotes && (
-            <p className="text-xs text-text-subtle mt-3 italic">{concert.eventNotes}</p>
+            <p className="meta mt-3">{concert.eventNotes}</p>
           )}
         </>
       ) : (
         /* ── Edit mode (admin only, but this branch only reached when editing is true) ── */
         <div>
           {localArtists.length === 0 ? (
-            <p className="text-xs text-text-subtle mb-3">No artists yet — add one below.</p>
+            <p className="text-sm text-text-subtle mb-3">No artists yet — add one below.</p>
           ) : (
             <ul className="mb-4">
               {localArtists.map((a, idx) => {
@@ -2136,7 +2128,7 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
                     <select
                       value={a.role}
                       onChange={(e) => handleChangeRole(a.uid, e.target.value as ArtistRole)}
-                      className="text-xs font-mono rounded border border-border bg-surface-2 px-1.5 py-1 text-text-muted focus:outline-none focus:border-accent-lime w-[128px] shrink-0"
+                      className="w-[128px] shrink-0 field h-11"
                     >
                       {ALL_ROLES.map((r) => (
                         <option key={r} value={r}>{ROLE_LABEL[r]}</option>
@@ -2145,7 +2137,7 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
 
                     <span className="flex-1 text-sm text-text-base truncate min-w-0">
                       {(a.role === "headliner" || a.role === "co_headliner") && (
-                        <span className="text-accent-lime text-xs mr-1.5">★</span>
+                        <span className="text-accent-lime text-sm mr-1.5">★</span>
                       )}
                       {a.name}
                     </span>
@@ -2155,18 +2147,18 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
                         onClick={() => handleMoveUp(a.uid)}
                         disabled={!canMoveUp}
                         title="Move up within tier"
-                        className="w-6 h-6 flex items-center justify-center text-xs font-mono text-text-subtle hover:text-text-base disabled:opacity-20 transition-colors"
+                        className="w-6 h-6 flex items-center justify-center text-xs text-text-subtle hover:text-text-base disabled:opacity-20 transition-colors"
                       >↑</button>
                       <button
                         onClick={() => handleMoveDown(a.uid)}
                         disabled={!canMoveDown}
                         title="Move down within tier"
-                        className="w-6 h-6 flex items-center justify-center text-xs font-mono text-text-subtle hover:text-text-base disabled:opacity-20 transition-colors"
+                        className="w-6 h-6 flex items-center justify-center text-xs text-text-subtle hover:text-text-base disabled:opacity-20 transition-colors"
                       >↓</button>
                       <button
                         onClick={() => handleRemove(a.uid)}
                         title="Remove from lineup"
-                        className="w-6 h-6 flex items-center justify-center text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors ml-1"
+                        className="w-6 h-6 ml-1 link-action hover:text-accent-pink"
                       >×</button>
                     </div>
                   </li>
@@ -2177,7 +2169,7 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
 
           {/* Add artist */}
           <div className="border-t border-border pt-3">
-            <p className="text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Add artist</p>
+            <p className="mb-2 eyebrow">Add artist</p>
             <div className="flex gap-2 items-start flex-wrap">
               {/* Search input */}
               <div className="relative flex-1 min-w-[160px]">
@@ -2192,16 +2184,14 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
                     if (e.key === "Enter") { e.preventDefault(); handleCommitAdd(); }
                   }}
                   className={clsx(
-                    "w-full rounded border bg-surface-2 px-2.5 py-1.5 text-xs text-text-base placeholder:text-text-subtle focus:outline-none transition-colors",
-                    addSelectedArtist
-                      ? "border-accent-lime text-accent-lime"
-                      : "border-border focus:border-accent-lime",
+                    "field h-11 w-full",
+                    addSelectedArtist && "border-accent-lime text-accent-lime",
                   )}
                 />
                 {showDropdown && !addSelectedArtist && (searching || addResults.length > 0) && (
                   <div className="absolute top-full left-0 right-0 z-30 mt-1 bg-surface border border-border rounded-lg shadow-xl py-1 max-h-52 overflow-y-auto">
                     {searching ? (
-                      <div className="px-3 py-2 text-xs text-text-subtle font-mono animate-pulse">Searching…</div>
+                      <div className="px-3 py-2 text-sm text-text-subtle animate-pulse">Searching…</div>
                     ) : (
                       addResults.map((ar) => (
                         <button
@@ -2215,7 +2205,7 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
                           className="w-full text-left px-3 py-2 text-sm hover:bg-surface-2 transition-colors flex items-center justify-between gap-2"
                         >
                           <span className="text-text-base truncate">{ar.name}</span>
-                          <span className="text-xs text-text-subtle font-mono shrink-0">{ar.showCount} shows</span>
+                          <span className="text-sm text-text-subtle shrink-0">{ar.showCount} shows</span>
                         </button>
                       ))
                     )}
@@ -2227,7 +2217,7 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
               <select
                 value={addRole}
                 onChange={(e) => setAddRole(e.target.value as ArtistRole)}
-                className="text-xs font-mono rounded border border-border bg-surface-2 px-1.5 py-1.5 text-text-muted focus:outline-none focus:border-accent-lime w-[128px] shrink-0"
+                className="w-[128px] shrink-0 field h-11"
               >
                 {ALL_ROLES.map((r) => (
                   <option key={r} value={r}>{ROLE_LABEL[r]}</option>
@@ -2239,7 +2229,7 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
                 type="button"
                 onClick={handleCommitAdd}
                 disabled={!addSelectedArtist && !addQuery.trim()}
-                className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                className="shrink-0 btn btn-sm btn-primary"
               >
                 Add to lineup
               </button>
@@ -2247,7 +2237,7 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
 
             {/* "Did you mean?" fuzzy suggestion */}
             {suggestedArtist && (
-              <p className="mt-2 text-xs font-mono text-text-muted">
+              <p className="mt-2 text-sm text-text-muted">
                 Did you mean{" "}
                 <button
                   type="button"
@@ -2268,11 +2258,11 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
 
             {/* Hint text */}
             {addSelectedArtist ? (
-              <p className="mt-1.5 text-xs text-text-subtle font-mono">
+              <p className="mt-1.5 text-sm text-text-subtle">
                 ✓ {addSelectedArtist.name} selected — choose a role then click "Add to lineup"
               </p>
             ) : addQuery.trim() && !searching && addResults.length === 0 && !suggestedArtist ? (
-              <p className="mt-1.5 text-xs text-text-subtle font-mono">
+              <p className="mt-1.5 text-sm text-text-subtle">
                 No existing artist found — will create <span className="text-text-muted">"{addQuery.trim()}"</span> on save.
               </p>
             ) : null}
@@ -2493,7 +2483,7 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
       </div>
 
       {unavailable && (
-        <p className="px-4 py-3 text-xs text-text-subtle font-mono italic">
+        <p className="px-4 py-3 text-sm text-text-subtle italic">
           Setlist.fm not configured on this server.
         </p>
       )}
@@ -2533,7 +2523,7 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                     >
                       {artist.name}
                     </Link>
-                    <span className="text-[10px] font-mono text-text-subtle shrink-0">
+                    <span className="text-sm text-text-subtle shrink-0">
                       {ROLE_LABEL[artist.role] ?? artist.role}
                     </span>
                   </div>
@@ -2543,13 +2533,13 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                       <>
                         <button
                           onClick={() => void handleLoad(artist)}
-                          className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                          className="link-action"
                         >
                           Load
                         </button>
                         <button
                           onClick={() => toggleUrlInput(artist.id)}
-                          className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                          className="link-action"
                           title="Paste setlist.fm URL"
                         >
                           URL
@@ -2557,14 +2547,14 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                       </>
                     )}
                     {state.loading && (
-                      <span className="text-xs font-mono text-text-subtle animate-pulse">Loading…</span>
+                      <span className="text-sm text-text-subtle animate-pulse">Loading…</span>
                     )}
                     {state.loaded && !state.result && !state.error && !state.showUrlInput && !state.manualUrl && (
                       <>
-                        <span className="text-xs font-mono text-text-subtle italic">Not found</span>
+                        <span className="text-sm text-text-subtle italic">Not found</span>
                         <button
                           onClick={() => toggleUrlInput(artist.id)}
-                          className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                          className="link-action"
                           title="Paste setlist.fm URL"
                         >
                           URL
@@ -2573,10 +2563,10 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                     )}
                     {state.error && !state.showUrlInput && (
                       <>
-                        <span className="text-xs font-mono text-accent-pink">{state.error}</span>
+                        <span className="text-sm text-accent-pink">{state.error}</span>
                         <button
                           onClick={() => toggleUrlInput(artist.id)}
-                          className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                          className="link-action"
                           title="Paste setlist.fm URL"
                         >
                           URL
@@ -2586,7 +2576,7 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                     {state.showUrlInput && (
                       <button
                         onClick={() => toggleUrlInput(artist.id)}
-                        className="text-xs font-mono text-accent-lime transition-colors"
+                        className="text-xs text-accent-lime transition-colors"
                       >
                         Cancel
                       </button>
@@ -2596,7 +2586,7 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                         href={setlistUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                        className="link-action"
                         title={state.manualUrl && !state.result ? "Linked (click to view on setlist.fm)" : undefined}
                       >
                         setlist.fm ↗
@@ -2606,13 +2596,13 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                       <>
                         <button
                           onClick={() => handleEditSetlist(artist.id)}
-                          className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                          className="link-action"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => void handleRemoveSetlist(artist.id)}
-                          className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors"
+                          className="link-action hover:text-accent-pink"
                         >
                           Remove
                         </button>
@@ -2629,7 +2619,7 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                       value={state.urlInput}
                       onChange={(e) => updateState(artist.id, { urlInput: e.target.value })}
                       placeholder="Paste setlist.fm URL..."
-                      className="flex-1 text-xs font-mono px-2 py-1.5 rounded border border-border bg-surface-2 text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                      className="flex-1 field h-11"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           void handleLoadFromUrl(artist.id, state.urlInput);
@@ -2639,7 +2629,7 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                     <button
                       onClick={() => void handleLoadFromUrl(artist.id, state.urlInput)}
                       disabled={!state.urlInput.trim() || state.loading}
-                      className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+                      className="btn btn-sm btn-primary"
                     >
                       {state.loading ? "Loading…" : "Load"}
                     </button>
@@ -2650,20 +2640,20 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                 {state.expanded && state.result && (
                   <div className="mt-3 pl-5">
                     {state.result.sets.length === 0 ? (
-                      <p className="text-xs text-text-subtle font-mono italic">Setlist not recorded yet.</p>
+                      <p className="text-sm text-text-subtle italic">Setlist not recorded yet.</p>
                     ) : (
                       <div className="space-y-4">
                         {state.result.sets.map((set, i) => (
                           <div key={i}>
                             {(set.name ?? set.encore) && (
-                              <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-1.5">
+                              <p className="mb-1.5 eyebrow">
                                 {set.encore ? `Encore${(set.encore ?? 1) > 1 ? ` ${set.encore}` : ""}` : set.name}
                               </p>
                             )}
                             <ol className="space-y-0.5">
                               {set.songs.map((song, j) => (
                                 <li key={j} className="flex items-baseline gap-2">
-                                  <span className="text-[10px] font-mono text-text-subtle w-4 text-right tabular-nums shrink-0">
+                                  <span className="text-sm text-text-subtle w-4 text-right tabular-nums shrink-0">
                                     {j + 1}
                                   </span>
                                   <span className="text-sm text-text-muted">{song}</span>
@@ -2684,7 +2674,7 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
 
       {/* Hint when nothing loaded yet */}
       {!anyLoaded && !unavailable && (
-        <p className="px-4 pb-3 text-xs text-text-subtle font-mono">
+        <p className="px-4 pb-3 text-sm text-text-subtle">
           Click "Load" to search setlist.fm, or "URL" to paste a link directly.
         </p>
       )}

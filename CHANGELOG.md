@@ -7,6 +7,18 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Changed — Consistent type, controls and screens
+
+- **One type system** — Archivo 800 for headings, Inter for everything else; the JetBrains Mono UI text (≈320 uses) and all 9–10px text are gone. Numbers use tabular figures app-wide. Small helper and error messages are 14px instead of 12px. Section and field labels are sentence case; all-caps is reserved for the small `.eyebrow` label.
+- **Shared controls** — new `.btn` (pill buttons in primary / secondary / ghost / danger, with a small size), `.field`, `.label`, `.chip`, `.link-action` and `.meta` classes in `globals.css`. Every form input, select and textarea, every button and every inline action across the show, artist, venue and festival pages, the Add show / Add festival forms, the follow-up prompt and the account page now uses them. `Button`, `Input`, `Label` and `Card` wrap the same classes.
+- **Sheets for every modal** — Add show, Add festival and the follow-up prompt open as a bottom sheet with a grab handle on phones and a centered dialog on desktop, with one header and close button.
+- **Auth and admin screens** — sign-in, sign-up and email verification use the same card, larger logo and type as the rest of the app. CSV imports moved inside the app shell (header, tab bar) and use the shared page header, sections and list rows.
+- **Less clutter** — show rows show status as a single coloured dot (label on hover and on the show page) and list titles cap at two artists ("Hatebreed / Terror +4"); the read-only lineup is a list of tappable artist rows, top-billed names larger, without stars or role tags; the Stats page drops the year × month heatmap (it repeated the year bars and month chart), year bars are a single bar and count, and the leaderboards show the top 10.
+
+### Removed
+
+- **Landing page and copy editor** — the public landing page had not been routed since the stats page became home, and the copy editor only edited that page's text. Both pages (and `useCopyValue`) are removed; the `site_copy` table and its API are left in place.
+
 ### Changed — Shows named by their whole bill; festivals grouped
 
 - **Whole bill, not one headliner** — everywhere a show is named (Stats milestones, On this day, first/most recent show, Year in review, Shows list, show pages, venue history) it now reads as the full lineup in billing order, e.g. "Foo Fighters / Against Me!" (up to three names, then "+N"). Previously one artist was picked — for festival days often just the alphabetically first act.

@@ -82,12 +82,12 @@ export function VenueMap({ lat, lng, venueName, compact = false }: VenueMapProps
           <circle cx="12" cy="9" r="2.5" fill="white" />
         </svg>
         <div>
-          <p className="text-xs text-text-muted font-mono">{venueName}</p>
+          <p className="text-xs text-text-muted">{venueName}</p>
           <a
             href={osmUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+            className="link-action"
           >
             View on OpenStreetMap ↗
           </a>

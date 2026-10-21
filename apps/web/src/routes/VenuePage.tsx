@@ -63,62 +63,62 @@ function VenueEditForm({ venue, onCancel, onSaved }: VenueEditFormProps) {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="block text-xs text-text-muted font-mono mb-1">Name</label>
+          <label className="block mb-1 label">Name</label>
           <input value={name} onChange={(e) => setName(e.target.value)}
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base focus:outline-none focus:border-accent-lime" />
+            className="w-full field h-11" />
         </div>
 
         <div>
-          <label className="block text-xs text-text-muted font-mono mb-1">City</label>
+          <label className="block mb-1 label">City</label>
           <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Toronto"
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime" />
+            className="w-full field h-11" />
         </div>
 
         <div>
-          <label className="block text-xs text-text-muted font-mono mb-1">State / Province</label>
+          <label className="block mb-1 label">State / Province</label>
           <input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="e.g. ON"
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime" />
+            className="w-full field h-11" />
         </div>
 
         <div>
-          <label className="block text-xs text-text-muted font-mono mb-1">Country</label>
+          <label className="block mb-1 label">Country</label>
           <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. Canada"
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime" />
+            className="w-full field h-11" />
         </div>
 
         <div>
-          <label className="block text-xs text-text-muted font-mono mb-1">Capacity</label>
+          <label className="block mb-1 label">Capacity</label>
           <input value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="e.g. 19800"
             type="number" min="1"
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime" />
+            className="w-full field h-11" />
         </div>
 
         <div>
-          <label className="block text-xs text-text-muted font-mono mb-1">Latitude</label>
+          <label className="block mb-1 label">Latitude</label>
           <input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="e.g. 43.6435"
             type="number" step="any"
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime font-mono" />
+            className="w-full field h-11" />
         </div>
 
         <div>
-          <label className="block text-xs text-text-muted font-mono mb-1">Longitude</label>
+          <label className="block mb-1 label">Longitude</label>
           <input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="e.g. -79.3791"
             type="number" step="any"
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime font-mono" />
+            className="w-full field h-11" />
         </div>
       </div>
 
       <div className="flex items-center gap-2 mt-4">
-        {saveError && <span className="text-xs text-accent-pink font-mono">{saveError}</span>}
+        {saveError && <span className="text-sm text-accent-pink">{saveError}</span>}
         <div className="ml-auto flex gap-2">
           <button type="button" onClick={onCancel} disabled={patchMutation.isPending}
-            className="text-xs font-mono px-3 py-1.5 rounded border border-border text-text-muted hover:text-text-base transition-colors disabled:opacity-50">
+            className="btn btn-sm btn-secondary">
             Cancel
           </button>
           <button type="button"
             onClick={() => { setSaveError(null); patchMutation.mutate(); }}
             disabled={patchMutation.isPending || !name.trim()}
-            className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50">
+            className="btn btn-sm btn-primary">
             {patchMutation.isPending ? "Saving…" : "Save changes"}
           </button>
         </div>
@@ -181,14 +181,14 @@ function AliasesSection({
         </h2>
         {isAdmin && !adding && (
           <button onClick={() => setAdding(true)}
-            className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors">
+            className="link-action">
             + Add alias
           </button>
         )}
       </div>
 
       {aliases.length === 0 && !adding && (
-        <p className="text-xs text-text-subtle font-mono">No aliases recorded.</p>
+        <p className="text-sm text-text-subtle">No aliases recorded.</p>
       )}
 
       {aliases.length > 0 && (
@@ -198,28 +198,28 @@ function AliasesSection({
               <div className="flex-1 min-w-0">
                 <span className="text-sm text-text-base">{a.name}</span>
                 {(a.activeFrom || a.activeUntil) && (
-                  <span className="ml-2 text-xs font-mono text-text-subtle">
+                  <span className="ml-2 text-sm text-text-subtle">
                     {a.activeFrom ?? "?"} – {a.activeUntil ?? "present"}
                   </span>
                 )}
                 {a.notes && (
-                  <p className="text-xs text-text-subtle italic mt-0.5">{a.notes}</p>
+                  <p className="text-sm text-text-subtle italic mt-0.5">{a.notes}</p>
                 )}
               </div>
               {isAdmin && (deletingId === a.id ? (
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => deleteMutation.mutate(a.id)} disabled={deleteMutation.isPending}
-                    className="text-xs font-mono px-2 py-0.5 rounded bg-accent-pink text-white hover:opacity-90 disabled:opacity-50">
+                    className="text-xs px-2 py-0.5 rounded bg-accent-pink text-white hover:opacity-90 disabled:opacity-50">
                     {deleteMutation.isPending ? "…" : "Remove"}
                   </button>
                   <button onClick={() => setDeletingId(null)}
-                    className="text-xs font-mono px-2 py-0.5 rounded border border-border text-text-muted hover:text-text-base">
+                    className="btn btn-sm btn-secondary">
                     Cancel
                   </button>
                 </div>
               ) : (
                 <button onClick={() => setDeletingId(a.id)}
-                  className="text-xs font-mono text-text-subtle hover:text-accent-pink transition-colors shrink-0">
+                  className="shrink-0 link-action hover:text-accent-pink">
                   ✕
                 </button>
               ))}
@@ -231,40 +231,40 @@ function AliasesSection({
       {isAdmin && adding && (
         <div className="border-t border-border pt-3 mt-2 space-y-2">
           <div>
-            <label className="block text-xs text-text-muted font-mono mb-1">Alias name</label>
+            <label className="block mb-1 label">Alias name</label>
             <input value={aliasName} onChange={(e) => setAliasName(e.target.value)}
               placeholder="e.g. Air Canada Centre"
-              className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime" />
+              className="w-full field h-11" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs text-text-muted font-mono mb-1">Used from</label>
+              <label className="block mb-1 label">Used from</label>
               <input value={aliasFrom} onChange={(e) => setAliasFrom(e.target.value)}
                 type="date"
-                className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime" />
+                className="w-full field h-11" />
             </div>
             <div>
-              <label className="block text-xs text-text-muted font-mono mb-1">Used until</label>
+              <label className="block mb-1 label">Used until</label>
               <input value={aliasUntil} onChange={(e) => setAliasUntil(e.target.value)}
                 type="date"
-                className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime" />
+                className="w-full field h-11" />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-text-muted font-mono mb-1">Notes <span className="text-text-subtle">(optional)</span></label>
+            <label className="block mb-1 label">Notes <span className="text-text-subtle">(optional)</span></label>
             <input value={aliasNotes} onChange={(e) => setAliasNotes(e.target.value)}
               placeholder="e.g. former name before 2018 renovation"
-              className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime" />
+              className="w-full field h-11" />
           </div>
-          {addError && <p className="text-xs text-accent-pink font-mono">{addError}</p>}
+          {addError && <p className="text-sm text-accent-pink">{addError}</p>}
           <div className="flex gap-2 justify-end pt-1">
             <button onClick={() => { setAdding(false); setAddError(null); }}
-              className="text-xs font-mono px-3 py-1.5 rounded border border-border text-text-muted hover:text-text-base transition-colors">
+              className="btn btn-sm btn-secondary">
               Cancel
             </button>
             <button onClick={() => { setAddError(null); addMutation.mutate(); }}
               disabled={addMutation.isPending || !aliasName.trim()}
-              className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50">
+              className="btn btn-sm btn-primary">
               {addMutation.isPending ? "Saving…" : "Add alias"}
             </button>
           </div>

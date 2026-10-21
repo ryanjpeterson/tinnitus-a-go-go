@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { api, type ArtistListItem, type VenueListItem, type SetlistfmResult, type SetlistfmError, type ParsedEvent } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
+import { Sheet } from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types / constants
@@ -139,7 +140,7 @@ function VenueAutocomplete({
         onFocus={() => results.length > 0 && setShowDrop(true)}
         onBlur={() => setTimeout(() => setShowDrop(false), 150)}
         placeholder={placeholder}
-        className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+        className="w-full field h-11"
       />
       {showDrop && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 z-40 mt-1 bg-surface border border-border rounded-lg shadow-xl py-1 max-h-40 overflow-y-auto">
@@ -150,7 +151,7 @@ function VenueAutocomplete({
               className="w-full text-left px-3 py-2 text-sm hover:bg-surface-2 transition-colors flex items-center justify-between gap-2"
             >
               <span className="text-text-base truncate">{v.name}</span>
-              <span className="text-xs text-text-subtle font-mono shrink-0">
+              <span className="text-sm text-text-subtle shrink-0">
                 {[v.city, v.region].filter(Boolean).join(", ")}
               </span>
             </button>
@@ -239,12 +240,12 @@ function ArtistInput({
             onChange={(e) => handleNameChange(e.target.value)}
             onFocus={() => row.name.trim() && setShowDrop(true)}
             onBlur={() => setTimeout(() => setShowDrop(false), 150)}
-            className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+            className="w-full field h-11"
           />
           {showDrop && (searching || results.length > 0) && (
             <div className="absolute top-full left-0 right-0 z-40 mt-1 bg-surface border border-border rounded-lg shadow-xl py-1 max-h-40 overflow-y-auto">
               {searching ? (
-                <div className="px-3 py-2 text-xs text-text-subtle font-mono animate-pulse">Searching…</div>
+                <div className="px-3 py-2 text-sm text-text-subtle animate-pulse">Searching…</div>
               ) : (
                 results.map((a) => (
                   <button
@@ -253,7 +254,7 @@ function ArtistInput({
                     className="w-full text-left px-3 py-2 text-sm hover:bg-surface-2 flex items-center justify-between gap-2"
                   >
                     <span className="text-text-base truncate">{a.name}</span>
-                    <span className="text-xs text-text-subtle font-mono shrink-0">{a.showCount} shows</span>
+                    <span className="text-sm text-text-subtle shrink-0">{a.showCount} shows</span>
                   </button>
                 ))
               )}
@@ -265,7 +266,7 @@ function ArtistInput({
         <select
           value={row.role}
           onChange={(e) => onChange(index, { role: e.target.value as ArtistRole })}
-          className="text-xs font-mono rounded border border-border bg-surface-2 px-1.5 py-1.5 text-text-muted focus:outline-none focus:border-accent-lime w-[120px] shrink-0"
+          className="w-[120px] shrink-0 field h-11"
         >
           {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
         </select>
@@ -275,14 +276,14 @@ function ArtistInput({
           type="button"
           onClick={() => onRemove(index)}
           disabled={!canRemove}
-          className="w-7 h-7 flex items-center justify-center text-text-subtle hover:text-accent-pink disabled:opacity-20 transition-colors font-mono shrink-0"
+          className="w-7 h-7 flex items-center justify-center text-text-subtle hover:text-accent-pink disabled:opacity-20 transition-colors shrink-0"
           title="Remove"
         >×</button>
       </div>
 
       {/* Fuzzy "Did you mean?" hint */}
       {suggested && (
-        <p className="text-xs font-mono text-text-muted pl-0.5">
+        <p className="text-sm text-text-muted pl-0.5">
           Did you mean{" "}
           <button
             type="button"
@@ -576,20 +577,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    /* Backdrop */
-    <div
-      className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-4 sm:p-8 overflow-y-auto"
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-    >
-      <div className="w-full max-w-lg bg-bg border border-border rounded-xl shadow-2xl my-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="font-display text-lg">Add show</h2>
-          <button
-            onClick={handleClose}
-            className="text-text-subtle hover:text-text-base transition-colors text-xl font-mono w-8 h-8 flex items-center justify-center"
-          >×</button>
-        </div>
+    <Sheet title="Add show" onClose={handleClose}>
 
         {/* URL paste pre-fill */}
         <div className="px-5 pt-4 pb-2">
@@ -600,22 +588,22 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
               value={urlInput}
               onChange={(e) => { setUrlInput(e.target.value); setUrlParseApplied(false); setUrlParseError(null); }}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleParseUrl(); } }}
-              className="flex-1 rounded border border-border bg-surface-2 px-3 py-1.5 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+              className="flex-1 field h-11"
             />
             <button
               type="button"
               onClick={() => void handleParseUrl()}
               disabled={urlParsing || !urlInput.trim()}
-              className="text-xs font-mono px-3 py-1.5 rounded bg-surface-2 border border-border text-text-muted hover:text-accent-lime hover:border-accent-lime transition-colors disabled:opacity-40 shrink-0"
+              className="shrink-0 btn btn-sm btn-secondary"
             >
               {urlParsing ? "Parsing…" : "Import"}
             </button>
           </div>
           {urlParseError && (
-            <p className="mt-1 text-xs text-accent-pink font-mono">{urlParseError}</p>
+            <p className="mt-1 text-sm text-accent-pink">{urlParseError}</p>
           )}
           {urlParseApplied && !urlParseError && (
-            <p className="mt-1 text-xs text-accent-lime font-mono">
+            <p className="mt-1 text-sm text-accent-lime">
               ✓ Form pre-filled from URL —{" "}
               <button type="button" className="underline text-text-subtle hover:text-text-base"
                 onClick={() => { setForm(DEFAULT_FORM); setUrlParseApplied(false); setUrlInput(""); }}>
@@ -631,7 +619,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
           {/* Date + type */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs text-text-muted font-mono mb-1">Date *</label>
+              <label className="block mb-1 label">Date *</label>
               <input
                 type="date"
                 required
@@ -639,10 +627,10 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                 min={dateMin}
                 max={dateMax}
                 onChange={(e) => setField("date", e.target.value)}
-                className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime [color-scheme:dark]"
+                className="w-full [color-scheme:dark] field h-11"
               />
               {(dateMin || dateMax) && (
-                <p className="mt-0.5 text-xs text-text-subtle font-mono">
+                <p className="mt-0.5 text-sm text-text-subtle">
                   {dateMin ? `Must be ${today} or later` : `Must be ${today} or earlier`}
                 </p>
               )}
@@ -653,7 +641,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
           <div>
             <div className="flex gap-2 mb-2">
               <div className="flex-[2]">
-                <label className="block text-xs text-text-muted font-mono mb-1">Venue *</label>
+                <label className="block mb-1 label">Venue *</label>
                 <VenueAutocomplete
                   value={form.venueName}
                   onChange={(v) => setField("venueName", v)}
@@ -666,23 +654,23 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-xs text-text-muted font-mono mb-1">City</label>
+                <label className="block mb-1 label">City</label>
                 <input
                   type="text"
                   placeholder="City"
                   value={form.venueCity}
                   onChange={(e) => setField("venueCity", e.target.value)}
-                  className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                  className="w-full field h-11"
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-xs text-text-muted font-mono mb-1">State/province</label>
+                <label className="block mb-1 label">State/province</label>
                 <input
                   type="text"
                   placeholder="e.g. ON"
                   value={form.venueRegion}
                   onChange={(e) => setField("venueRegion", e.target.value)}
-                  className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                  className="w-full field h-11"
                 />
               </div>
             </div>
@@ -690,7 +678,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
 
           {/* Tour name (optional) */}
           <div>
-            <label className="block text-xs text-text-muted font-mono mb-1">
+            <label className="block mb-1 label">
               Tour name <span className="text-text-subtle">(optional — e.g. The Eras Tour)</span>
             </label>
             <input
@@ -698,13 +686,13 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
               placeholder="Tour name…"
               value={form.eventSeriesName}
               onChange={(e) => setField("eventSeriesName", e.target.value)}
-              className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+              className="w-full field h-11"
             />
           </div>
 
           {/* Artists */}
           <div>
-            <label className="block text-xs text-text-muted font-mono mb-1.5">Artists *</label>
+            <label className="block mb-1.5 label">Artists *</label>
             <div className="space-y-2">
               {form.artists.map((a, i) => (
                 <ArtistInput
@@ -720,7 +708,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               onClick={addArtist}
-              className="mt-2 text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+              className="mt-2 link-action"
             >
               + Add another artist
             </button>
@@ -735,11 +723,11 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
               {/* Header row */}
               <div className="flex items-center justify-between gap-2 mb-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-text-subtle uppercase tracking-wider">
+                  <span className="eyebrow">
                     Setlist.fm
                   </span>
                   {setlistSearching && (
-                    <span className="text-xs font-mono text-text-subtle animate-pulse">Searching…</span>
+                    <span className="text-sm text-text-subtle animate-pulse">Searching…</span>
                   )}
                 </div>
                 {/* Retry button — shown on errors or empty results */}
@@ -747,7 +735,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                   <button
                     type="button"
                     onClick={() => runSetlistSearch(firstArtistName, form.date)}
-                    className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                    className="link-action"
                   >
                     ↺ Retry
                   </button>
@@ -756,14 +744,14 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
 
               {/* Error state */}
               {setlistError && (
-                <p className="text-xs font-mono text-accent-pink">
+                <p className="text-sm text-accent-pink">
                   {SETLIST_ERROR_MESSAGES[setlistError]}
                 </p>
               )}
 
               {/* Empty — no error */}
               {!setlistSearching && !setlistError && setlistResults.length === 0 && (
-                <p className="text-xs text-text-subtle font-mono italic">No matches found for this artist and date.</p>
+                <p className="text-sm text-text-subtle italic">No matches found for this artist and date.</p>
               )}
 
               {/* Results */}
@@ -774,14 +762,14 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                 >
                   <div className="min-w-0">
                     <div className="text-sm text-text-base truncate">{r.artist}</div>
-                    <div className="text-xs text-text-subtle font-mono">
+                    <div className="text-sm text-text-subtle">
                       {r.venue}{r.city ? ` · ${r.city}` : ""}{r.country ? ` (${r.country})` : ""}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => applySetlistResult(r)}
-                    className="shrink-0 text-xs font-mono px-2.5 py-1 rounded border border-accent-lime text-accent-lime hover:bg-accent-lime/10 transition-colors"
+                    className="shrink-0 btn btn-sm btn-secondary"
                   >
                     Apply venue
                   </button>
@@ -792,7 +780,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
 
           {/* Venue applied confirmation */}
           {setlistApplied && (
-            <p className="text-xs font-mono text-accent-lime">
+            <p className="text-sm text-accent-lime">
               ✓ Venue prefilled from setlist.fm —{" "}
               <button
                 type="button"
@@ -806,7 +794,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
 
           {/* Status */}
           <div>
-            <label className="block text-xs text-text-muted font-mono mb-1">Status</label>
+            <label className="block mb-1 label">Status</label>
             <div className="flex gap-1 flex-wrap">
               {STATUSES.map((s) => (
                 <button
@@ -814,7 +802,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                   type="button"
                   onClick={() => handleStatusChange(s.value)}
                   className={clsx(
-                    "min-w-[72px] px-3 py-1 rounded border text-xs font-mono transition-colors text-center",
+                    "min-w-[72px] px-3 py-1 rounded border text-xs  transition-colors text-center",
                     form.status === s.value
                       ? s.active
                       : "border-border text-text-muted hover:border-accent-lime",
@@ -830,7 +818,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={() => setShowOptional((v) => !v)}
-            className="text-xs font-mono text-text-subtle hover:text-text-muted transition-colors"
+            className="text-xs text-text-subtle hover:text-text-muted transition-colors"
           >
             {showOptional ? "▾ Hide optional fields" : "▸ Optional fields (flyer, ticket price, notes)"}
           </button>
@@ -839,11 +827,11 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
             <div className="space-y-3 pt-1">
               {/* Flyer upload */}
               <div>
-                <label className="block text-xs text-text-muted font-mono mb-1">Flyer</label>
+                <label className="block mb-1 label">Flyer</label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <label className={clsx(
-                      "text-xs font-mono px-3 py-1.5 rounded border cursor-pointer transition-colors shrink-0",
+                      "text-xs  px-3 py-1.5 rounded border cursor-pointer transition-colors shrink-0",
                       "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
                       flyerUrl && "opacity-50 cursor-not-allowed",
                     )}>
@@ -866,7 +854,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                       onClick={() => setShowFlyerUrlInput((v) => !v)}
                       disabled={!!flyerFile}
                       className={clsx(
-                        "text-xs font-mono px-3 py-1.5 rounded border transition-colors shrink-0",
+                        "text-xs  px-3 py-1.5 rounded border transition-colors shrink-0",
                         showFlyerUrlInput
                           ? "border-accent-lime text-accent-lime"
                           : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
@@ -888,12 +876,12 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                             setShowFlyerUrlInput(false);
                             if (flyerFileRef.current) flyerFileRef.current.value = "";
                           }}
-                          className="text-xs text-text-subtle hover:text-accent-pink transition-colors shrink-0"
+                          className="shrink-0 link-action hover:text-accent-pink"
                         >×</button>
                       </div>
                     )}
                     {!flyerFile && !flyerUrl && !showFlyerUrlInput && (
-                      <span className="text-xs text-text-subtle">No flyer selected</span>
+                      <span className="text-sm text-text-subtle">No flyer selected</span>
                     )}
                   </div>
                   {showFlyerUrlInput && (
@@ -902,7 +890,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                       placeholder="Paste image URL…"
                       value={flyerUrl}
                       onChange={(e) => setFlyerUrl(e.target.value)}
-                      className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                      className="w-full field h-11"
                     />
                   )}
                 </div>
@@ -911,7 +899,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
               {/* Ticket price */}
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-xs text-text-muted font-mono mb-1">Ticket price ($)</label>
+                  <label className="block mb-1 label">Ticket price ($)</label>
                   <input
                     type="number"
                     min="0"
@@ -919,15 +907,15 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                     placeholder="0.00"
                     value={form.ticketPrice}
                     onChange={(e) => setField("ticketPrice", e.target.value)}
-                    className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                    className="w-full field h-11"
                   />
                 </div>
                 <div className="w-20">
-                  <label className="block text-xs text-text-muted font-mono mb-1">Currency</label>
+                  <label className="block mb-1 label">Currency</label>
                   <select
                     value={form.ticketCurrency}
                     onChange={(e) => setField("ticketCurrency", e.target.value)}
-                    className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base font-mono focus:outline-none focus:border-accent-lime"
+                    className="w-full field h-11"
                   >
                     {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
@@ -936,40 +924,39 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
 
               {/* Notes */}
               <div>
-                <label className="block text-xs text-text-muted font-mono mb-1">Personal notes</label>
+                <label className="block mb-1 label">Personal notes</label>
                 <textarea
                   rows={3}
                   placeholder="Your thoughts…"
                   value={form.personalNotes}
                   onChange={(e) => setField("personalNotes", e.target.value)}
-                  className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime resize-none"
+                  className="w-full resize-none field py-2.5"
                 />
               </div>
             </div>
           )}
 
           {/* Error */}
-          {error && <p className="text-xs text-accent-pink font-mono">{error}</p>}
+          {error && <p className="text-sm text-accent-pink">{error}</p>}
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-1">
             <button
               type="button"
               onClick={handleClose}
-              className="text-xs font-mono text-text-subtle hover:text-text-base transition-colors px-3 py-1.5"
+              className="text-xs text-text-subtle hover:text-text-base transition-colors px-3 py-1.5"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="text-sm font-mono px-5 py-2 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="btn btn-primary"
             >
               {submitting ? "Adding…" : "Add show"}
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Sheet>
   );
 }

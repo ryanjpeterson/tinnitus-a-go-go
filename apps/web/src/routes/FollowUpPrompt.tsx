@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { api, type ConcertListItem } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
+import { Sheet } from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -59,7 +60,7 @@ function ConcertRow({
         <div className="flex items-center gap-2 min-w-0">
           <span
             className={clsx(
-              "shrink-0 text-xs font-mono px-1.5 py-0.5 rounded border",
+              "shrink-0 text-xs  px-1.5 py-0.5 rounded border",
               wasAttending
                 ? "bg-yellow-950 text-yellow-400 border-yellow-700"
                 : "bg-purple-950 text-purple-400 border-purple-800",
@@ -74,7 +75,7 @@ function ConcertRow({
         >
           {label}
         </Link>
-        <div className="text-xs text-text-subtle font-mono mt-0.5">
+        <div className="text-sm text-text-subtle mt-0.5">
           {fmtDate(concert.date)}
           {concert.venue && ` · ${concert.venue.name}`}
           {concert.venue?.city && `, ${concert.venue.city}`}
@@ -86,21 +87,21 @@ function ConcertRow({
         <button
           onClick={() => onResolve(concert.id, "attended")}
           disabled={resolving}
-          className="text-xs font-mono px-2.5 py-1 rounded bg-lime-950 text-accent-lime border border-lime-700 hover:bg-lime-900 transition-colors disabled:opacity-40"
+          className="btn btn-sm btn-secondary"
         >
           ✓ Attended
         </button>
         <button
           onClick={() => onResolve(concert.id, "missed")}
           disabled={resolving}
-          className="text-xs font-mono px-2.5 py-1 rounded bg-red-950 text-red-400 border border-red-800 hover:bg-red-900 transition-colors disabled:opacity-40"
+          className="btn btn-sm btn-secondary"
         >
           Missed
         </button>
         <button
           onClick={() => onSkip(concert.id)}
           disabled={resolving}
-          className="text-xs font-mono px-2 py-1 text-text-subtle hover:text-text-base transition-colors disabled:opacity-40"
+          className="text-xs px-2 py-1 text-text-subtle hover:text-text-base transition-colors disabled:opacity-40"
           title="Skip for now — will appear again tomorrow"
         >
           Skip
@@ -189,28 +190,7 @@ export function FollowUpPrompt() {
   const total = followupQuery.data!.total;
 
   return (
-    /* Backdrop */
-    <div
-      className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-4 sm:p-6 overflow-y-auto"
-      onClick={(e) => { if (e.target === e.currentTarget) dismissForToday(); }}
-    >
-      <div className="w-full max-w-xl bg-bg border border-border rounded-xl shadow-2xl mt-[10vh]">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border">
-          <div>
-            <h2 className="font-display text-lg leading-tight">
-              {total === 1 ? "1 show needs follow-up" : `${total} shows need follow-up`}
-            </h2>
-            <p className="text-xs text-text-muted font-mono mt-0.5">
-              These past shows are still marked as attending or interested.
-            </p>
-          </div>
-          <button
-            onClick={dismissForToday}
-            className="text-text-subtle hover:text-text-base transition-colors text-xl font-mono w-8 h-8 flex items-center justify-center shrink-0"
-            title="Done for today"
-          >×</button>
-        </div>
+    <Sheet title={total === 1 ? "1 show needs follow-up" : `${total} shows need follow-up`} onClose={dismissForToday} subtitle="These past shows are still marked as attending or interested." wide>
 
         {/* Concert list */}
         <div className="px-5 py-2 max-h-[60vh] overflow-y-auto">
@@ -224,7 +204,7 @@ export function FollowUpPrompt() {
             />
           ))}
           {skipped.size > 0 && (
-            <p className="text-xs text-text-subtle font-mono py-2 italic">
+            <p className="text-sm text-text-subtle py-2 italic">
               {skipped.size} skipped — {skipped.size === 1 ? "it" : "they"} will appear again tomorrow.
             </p>
           )}
@@ -232,17 +212,16 @@ export function FollowUpPrompt() {
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-border">
-          <p className="text-xs text-text-subtle font-mono">
+          <p className="text-sm text-text-subtle">
             Tap a show name to open the full detail page.
           </p>
           <button
             onClick={dismissForToday}
-            className="text-xs font-mono px-4 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity shrink-0"
+            className="shrink-0 btn btn-sm btn-primary"
           >
             Done for today
           </button>
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 }

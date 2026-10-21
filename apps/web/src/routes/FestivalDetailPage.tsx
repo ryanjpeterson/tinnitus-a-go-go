@@ -84,7 +84,7 @@ function ArtistAutocomplete({
         onFocus={() => results.length > 0 && setShowDrop(true)}
         onBlur={() => setTimeout(() => setShowDrop(false), 150)}
         placeholder="Artist name"
-        className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+        className="w-full field h-11"
       />
       {showDrop && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 z-40 mt-1 bg-surface border border-border rounded-lg shadow-xl py-1 max-h-40 overflow-y-auto">
@@ -477,7 +477,7 @@ export function FestivalDetailPage() {
             {!editingAttendance && attendance && (
               <button
                 onClick={startEditAttendance}
-                className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                className="link-action"
               >
                 Edit
               </button>
@@ -493,7 +493,7 @@ export function FestivalDetailPage() {
                   type="button"
                   onClick={() => setAttendanceStatus(s.value)}
                   className={clsx(
-                    "min-w-[72px] px-3 py-1 rounded border text-xs font-mono transition-colors text-center",
+                    "min-w-[72px] px-3 py-1 rounded border text-xs  transition-colors text-center",
                     attendanceStatus === s.value
                       ? s.active
                       : "border-border text-text-muted hover:border-accent-lime",
@@ -504,7 +504,7 @@ export function FestivalDetailPage() {
               ))}
             </div>
             <div>
-              <label className="block text-xs font-mono text-text-muted mb-1">Rating (1-10)</label>
+              <label className="block mb-1 label">Rating (1-10)</label>
               <input
                 type="number"
                 min="1"
@@ -512,31 +512,31 @@ export function FestivalDetailPage() {
                 value={attendanceRating}
                 onChange={(e) => setAttendanceRating(e.target.value)}
                 placeholder="—"
-                className="w-24 rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime"
+                className="w-24 field h-11"
               />
             </div>
             <div>
-              <label className="block text-xs font-mono text-text-muted mb-1">Notes</label>
+              <label className="block mb-1 label">Notes</label>
               <textarea
                 rows={3}
                 value={attendanceNotes}
                 onChange={(e) => setAttendanceNotes(e.target.value)}
                 placeholder="Your thoughts…"
-                className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime resize-none"
+                className="w-full resize-none field py-2.5"
               />
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => void saveAttendance()}
                 disabled={savingAttendance}
-                className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="btn btn-sm btn-primary"
               >
                 {savingAttendance ? "Saving…" : "Save"}
               </button>
               <button
                 onClick={() => setEditingAttendance(false)}
                 disabled={savingAttendance}
-                className="text-xs font-mono px-3 py-1.5 rounded border border-border text-text-muted hover:text-text-base transition-colors"
+                className="btn btn-sm btn-secondary"
               >
                 Cancel
               </button>
@@ -544,14 +544,14 @@ export function FestivalDetailPage() {
           </div>
         ) : attendance ? (
           <div>
-            <span className={`inline-block px-2 py-0.5 rounded border text-xs font-mono ${statusColor}`}>
+            <span className={`inline-block px-2 py-0.5 rounded border text-xs  ${statusColor}`}>
               {attendance.status}
             </span>
             {attendance.personalNotes && (
               <p className="text-sm text-text-base mt-2">{attendance.personalNotes}</p>
             )}
             {attendance.ticketPricePaid != null && (
-              <p className="text-xs font-mono text-text-muted mt-2">
+              <p className="text-sm text-text-muted mt-2">
                 Paid: ${(attendance.ticketPricePaid / 100).toFixed(2)} {attendance.ticketPriceCurrency}
               </p>
             )}
@@ -577,7 +577,7 @@ export function FestivalDetailPage() {
           {isAdmin && !editingLineup && (
             <button
               onClick={startEditLineup}
-              className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+              className="link-action"
             >
               {sets.length > 0 ? "Edit lineup" : "+ Add artists"}
             </button>
@@ -597,24 +597,24 @@ export function FestivalDetailPage() {
                   type="date"
                   value={set.performanceDate}
                   onChange={(e) => updateLineupSet(i, { performanceDate: e.target.value })}
-                  className="w-36 rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime [color-scheme:dark]"
+                  className="w-36 [color-scheme:dark] field h-11"
                 />
                 <input
                   type="text"
                   placeholder="Stage"
                   value={set.stageName}
                   onChange={(e) => updateLineupSet(i, { stageName: e.target.value })}
-                  className="w-28 rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                  className="w-28 field h-11"
                 />
                 <button
                   onClick={() => removeLineupSet(i)}
-                  className="w-6 h-6 flex items-center justify-center text-text-subtle hover:text-accent-pink transition-colors font-mono shrink-0"
+                  className="w-6 h-6 flex items-center justify-center text-text-subtle hover:text-accent-pink transition-colors shrink-0"
                 >×</button>
               </div>
             ))}
             <button
               onClick={addLineupSet}
-              className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+              className="link-action"
             >
               + Add artist
             </button>
@@ -622,14 +622,14 @@ export function FestivalDetailPage() {
               <button
                 onClick={() => void saveLineup()}
                 disabled={savingLineup}
-                className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="btn btn-sm btn-primary"
               >
                 {savingLineup ? "Saving…" : "Save lineup"}
               </button>
               <button
                 onClick={() => setEditingLineup(false)}
                 disabled={savingLineup}
-                className="text-xs font-mono px-3 py-1.5 rounded border border-border text-text-muted hover:text-text-base transition-colors"
+                className="btn btn-sm btn-secondary"
               >
                 Cancel
               </button>
@@ -662,7 +662,7 @@ export function FestivalDetailPage() {
                       )}
                     >
                       {set.artist.name}
-                      <span className="text-xs text-text-subtle">D{day}</span>
+                      <span className="text-sm text-text-subtle">D{day}</span>
                     </Link>
                   ))}
                 </div>

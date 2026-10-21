@@ -239,7 +239,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 | Video proc.    | ffmpeg (H.264 MP4 transcode + WebP poster frame) via BullMQ worker   |
 | LLM fallback   | `@anthropic-ai/sdk` — Claude Haiku for URL paste extraction (optional)|
 | Artist data    | Last.fm API — bio, genre, MusicBrainz ID enrichment (optional)       |
-| Fonts          | Archivo 800 (headings, `font-display`) · Inter (body) · JetBrains Mono |
+| Fonts          | Archivo 800 (headings, `font-display`) · Inter (everything else, tabular figures) |
 | Mail (dev)     | Mailpit                                                               |
 | Dev orchestr.  | Docker Compose                                                        |
 
@@ -288,9 +288,6 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │   │   └── logo.svg      full wordmark: ear mark + ransom-note letter tiles
 │   │   └── src/
 │   │       ├── routes/
-│   │       │   ├── LandingPage.tsx       public marketing: branded concert log with
-│   │       │   │                         year filter (pills grouped by decade), status
-│   │       │   │                         filter, text search; all copy CMS-driven
 │   │       │   ├── PublicConcertPage.tsx  read-only show detail at /shows/:id;
 │   │       │   │                         two-column layout when flyer present (poster
 │   │       │   │                         sticky left, content right); login CTA for guests
@@ -345,9 +342,6 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   │                         inline edit form for all fields
 │   │       │   ├── FestivalsPage.tsx     paginated festival flyer cards (MediaCard)
 │   │       │   ├── SeriesPage.tsx        festival detail: day-by-day lineup + stats
-│   │       │   ├── CopyEditorPage.tsx    admin CMS at /app/admin/copy: edit all landing-page
-│   │       │   │                         and UI copy in-place; grouped by section; instant
-│   │       │   │                         cache invalidation on save
 │   │       │   ├── FollowUpPrompt.tsx    dismissible banner for attended shows lacking
 │   │       │   │                         rating or notes in the last 14 days
 │   │       │   └── ImportsPage.tsx       admin: CSV import job queue with live status
@@ -418,7 +412,9 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 
 Body gradient: subtle lime bloom top, pink bloom bottom. `::selection` uses lime on dark.
 
-**Layout and components.** Pages are assembled from `src/components/ui/kit.tsx` plus a few component classes in `globals.css` (`.card`, `.eyebrow`, `.h-page`, `.h-section`, `.field`). Mobile first: a sticky app bar and bottom tab bar, full-width rows with 44px+ tap targets, 16px form fields, and nothing that scrolls sideways — filters become selects on phones and wrap as pills on desktop. Lists of shows use `EventRow` (ticket-style date block, title, venue, status, chevron); detail pages open with a `Hero` (blurred image backdrop, thumbnail, bold title). Headings use Archivo at weight 800 in sentence case.
+**Layout and components.** Pages are assembled from `src/components/ui/kit.tsx` plus a few component classes in `globals.css` (`.card`, `.eyebrow`, `.h-page`, `.h-section`, `.field`). Mobile first: a sticky app bar and bottom tab bar, full-width rows with 44px+ tap targets, 16px form fields, and nothing that scrolls sideways — filters become selects on phones and wrap as pills on desktop. Lists of shows use `EventRow` (ticket-style date block, title, venue, status dot, chevron); detail pages open with a `Hero` (blurred image backdrop, thumbnail, bold title); every modal is a `Sheet` (bottom sheet on phones, centered dialog on desktop).
+
+**Type and controls.** Two typefaces only: Archivo 800 for headings (sentence case), Inter for everything else with tabular figures so counts and dates line up. No monospace in the UI and nothing under 11px. The scale is `.h-page`, `.h-section`, body 15px, `.meta` 14px, `.eyebrow` 11px caps. Controls come from `globals.css`: `.btn` + `.btn-primary|secondary|ghost|danger` (+ `.btn-sm`), `.field` for inputs/selects/textareas, `.label`, `.chip`, `.link-action`. The `Button`, `Input`, `Label` and `Card` components are thin wrappers over the same classes.
 
 The logo (`Wordmark.tsx`) is an Illustrator-exported SVG (190 × 92.3 viewBox) embedded directly as React path data — no external font dependency. "TINNITUS" renders in white fill with `#a8ff3e` stroke; "a-go-go" in `#f87171` (red). The favicon (`public/favicon.svg`) uses the same path data scaled into a 32 × 32 dark rounded-rect. All auth, landing, admin, and imports pages render the `<Wordmark />` component.
 

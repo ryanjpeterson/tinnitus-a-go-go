@@ -63,11 +63,11 @@ export function PhotoCarousel({ items, initialIndex = 0, onClose }: PhotoCarouse
     <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-xl flex flex-col select-none">
       {/* Header bar: counter left, close right */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
-        <span className="text-xs font-mono text-white/40">
+        <span className="text-xs text-white/40">
           {items.length > 1 ? `${activeIndex + 1} / ${items.length}` : ""}
         </span>
         <button
-          className="text-white/70 hover:text-white text-2xl font-mono w-10 h-10 flex items-center justify-center"
+          className="text-white/70 hover:text-white text-2xl w-10 h-10 flex items-center justify-center"
           onClick={onClose}
           aria-label="Close"
         >
@@ -117,7 +117,7 @@ export function PhotoCarousel({ items, initialIndex = 0, onClose }: PhotoCarouse
                   />
                 )}
                 {item.caption && (
-                  <div className="text-white/60 text-xs font-mono text-center max-w-md">
+                  <div className="text-white/60 text-xs text-center max-w-md">
                     {item.caption}
                   </div>
                 )}

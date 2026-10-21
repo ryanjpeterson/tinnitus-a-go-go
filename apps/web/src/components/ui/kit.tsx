@@ -7,7 +7,7 @@
  * gradient, date blocks on show rows, chevrons on anything that navigates.
  */
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { AttendanceStatus } from "@tagg/shared";
 import { cn } from "@/lib/cn";
@@ -240,8 +240,8 @@ export function EventRow({ to, date, title, subtitle, meta, imageUrl, status, sh
         {subtitle && <p className="mt-0.5 truncate text-sm text-text-muted">{subtitle}</p>}
         {meta && <p className="mt-0.5 truncate text-xs text-text-subtle">{meta}</p>}
       </div>
-      {status && <StatusBadge status={status} className="hidden sm:inline-flex" />}
-      {status && <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full sm:hidden", STATUS[status]?.dot)} aria-label={STATUS[status]?.label} />}
+      {/* Status as a quiet dot — the label is in the tooltip and on the show page */}
+      {status && <span title={STATUS[status]?.label} aria-label={STATUS[status]?.label} className={cn("h-2.5 w-2.5 shrink-0 rounded-full", STATUS[status]?.dot)} />}
       <Chevron className="text-text-subtle group-hover:text-accent-lime" />
     </Link>
   );
@@ -497,6 +497,57 @@ export function Pager({ page, totalPages, total, pageSize, onPage }: {
         Next <Chevron />
       </button>
     </nav>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sheet — the one modal: slides up from the bottom on phones, centered dialog on desktop
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function Sheet({ title, subtitle, onClose, children, wide = false }: {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+  wide?: boolean;
+}) {
+  // Keep the page behind from scrolling while the sheet is open.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-6"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        className={cn(
+          "flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl border border-border bg-bg shadow-2xl shadow-black/60",
+          "sm:max-h-[88dvh] sm:rounded-3xl",
+          wide ? "sm:max-w-xl" : "sm:max-w-lg",
+        )}
+      >
+        <div className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-border sm:hidden" aria-hidden="true" />
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-5 pb-4 pt-3 sm:pt-5">
+          <div className="min-w-0">
+            <h2 className="h-section">{title}</h2>
+            {subtitle && <p className="meta mt-1">{subtitle}</p>}
+          </div>
+          <button onClick={onClose} aria-label="Close"
+            className="-mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-2 hover:text-text-base">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </header>
+        <div className="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">{children}</div>
+      </div>
+    </div>
   );
 }
 

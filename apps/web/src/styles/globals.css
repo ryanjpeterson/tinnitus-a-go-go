@@ -15,6 +15,7 @@
        made the page always taller than the viewport. */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+    font-variant-numeric: tabular-nums;
     /* Prevent pull-to-refresh in PWA mode */
     overscroll-behavior-y: contain;
   }
@@ -37,12 +38,20 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Type scale (the only sizes pages should need)
+     .h-page      page title            30 → 36px  Archivo 800
+     .h-section   section title         20 → 22px  Archivo 800
+     body         default               15px       Inter
+     .meta        secondary line        14px       muted
+     .eyebrow     label above a title   11px caps  subtle
+   Numbers use tabular figures so columns of counts and dates line up.
+   ───────────────────────────────────────────────────────────────────────── */
 @layer components {
   /* The one card surface every section, list and tile sits on. */
   .card {
-    @apply rounded-xl border border-border bg-surface;
+    @apply rounded-2xl border border-border bg-surface;
   }
-  /* Small label above a heading or number. */
   .eyebrow {
     @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-text-subtle;
   }
@@ -52,26 +61,49 @@
   .h-section {
     @apply font-display text-xl leading-tight text-text-base sm:text-[22px];
   }
-  /* Text input / select surface. */
+  .meta {
+    @apply text-sm text-text-muted;
+  }
+  /* Form label above a field. */
+  .label {
+    @apply mb-1.5 block text-sm font-semibold text-text-muted;
+  }
+  /* Text input / select / textarea surface. */
   .field {
-    @apply rounded-xl border border-border bg-surface px-4 text-[15px] text-text-base placeholder:text-text-subtle
-      focus:border-accent-lime focus:outline-none focus:ring-2 focus:ring-accent-lime/20;
+    @apply rounded-xl border border-border bg-surface-2 px-4 text-[15px] text-text-base placeholder:text-text-subtle
+      transition-colors focus:border-accent-lime focus:outline-none focus:ring-2 focus:ring-accent-lime/20
+      disabled:opacity-50;
   }
-}
-
-@layer utilities {
-  .wordmark-display {
-    font-family: "Antonio", sans-serif;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    text-transform: uppercase;
+  /* Buttons: pill-shaped, one height per size, three tones. */
+  .btn {
+    @apply inline-flex h-11 shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-full px-5
+      text-[15px] font-semibold transition-colors
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime/50
+      disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:text-sm;
   }
-  .wordmark-script {
-    font-family: "Caveat Brush", cursive;
-    letter-spacing: 0.02em;
+  .btn-sm {
+    @apply h-9 px-3.5 text-sm sm:h-8;
   }
-  .tag-pill {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  .btn-primary {
+    @apply bg-accent-lime text-bg hover:bg-accent-lime-hover;
+  }
+  .btn-secondary {
+    @apply border border-border bg-surface-2 text-text-base hover:border-text-subtle;
+  }
+  .btn-ghost {
+    @apply text-text-muted hover:bg-surface-2 hover:text-text-base;
+  }
+  .btn-danger {
+    @apply text-text-muted hover:bg-red-950/40 hover:text-accent-pink;
+  }
+  /* Small rounded tag: artist names, filters, counts. */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-sm font-medium
+      text-text-muted;
+  }
+  /* Inline text action ("Edit", "Remove", "+ Add"). */
+  .link-action {
+    @apply text-sm font-semibold text-text-muted transition-colors hover:text-accent-lime;
   }
 }
 

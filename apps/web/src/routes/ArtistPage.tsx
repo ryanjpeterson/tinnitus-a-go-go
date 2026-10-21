@@ -142,25 +142,25 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
       <div className="mb-5 p-3 rounded-lg border border-border bg-surface-2">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-mono text-text-muted">Auto-fill from Last.fm</p>
-            <p className="text-xs text-text-subtle mt-0.5">Fetches bio, genre, image, and MusicBrainz ID</p>
+            <p className="text-sm text-text-muted">Auto-fill from Last.fm</p>
+            <p className="text-sm text-text-subtle mt-0.5">Fetches bio, genre, image, and MusicBrainz ID</p>
           </div>
           <button
             type="button"
             onClick={() => void handleEnrichFromLastfm()}
             disabled={enriching}
-            className="text-xs font-mono px-3 py-1.5 rounded border border-purple-700 bg-purple-950 text-purple-400 hover:bg-purple-900 transition-colors disabled:opacity-50"
+            className="btn btn-sm btn-secondary"
           >
             {enriching ? "Fetching…" : "Fetch from Last.fm"}
           </button>
         </div>
-        {enrichError && <p className="text-xs text-accent-pink font-mono mt-2">{enrichError}</p>}
-        {enrichSuccess && <p className="text-xs text-accent-lime font-mono mt-2">{enrichSuccess}</p>}
+        {enrichError && <p className="text-sm text-accent-pink mt-2">{enrichError}</p>}
+        {enrichSuccess && <p className="text-sm text-accent-lime mt-2">{enrichSuccess}</p>}
       </div>
 
       {/* Image section */}
       <div className="mb-5">
-        <label className="block text-xs text-text-muted font-mono mb-2">Image</label>
+        <label className="block mb-2 label">Image</label>
         <div className="flex items-start gap-4">
           <div className="w-20 h-20 rounded-lg border border-border bg-surface-2 flex-shrink-0 overflow-hidden relative group">
             {imageUrl ? (
@@ -184,7 +184,7 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
             )}
             {(imageMutation.isPending || imageUrlImporting) && (
               <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <span className="text-xs font-mono text-white animate-pulse">
+                <span className="text-xs text-white animate-pulse">
                   {imageUrlImporting ? "…" : "…"}
                 </span>
               </div>
@@ -192,7 +192,7 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
           </div>
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex gap-1 flex-wrap">
-              <label className="text-xs font-mono text-text-muted hover:text-accent-lime cursor-pointer transition-colors border border-border rounded px-2 py-1">
+              <label className="btn btn-sm btn-secondary">
                 {imageUrl ? "Replace" : "Upload"}
                 <input
                   ref={fileRef}
@@ -211,7 +211,7 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
                 type="button"
                 onClick={() => setShowImageUrlInput((v) => !v)}
                 disabled={imageMutation.isPending || imageUrlImporting}
-                className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors border border-border rounded px-2 py-1"
+                className="btn btn-sm btn-secondary"
               >
                 URL
               </button>
@@ -220,7 +220,7 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
                   type="button"
                   onClick={() => void handleDeleteImage()}
                   disabled={imageMutation.isPending || imageUrlImporting}
-                  className="text-xs font-mono text-text-muted hover:text-accent-pink transition-colors border border-border rounded px-2 py-1"
+                  className="btn btn-sm btn-danger"
                 >
                   Remove
                 </button>
@@ -235,20 +235,20 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
                   onChange={(e) => setImageUrlInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && void handleImageUrlImport()}
                   disabled={imageUrlImporting}
-                  className="flex-1 rounded border border-border bg-surface px-2 py-1 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                  className="flex-1 field h-11"
                 />
                 <button
                   type="button"
                   onClick={() => void handleImageUrlImport()}
                   disabled={imageUrlImporting || !imageUrlInput.trim()}
-                  className="text-xs font-mono px-2 py-1 rounded bg-accent-lime text-bg font-bold disabled:opacity-50"
+                  className="btn btn-sm btn-primary"
                 >
                   {imageUrlImporting ? "…" : "Go"}
                 </button>
               </div>
             )}
-            {imageError && <p className="text-xs text-accent-pink font-mono">{imageError}</p>}
-            <p className="text-xs text-text-subtle">JPEG, PNG or WebP · max 10 MB</p>
+            {imageError && <p className="text-sm text-accent-pink">{imageError}</p>}
+            <p className="text-sm text-text-subtle">JPEG, PNG or WebP · max 10 MB</p>
           </div>
         </div>
       </div>
@@ -256,37 +256,37 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
       {/* Fields */}
       <div className="grid gap-3">
         <div>
-          <label className="block text-xs text-text-muted font-mono mb-1">Name</label>
+          <label className="block mb-1 label">Name</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+            className="w-full field h-11"
           />
         </div>
 
         <div>
-          <label className="block text-xs text-text-muted font-mono mb-1">Genre</label>
+          <label className="block mb-1 label">Genre</label>
           <input
             value={genre}
             onChange={(e) => setGenre(e.target.value)}
             placeholder="e.g. Post-punk"
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+            className="w-full field h-11"
           />
         </div>
 
         <div>
-          <label className="block text-xs text-text-muted font-mono mb-1">Bio</label>
+          <label className="block mb-1 label">Bio</label>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             rows={3}
             placeholder="Short bio or notes…"
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime resize-none"
+            className="w-full resize-none field py-2.5"
           />
         </div>
 
         <div>
-          <label className="block text-xs text-text-muted font-mono mb-1">
+          <label className="block mb-1 label">
             MusicBrainz ID
             <span className="text-text-subtle ml-1">(UUID)</span>
           </label>
@@ -294,20 +294,20 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
             value={mbid}
             onChange={(e) => setMbid(e.target.value)}
             placeholder="e.g. 65f4f0c5-ef9e-490c-aee3-909e7ae6b2ab"
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime font-mono"
+            className="w-full field h-11"
           />
         </div>
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-2 mt-4">
-        {saveError && <span className="text-xs text-accent-pink font-mono">{saveError}</span>}
+        {saveError && <span className="text-sm text-accent-pink">{saveError}</span>}
         <div className="ml-auto flex gap-2">
           <button
             type="button"
             onClick={onCancel}
             disabled={patchMutation.isPending}
-            className="text-xs font-mono px-3 py-1.5 rounded border border-border text-text-muted hover:text-text-base transition-colors disabled:opacity-50"
+            className="btn btn-sm btn-secondary"
           >
             Cancel
           </button>
@@ -315,7 +315,7 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
             type="button"
             onClick={() => { setSaveError(null); patchMutation.mutate(); }}
             disabled={patchMutation.isPending || !name.trim()}
-            className="text-xs font-mono px-3 py-1.5 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="btn btn-sm btn-primary"
           >
             {patchMutation.isPending ? "Saving…" : "Save changes"}
           </button>

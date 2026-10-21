@@ -4,9 +4,6 @@ import { AuthProvider } from "@/lib/auth-context";
 import { LoginPage } from "@/routes/LoginPage";
 import { SignupPage } from "@/routes/SignupPage";
 import { AppShell } from "@/routes/AppShell";
-import { RequireAdmin } from "@/routes/RequireAdmin";
-import { ImportsPage } from "@/routes/ImportsPage";
-import { CopyEditorPage } from "@/routes/CopyEditorPage";
 import { VerifyEmailPage } from "@/routes/VerifyEmailPage";
 
 const queryClient = new QueryClient({
@@ -29,24 +26,6 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
-
-            {/* Admin-only routes */}
-            <Route
-              path="/admin/imports"
-              element={
-                <RequireAdmin>
-                  <ImportsPage />
-                </RequireAdmin>
-              }
-            />
-            <Route
-              path="/admin/copy"
-              element={
-                <RequireAdmin>
-                  <CopyEditorPage />
-                </RequireAdmin>
-              }
-            />
 
             {/* All routes go through AppShell (including /) */}
             <Route path="/*" element={<AppShell />} />

@@ -79,10 +79,10 @@ export function ServicesPanel() {
   return (
     <div className="card p-4 sm:p-5">
       <div className="flex items-center gap-2 mb-4">
-        <div className="text-xs uppercase tracking-wider text-text-muted font-mono">
+        <div className="eyebrow">
           {isDev ? "Dev services" : "Services"}
         </div>
-        <div className={`ml-auto flex items-center gap-1.5 text-xs font-mono ${apiUp ? "text-emerald-400" : apiChecking ? "text-text-subtle" : "text-accent-pink"}`}>
+        <div className={`ml-auto flex items-center gap-1.5 text-xs  ${apiUp ? "text-emerald-400" : apiChecking ? "text-text-subtle" : "text-accent-pink"}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${apiUp ? "bg-emerald-400" : apiChecking ? "bg-text-subtle animate-pulse" : "bg-accent-pink"}`} />
           {apiUp ? "API up" : apiChecking ? "checking…" : "API down"}
         </div>
@@ -100,19 +100,19 @@ export function ServicesPanel() {
               >
                 <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${svc.dot} opacity-70 group-hover:opacity-100`} />
                 <div className="min-w-0">
-                  <div className={`text-sm font-mono font-medium ${svc.color} group-hover:underline`}>{svc.name}</div>
+                  <div className={`text-sm  font-medium ${svc.color} group-hover:underline`}>{svc.name}</div>
                   <div className="text-xs text-text-subtle truncate mt-0.5">{svc.desc}</div>
-                  <div className="text-xs text-text-subtle opacity-50 font-mono truncate">{svc.url}</div>
+                  <div className="text-xs text-text-subtle opacity-50 truncate">{svc.url}</div>
                 </div>
-                <span className="ml-auto text-text-subtle opacity-0 group-hover:opacity-100 transition-opacity text-xs font-mono shrink-0 mt-0.5">↗</span>
+                <span className="ml-auto text-text-subtle opacity-0 group-hover:opacity-100 transition-opacity text-xs shrink-0 mt-0.5">↗</span>
               </a>
             ) : (
               <div className="h-full flex items-start gap-3 rounded border border-border bg-surface-2 px-3 py-2.5 opacity-60">
                 <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${svc.dot}`} />
                 <div className="min-w-0">
-                  <div className="text-sm font-mono font-medium text-text-muted">{svc.name}</div>
+                  <div className="text-sm font-medium text-text-muted">{svc.name}</div>
                   <div className="text-xs text-text-subtle truncate mt-0.5">{svc.desc}</div>
-                  <div className="text-xs font-mono truncate mt-0.5 invisible">—</div>
+                  <div className="text-xs truncate mt-0.5 invisible">—</div>
                 </div>
               </div>
             )}

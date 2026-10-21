@@ -52,17 +52,17 @@ export function AccountPage() {
       <div className="card space-y-3 p-4 sm:p-5">
         <h2 className="h-section mb-3">Profile</h2>
         <div className="flex justify-between gap-3 text-[15px]">
-          <span className="text-text-muted font-mono">Username</span>
-          <span className="text-text-base font-mono">@{user?.username}</span>
+          <span className="text-text-muted">Username</span>
+          <span className="text-text-base">@{user?.username}</span>
         </div>
         <div className="flex justify-between gap-3 text-[15px]">
-          <span className="text-text-muted font-mono">Email</span>
-          <span className="text-text-base font-mono">{user?.email}</span>
+          <span className="text-text-muted">Email</span>
+          <span className="text-text-base">{user?.email}</span>
         </div>
         {user?.isAdmin && (
           <div className="flex justify-between gap-3 text-[15px]">
-            <span className="text-text-muted font-mono">Role</span>
-            <span className="text-accent-lime font-mono text-xs">Admin</span>
+            <span className="text-text-muted">Role</span>
+            <span className="text-accent-lime text-sm">Admin</span>
           </div>
         )}
       </div>
@@ -92,7 +92,7 @@ export function AccountPage() {
               autoComplete="new-password"
               className="field h-12 w-full sm:h-11"
             />
-            <p className="text-xs text-text-subtle mt-1 font-mono">Minimum 12 characters</p>
+            <p className="text-sm text-text-subtle mt-1">Minimum 12 characters</p>
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-text-muted">Confirm new password</label>
@@ -106,13 +106,13 @@ export function AccountPage() {
             />
           </div>
 
-          {error && <p className="text-xs font-mono text-accent-pink">{error}</p>}
-          {success && <p className="text-xs font-mono text-accent-lime">Password updated.</p>}
+          {error && <p className="text-sm text-accent-pink">{error}</p>}
+          {success && <p className="text-sm text-accent-lime">Password updated.</p>}
 
           <button
             type="submit"
             disabled={saving}
-            className="h-12 w-full rounded-full bg-accent-lime text-[15px] font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50 sm:h-11 sm:w-auto sm:px-6"
+            className="h-12 w-full sm:h-11 sm:w-auto sm:px-6 btn btn-primary"
           >
             {saving ? "Saving…" : "Update password"}
           </button>
@@ -125,7 +125,6 @@ export function AccountPage() {
             <h2 className="h-section px-0.5">Admin</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               <LinkCard to="/admin/imports" eyebrow="Data" title="CSV imports" sub="Upload and track imports" />
-              <LinkCard to="/admin/copy" eyebrow="Site" title="Copy editor" sub="Edit public page text" />
             </div>
           </div>
           <ServicesPanel />
@@ -137,7 +136,7 @@ export function AccountPage() {
         <Button variant="secondary" onClick={() => void signOut()} className="h-12 w-full rounded-full text-[15px] text-accent-pink">
           Sign out
         </Button>
-        <p className="text-center text-xs text-text-subtle">Tinnitus A Go Go · v{__APP_VERSION__}</p>
+        <p className="text-center text-sm text-text-subtle">Tinnitus A Go Go · v{__APP_VERSION__}</p>
       </div>
     </div>
   );

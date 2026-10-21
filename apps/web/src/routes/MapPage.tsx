@@ -81,7 +81,7 @@ function VenuePopup({ venue, onClose }: { venue: VenueMapItem; onClose: () => vo
         </div>
         <Link
           to={`/venues/${venue.slug}`}
-          className="mt-3 flex h-11 items-center justify-center rounded-full bg-accent-lime text-[15px] font-semibold text-bg transition-opacity hover:opacity-90"
+          className="mt-3 h-11 btn btn-primary"
         >
           View venue
         </Link>
@@ -185,10 +185,10 @@ export function MapPage() {
             />
             <circle cx="12" cy="9" r="2.5" fill="white" />
           </svg>
-          <p className="text-text-muted font-mono text-sm mb-2">
+          <p className="text-text-muted text-sm mb-2">
             Map requires Google Maps API key
           </p>
-          <p className="text-text-subtle text-xs">
+          <p className="text-text-subtle text-sm">
             Set <code className="bg-surface-2 px-1 rounded">VITE_GOOGLE_MAPS_API_KEY</code> in your environment
           </p>
         </div>
@@ -202,16 +202,16 @@ export function MapPage() {
 
       {venuesQuery.isLoading ? (
         <div className="card bg-surface-2 h-[calc(100dvh-15rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[360px] sm:h-[calc(100dvh-13rem)] flex items-center justify-center">
-          <p className="text-text-subtle font-mono text-sm animate-pulse">Loading map…</p>
+          <p className="text-text-subtle text-sm animate-pulse">Loading map…</p>
         </div>
       ) : venuesQuery.isError ? (
         <div className="card p-8 text-center">
-          <p className="text-accent-pink font-mono text-sm">Failed to load venues</p>
+          <p className="text-accent-pink text-sm">Failed to load venues</p>
         </div>
       ) : venues.length === 0 ? (
         <div className="card p-8 text-center">
-          <p className="text-text-muted font-mono text-sm">No venues with coordinates yet</p>
-          <p className="text-text-subtle text-xs mt-2">
+          <p className="text-text-muted text-sm">No venues with coordinates yet</p>
+          <p className="text-text-subtle text-sm mt-2">
             Add lat/lng to your venues to see them on the map
           </p>
         </div>

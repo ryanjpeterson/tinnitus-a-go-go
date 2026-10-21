@@ -8,7 +8,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center text-text-muted font-mono text-sm">
+      <div className="flex h-full items-center justify-center text-text-muted text-sm">
         Sound check…
       </div>
     );

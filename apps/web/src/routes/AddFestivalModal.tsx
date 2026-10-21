@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { api, type ArtistListItem, type VenueListItem } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
+import { Sheet } from "@/components/ui/kit";
 
 const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
   { value: "attending",  label: "Attending",  active: "border-yellow-600  bg-yellow-950  text-yellow-400"  },
@@ -105,7 +106,7 @@ function VenueAutocomplete({
         onFocus={() => results.length > 0 && setShowDrop(true)}
         onBlur={() => setTimeout(() => setShowDrop(false), 150)}
         placeholder="Venue name"
-        className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+        className="w-full field h-11"
       />
       {showDrop && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 z-40 mt-1 bg-surface border border-border rounded-lg shadow-xl py-1 max-h-40 overflow-y-auto">
@@ -116,7 +117,7 @@ function VenueAutocomplete({
               className="w-full text-left px-3 py-2 text-sm hover:bg-surface-2 transition-colors flex items-center justify-between gap-2"
             >
               <span className="text-text-base truncate">{v.name}</span>
-              <span className="text-xs text-text-subtle font-mono shrink-0">
+              <span className="text-sm text-text-subtle shrink-0">
                 {[v.city, v.region].filter(Boolean).join(", ")}
               </span>
             </button>
@@ -178,7 +179,7 @@ function ArtistAutocomplete({
         onFocus={() => results.length > 0 && setShowDrop(true)}
         onBlur={() => setTimeout(() => setShowDrop(false), 150)}
         placeholder={placeholder}
-        className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+        className="w-full field h-11"
       />
       {showDrop && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 z-40 mt-1 bg-surface border border-border rounded-lg shadow-xl py-1 max-h-40 overflow-y-auto">
@@ -189,7 +190,7 @@ function ArtistAutocomplete({
               className="w-full text-left px-3 py-2 text-sm hover:bg-surface-2 transition-colors flex items-center justify-between gap-2"
             >
               <span className="text-text-base truncate">{a.name}</span>
-              <span className="text-xs text-text-subtle font-mono shrink-0">{a.showCount} shows</span>
+              <span className="text-sm text-text-subtle shrink-0">{a.showCount} shows</span>
             </button>
           ))}
         </div>
@@ -335,63 +336,51 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-4 sm:p-8 overflow-y-auto"
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-    >
-      <div className="w-full max-w-lg bg-bg border border-border rounded-xl shadow-2xl my-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="font-display text-lg">Add festival</h2>
-          <button
-            onClick={handleClose}
-            className="text-text-subtle hover:text-text-base transition-colors text-xl font-mono w-8 h-8 flex items-center justify-center"
-          >×</button>
-        </div>
+    <Sheet title="Add festival" onClose={handleClose}>
 
         {/* Form */}
         <form onSubmit={(e) => void handleSubmit(e)} className="px-5 py-5 space-y-4">
 
           {/* Name */}
           <div>
-            <label className="block text-xs text-text-muted font-mono mb-1">Festival name *</label>
+            <label className="block mb-1 label">Festival name *</label>
             <input
               type="text"
               required
               placeholder="e.g. Coachella"
               value={form.name}
               onChange={(e) => setField("name", e.target.value)}
-              className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+              className="w-full field h-11"
             />
           </div>
 
           {/* Dates */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs text-text-muted font-mono mb-1">Start date *</label>
+              <label className="block mb-1 label">Start date *</label>
               <input
                 type="date"
                 required
                 value={form.startDate}
                 onChange={(e) => setField("startDate", e.target.value)}
-                className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime [color-scheme:dark]"
+                className="w-full [color-scheme:dark] field h-11"
               />
             </div>
             <div className="flex-1">
-              <label className="block text-xs text-text-muted font-mono mb-1">End date</label>
+              <label className="block mb-1 label">End date</label>
               <input
                 type="date"
                 value={form.endDate}
                 min={form.startDate || undefined}
                 onChange={(e) => setField("endDate", e.target.value)}
-                className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base focus:outline-none focus:border-accent-lime [color-scheme:dark]"
+                className="w-full [color-scheme:dark] field h-11"
               />
             </div>
           </div>
 
           {/* Venue */}
           <div>
-            <label className="block text-xs text-text-muted font-mono mb-1">Venue</label>
+            <label className="block mb-1 label">Venue</label>
             <div className="flex gap-2">
               <div className="flex-[2]">
                 <VenueAutocomplete
@@ -410,7 +399,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                   placeholder="City"
                   value={form.venueCity}
                   onChange={(e) => setField("venueCity", e.target.value)}
-                  className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                  className="w-full field h-11"
                 />
               </div>
               <div className="w-20">
@@ -419,7 +408,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                   placeholder="State"
                   value={form.venueRegion}
                   onChange={(e) => setField("venueRegion", e.target.value)}
-                  className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                  className="w-full field h-11"
                 />
               </div>
             </div>
@@ -427,7 +416,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
 
           {/* Status */}
           <div>
-            <label className="block text-xs text-text-muted font-mono mb-1">Status</label>
+            <label className="block mb-1 label">Status</label>
             <div className="flex gap-1 flex-wrap">
               {STATUSES.map((s) => (
                 <button
@@ -435,7 +424,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                   type="button"
                   onClick={() => setField("status", s.value)}
                   className={clsx(
-                    "min-w-[72px] px-3 py-1 rounded border text-xs font-mono transition-colors text-center",
+                    "min-w-[72px] px-3 py-1 rounded border text-xs  transition-colors text-center",
                     form.status === s.value
                       ? s.active
                       : "border-border text-text-muted hover:border-accent-lime",
@@ -451,7 +440,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={() => setShowLineup((v) => !v)}
-            className="text-xs font-mono text-text-subtle hover:text-text-muted transition-colors"
+            className="text-xs text-text-subtle hover:text-text-muted transition-colors"
           >
             {showLineup ? "▾ Hide lineup" : "▸ Add lineup (artists you saw)"}
           </button>
@@ -470,26 +459,26 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                     type="date"
                     value={a.performanceDate}
                     onChange={(e) => updateArtist(i, { performanceDate: e.target.value })}
-                    className="w-32 rounded border border-border bg-surface-2 px-2 py-1.5 text-xs text-text-base focus:outline-none focus:border-accent-lime [color-scheme:dark]"
+                    className="w-32 [color-scheme:dark] field h-11"
                   />
                   <input
                     type="text"
                     placeholder="Stage"
                     value={a.stageName}
                     onChange={(e) => updateArtist(i, { stageName: e.target.value })}
-                    className="w-24 rounded border border-border bg-surface-2 px-2 py-1.5 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                    className="w-24 field h-11"
                   />
                   <button
                     type="button"
                     onClick={() => removeArtist(i)}
-                    className="w-6 h-6 flex items-center justify-center text-text-subtle hover:text-accent-pink transition-colors font-mono shrink-0"
+                    className="w-6 h-6 flex items-center justify-center text-text-subtle hover:text-accent-pink transition-colors shrink-0"
                   >×</button>
                 </div>
               ))}
               <button
                 type="button"
                 onClick={addArtist}
-                className="text-xs font-mono text-text-subtle hover:text-accent-lime transition-colors"
+                className="link-action"
               >
                 + Add artist
               </button>
@@ -500,7 +489,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={() => setShowOptional((v) => !v)}
-            className="text-xs font-mono text-text-subtle hover:text-text-muted transition-colors"
+            className="text-xs text-text-subtle hover:text-text-muted transition-colors"
           >
             {showOptional ? "▾ Hide optional fields" : "▸ Optional fields (flyer, ticket price, notes)"}
           </button>
@@ -509,11 +498,11 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
             <div className="space-y-3 pt-1">
               {/* Flyer upload */}
               <div>
-                <label className="block text-xs text-text-muted font-mono mb-1">Flyer</label>
+                <label className="block mb-1 label">Flyer</label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <label className={clsx(
-                      "text-xs font-mono px-3 py-1.5 rounded border cursor-pointer transition-colors shrink-0",
+                      "text-xs  px-3 py-1.5 rounded border cursor-pointer transition-colors shrink-0",
                       "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
                       flyerUrl && "opacity-50 cursor-not-allowed",
                     )}>
@@ -536,7 +525,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                       onClick={() => setShowFlyerUrlInput((v) => !v)}
                       disabled={!!flyerFile}
                       className={clsx(
-                        "text-xs font-mono px-3 py-1.5 rounded border transition-colors shrink-0",
+                        "text-xs  px-3 py-1.5 rounded border transition-colors shrink-0",
                         showFlyerUrlInput
                           ? "border-accent-lime text-accent-lime"
                           : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
@@ -558,12 +547,12 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                             setShowFlyerUrlInput(false);
                             if (flyerFileRef.current) flyerFileRef.current.value = "";
                           }}
-                          className="text-xs text-text-subtle hover:text-accent-pink transition-colors shrink-0"
+                          className="shrink-0 link-action hover:text-accent-pink"
                         >×</button>
                       </div>
                     )}
                     {!flyerFile && !flyerUrl && !showFlyerUrlInput && (
-                      <span className="text-xs text-text-subtle">No flyer selected</span>
+                      <span className="text-sm text-text-subtle">No flyer selected</span>
                     )}
                   </div>
                   {showFlyerUrlInput && (
@@ -572,7 +561,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                       placeholder="Paste image URL…"
                       value={flyerUrl}
                       onChange={(e) => setFlyerUrl(e.target.value)}
-                      className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                      className="w-full field h-11"
                     />
                   )}
                 </div>
@@ -581,7 +570,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
               {/* Ticket price */}
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-xs text-text-muted font-mono mb-1">Ticket price ($)</label>
+                  <label className="block mb-1 label">Ticket price ($)</label>
                   <input
                     type="number"
                     min="0"
@@ -589,15 +578,15 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                     placeholder="0.00"
                     value={form.ticketPrice}
                     onChange={(e) => setField("ticketPrice", e.target.value)}
-                    className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                    className="w-full field h-11"
                   />
                 </div>
                 <div className="w-20">
-                  <label className="block text-xs text-text-muted font-mono mb-1">Currency</label>
+                  <label className="block mb-1 label">Currency</label>
                   <select
                     value={form.ticketCurrency}
                     onChange={(e) => setField("ticketCurrency", e.target.value)}
-                    className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base font-mono focus:outline-none focus:border-accent-lime"
+                    className="w-full field h-11"
                   >
                     {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
@@ -606,52 +595,51 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
 
               {/* Notes */}
               <div>
-                <label className="block text-xs text-text-muted font-mono mb-1">Personal notes</label>
+                <label className="block mb-1 label">Personal notes</label>
                 <textarea
                   rows={3}
                   placeholder="Your thoughts…"
                   value={form.personalNotes}
                   onChange={(e) => setField("personalNotes", e.target.value)}
-                  className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime resize-none"
+                  className="w-full resize-none field py-2.5"
                 />
               </div>
 
               {/* Source URL */}
               <div>
-                <label className="block text-xs text-text-muted font-mono mb-1">Source URL</label>
+                <label className="block mb-1 label">Source URL</label>
                 <input
                   type="url"
                   placeholder="https://..."
                   value={form.sourceUrl}
                   onChange={(e) => setField("sourceUrl", e.target.value)}
-                  className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-xs text-text-base placeholder:text-text-subtle focus:outline-none focus:border-accent-lime"
+                  className="w-full field h-11"
                 />
               </div>
             </div>
           )}
 
           {/* Error */}
-          {error && <p className="text-xs text-accent-pink font-mono">{error}</p>}
+          {error && <p className="text-sm text-accent-pink">{error}</p>}
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-1">
             <button
               type="button"
               onClick={handleClose}
-              className="text-xs font-mono text-text-subtle hover:text-text-base transition-colors px-3 py-1.5"
+              className="text-xs text-text-subtle hover:text-text-base transition-colors px-3 py-1.5"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="text-sm font-mono px-5 py-2 rounded bg-accent-lime text-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="btn btn-primary"
             >
               {submitting ? "Adding…" : "Add festival"}
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Sheet>
   );
 }

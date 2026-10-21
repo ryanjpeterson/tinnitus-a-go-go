@@ -82,16 +82,16 @@ export function SignupPage() {
   }
 
   return (
-    <main className="min-h-full flex items-center justify-center p-6">
+    <main className="flex min-h-full items-center justify-center px-4 pb-10 pt-[calc(2.5rem+env(safe-area-inset-top))]">
       <div className="w-full max-w-md">
-        <Link to="/" className="inline-block mb-8">
-          <Wordmark size="md" svg />
+        <Link to="/" className="mb-8 flex justify-center">
+          <Wordmark size="lg" svg />
         </Link>
 
         <Card>
           <CardHeader>
-            <h1 className="text-xl font-display tracking-tight uppercase">Create an account</h1>
-            <p className="text-sm text-text-muted mt-1">
+            <h1 className="h-page">Create an account</h1>
+            <p className="meta mt-1.5">
               Welcome to the lineup. This site is invite-only.
             </p>
             <InviteBadge state={inviteState} />
@@ -167,12 +167,12 @@ export function SignupPage() {
                 </div>
 
                 {error && (
-                  <div className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+                  <div className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
                     {error}
                   </div>
                 )}
 
-                <Button type="submit" loading={submitting} className="w-full">
+                <Button type="submit" loading={submitting} className="w-full" size="lg">
                   Sign me up
                 </Button>
               </form>

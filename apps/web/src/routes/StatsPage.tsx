@@ -2,7 +2,7 @@
  * StatsPage — personal concert log analytics.
  *
  * All charts are custom CSS/SVG — no external chart library.
- * Design follows brand guidelines: dark bg, accent-lime / accent-pink, font-mono numbers.
+ * Design follows brand guidelines: dark bg, accent-lime / accent-pink,  numbers.
  */
 
 import { useMemo } from "react";
@@ -49,44 +49,21 @@ function showName(headlinerHint: string | null | undefined, seriesName?: string 
 function YearBars({ byYear }: { byYear: DeepStatsResponse["byYear"] }) {
   const maxCount = Math.max(...byYear.map((r) => r.count), 1);
   return (
-    <div className="space-y-1.5">
-      {byYear.map((r) => {
-        const totalPct   = (r.count / maxCount) * 100;
-        const attendPct  = r.count > 0 ? (r.attended / r.count) * 100 : 0;
-        return (
-          <div key={r.year} className="flex items-center gap-3">
-            <Link
-              to={`/year/${r.year}`}
-              title={`${r.year} in review`}
-              className="text-xs font-mono text-text-muted hover:text-accent-lime hover:underline w-10 shrink-0 text-right"
-            >
-              {r.year}
-            </Link>
-            <div className="flex-1 h-3 bg-surface-2 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full"
-                style={{ width: `${totalPct}%`, background: "#A8FF3E", position: "relative" }}
-              >
-                <div
-                  className="absolute inset-y-0 right-0 rounded-r-full bg-surface-2"
-                  style={{ width: `${100 - attendPct}%`, opacity: 0.55 }}
-                />
-              </div>
-            </div>
-            <span className="text-xs font-mono text-text-subtle shrink-0 w-14 text-right">
-              <span className="text-text-base">{r.attended}</span>
-              <span className="opacity-50">/{r.count}</span>
-            </span>
-          </div>
-        );
-      })}
-      <p className="text-[10px] font-mono text-text-subtle mt-2 pl-14">attended / logged</p>
+    <div className="space-y-1">
+      {byYear.map((r) => (
+        <Link key={r.year} to={`/year/${r.year}`} title={`${r.year} in review`}
+          className="group flex h-9 items-center gap-3 rounded-lg px-1 transition-colors hover:bg-surface-2/70">
+          <span className="w-11 shrink-0 text-right text-sm font-semibold text-text-muted group-hover:text-accent-lime">{r.year}</span>
+          <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+            <span className="block h-full rounded-full bg-accent-lime" style={{ width: `${(r.count / maxCount) * 100}%` }} />
+          </span>
+          <span className="w-8 shrink-0 text-right text-sm font-semibold">{r.count}</span>
+        </Link>
+      ))}
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Heatmap — compact year rows × month columns
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Heatmap({ heatmap, byYear }: {
@@ -119,13 +96,13 @@ function Heatmap({ heatmap, byYear }: {
         <div className="grid gap-0.5 mb-0.5" style={{ gridTemplateColumns: "34px repeat(12, minmax(0, 1fr))" }}>
           <div />
           {MONTH_SHORT.map((m) => (
-            <div key={m} className="text-[9px] font-mono text-text-subtle text-center">{m.slice(0, 1)}<span className="hidden sm:inline">{m.slice(1)}</span></div>
+            <div key={m} className="text-sm text-text-subtle text-center">{m.slice(0, 1)}<span className="hidden sm:inline">{m.slice(1)}</span></div>
           ))}
         </div>
         {/* Year rows — compact cells */}
         {years.map((year) => (
           <div key={year} className="grid gap-0.5 mb-0.5" style={{ gridTemplateColumns: "34px repeat(12, minmax(0, 1fr))" }}>
-            <div className="text-[9px] font-mono text-text-muted text-right pr-1.5 flex items-center justify-end">{year}</div>
+            <div className="text-sm text-text-muted text-right pr-1.5 flex items-center justify-end">{year}</div>
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
               const count = cellCount(year, m);
               const opacity = cellOpacity(year, m);
@@ -145,7 +122,7 @@ function Heatmap({ heatmap, byYear }: {
             })}
           </div>
         ))}
-        <p className="text-[9px] font-mono text-text-subtle mt-1.5">brighter = more shows</p>
+        <p className="text-sm text-text-subtle mt-1.5">brighter = more shows</p>
       </div>
     </div>
   );
@@ -172,7 +149,7 @@ export function MiniVBars({ data, labels, color = "#A8FF3E" }: {
                 style={{ height: `${pct}%`, minHeight: val > 0 ? "2px" : "0", backgroundColor: color, opacity: val === 0 ? 0.15 : 1 }}
               />
             </div>
-            <span className="text-[9px] font-mono text-text-subtle leading-none">{labels[i]}</span>
+            <span className="text-sm text-text-subtle leading-none">{labels[i]}</span>
           </div>
         );
       })}
@@ -242,7 +219,7 @@ function Milestones({ milestones }: { milestones: DeepStatsResponse["milestones"
                   {showTitle(m.info, showName(m.headlinerHint, m.seriesName))}
                 </p>
                 {sub && <p className="truncate text-sm text-text-muted">{sub}</p>}
-                <p className="text-xs text-text-subtle">{fmtDate(m.date)}</p>
+                <p className="text-sm text-text-subtle">{fmtDate(m.date)}</p>
               </div>
               <Chevron className="text-text-subtle group-hover:text-accent-lime" />
             </Link>
@@ -296,7 +273,7 @@ export function StatsPage() {
     );
   }
 
-  const topArtistItems: RankedItem[] = d.topArtists.map((a) => ({
+  const topArtistItems: RankedItem[] = d.topArtists.slice(0, 10).map((a) => ({
     id: a.artistId,
     name: a.name,
     sub: a.firstSeen && a.lastSeen
@@ -306,7 +283,7 @@ export function StatsPage() {
     href: `/artists/${a.slug}`,
   }));
 
-  const topVenueItems: RankedItem[] = d.topVenues.map((v) => ({
+  const topVenueItems: RankedItem[] = d.topVenues.slice(0, 10).map((v) => ({
     id: v.venueId,
     name: v.name,
     sub: v.city ?? undefined,
@@ -357,14 +334,8 @@ export function StatsPage() {
       )}
 
       {/* ── Activity by year (full width) ───────────────────────────────── */}
-      <Section title="Activity by year">
+      <Section title="Shows by year">
         <YearBars byYear={d.byYear} />
-        <p className="mt-2 pl-14 text-xs text-text-subtle">Tap a year for its review</p>
-      </Section>
-
-      {/* ── Heatmap ─────────────────────────────────────────────────────── */}
-      <Section title="Show density — by year & month">
-        <Heatmap heatmap={d.heatmap} byYear={d.byYear} />
       </Section>
 
       {/* ── When do you go? ─────────────────────────────────────────────── */}
@@ -392,20 +363,20 @@ export function StatsPage() {
         <div className="grid sm:grid-cols-2 gap-3">
           <div className="card p-4 sm:p-5">
             <p className="eyebrow mb-1">Average ticket</p>
-            <p className="text-2xl font-mono font-bold text-accent-lime">
+            <p className="text-2xl font-bold text-accent-lime">
               ${(d.avgTicketCents / 100).toFixed(2)}
             </p>
           </div>
           {d.mostExpensiveShow && (
             <div className="card p-4 sm:p-5">
               <p className="eyebrow mb-1">Most expensive</p>
-              <p className="text-2xl font-mono font-bold text-accent-pink">
+              <p className="text-2xl font-bold text-accent-pink">
                 ${(d.mostExpensiveShow.amountCents / 100).toFixed(2)}{" "}
-                <span className="text-xs font-normal text-text-subtle">{d.mostExpensiveShow.currency}</span>
+                <span className="text-sm font-normal text-text-subtle">{d.mostExpensiveShow.currency}</span>
               </p>
               <Link
                 to={`/shows/${d.mostExpensiveShow.concertId}`}
-                className="text-xs font-mono text-text-muted hover:text-accent-lime transition-colors"
+                className="link-action"
               >
                 {showName(d.mostExpensiveShow.headlinerHint)} · {fmtDate(d.mostExpensiveShow.date)} ↗
               </Link>

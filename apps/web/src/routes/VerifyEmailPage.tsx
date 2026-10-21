@@ -39,26 +39,26 @@ export function VerifyEmailPage() {
   }, [token, refresh]);
 
   return (
-    <div className="flex min-h-full items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md rounded-lg border border-border bg-surface p-8 text-center">
-        <Wordmark size="md" svg className="mx-auto mb-6" />
+    <div className="flex min-h-full items-center justify-center px-4 pb-10 pt-[calc(2.5rem+env(safe-area-inset-top))]">
+      <div className="card w-full max-w-md p-6 text-center sm:p-8">
+        <Wordmark size="lg" svg className="mx-auto mb-6" />
 
         {state === "checking" && (
-          <p className="text-text-muted font-mono text-sm">Confirming…</p>
+          <p className="meta">Confirming…</p>
         )}
 
         {state === "ok" && (
           <>
-            <h1 className="font-display text-3xl mb-3 text-accent-lime">
+            <h1 className="h-page mb-3 text-accent-lime">
               You're verified.
             </h1>
-            <p className="text-text-muted">
+            <p className="meta">
               Email confirmed. Now you can use password reset, in case you forget after a
               particularly loud show.
             </p>
             <Link
-              to={user ? "/app" : "/login"}
-              className="mt-6 inline-block rounded bg-accent-lime px-4 py-2 font-medium text-bg hover:bg-accent-lime/90"
+              to={user ? "/" : "/login"}
+              className="mt-6 inline-block btn btn-primary"
             >
               {user ? "Back to the damage" : "Sign in"}
             </Link>
@@ -67,10 +67,10 @@ export function VerifyEmailPage() {
 
         {state === "error" && (
           <>
-            <h1 className="font-display text-3xl mb-3 text-accent-pink">
+            <h1 className="h-page mb-3 text-accent-pink">
               Couldn't verify.
             </h1>
-            <p className="text-text-muted font-mono text-sm">{message}</p>
+            <p className="meta">{message}</p>
             <Link
               to="/app"
               className="mt-6 inline-block text-sm text-accent-lime hover:underline"

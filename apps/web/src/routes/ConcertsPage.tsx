@@ -70,7 +70,8 @@ function rowText(c: ConcertListItem): { title: string; subtitle?: string; meta?:
     };
   }
   return {
-    title: billLine(names) || c.headlinerHint || c.eventSeries?.name || "Unknown",
+    // Two names keep a row to one line; the full bill is on the show page.
+    title: billLine(names, 2) || c.headlinerHint || c.eventSeries?.name || "Unknown",
     subtitle: venue ?? c.eventSeries?.name,
     meta: c.venue && c.eventSeries ? c.eventSeries.name : undefined,
   };

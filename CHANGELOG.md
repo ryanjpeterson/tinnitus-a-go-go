@@ -7,6 +7,12 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Changed — Setlists cached locally, attended-and-upcoming pages, fuller show banner
+
+- **setlist.fm songs are cached in the database** — linking a setlist now copies its songs (with set and encore boundaries) into `setlist_songs`; older links are filled in the first time a show or artist page reads them (a few per request). Show pages render setlists from the cache with no setlist.fm call, and **visitors now see setlists too** on attended shows (read-only; linking stays admin-only). The artist page's setlists and Year in review's "Songs heard live" now have data. Links are stored as the bare setlist.fm id, so the same setlist pasted as a URL and as an id is one link. `src/scripts/cache-setlists.ts` normalises existing links, removes the duplicates that reveals, and fills the cache. Requires migration `0010_setlist_song_sets.sql`.
+- **Venue and artist pages show attended and upcoming shows only** — attended, attending and interested. Missed and cancelled shows stay on the Shows page (Past → All / Missed / Cancelled). Venue counts follow the same rule, "first visit" counts attended shows only, and venue rows now show their status dot.
+- **Show banner** — the blurred flyer now fills the whole banner instead of sitting behind a heavy dark gradient; the bottom stays darker so the title reads.
+
 ### Changed — Upcoming / Past shows, media only for attended shows
 
 - **Shows has two tabs** — **Past** (attended, missed and cancelled, newest first; the default) and **Upcoming** (interested and attending, soonest first). The status filter offers only that tab's statuses and opens on **Attended** (Past) or **Attending** (Upcoming) — "All" is one tap away; the sort is worded per tab ("Soonest first"). The tab lives in the URL (`?view=upcoming`), and old `?status=attending` links open on the right tab. An empty Upcoming tab offers "+ Add show" (admin) or "See past shows".

@@ -2289,33 +2289,47 @@ interface ArtistSetlistState {
   manualUrl: string | null; // For when API doesn't work - just store the link
 }
 
-function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; savedSetlists: Record<string, ConcertSetlistEntry> }) {
+/** Link to a setlist on setlist.fm from a stored bare id (or an older full URL). */
+function setlistfmUrl(idOrUrl: string): string {
+  return idOrUrl.includes("/") ? idOrUrl : `https://www.setlist.fm/setlist/x/${idOrUrl}.html`;
+}
+
+function SetlistSection({ concert, savedSetlists, isAdmin }: {
+  concert: ConcertDetail;
+  savedSetlists: Record<string, ConcertSetlistEntry>;
+  isAdmin: boolean;
+}) {
   const qc = useQueryClient();
   const [unavailable, setUnavailable] = useState(false);
   const [artistStates, setArtistStates] = useState<Record<string, ArtistSetlistState>>(() => {
-    // Initialize from saved setlists
+    // Saved setlists render straight from the songs cached in the database —
+    // no setlist.fm call on page view.
     const initial: Record<string, ArtistSetlistState> = {};
     for (const [artistId, entry] of Object.entries(savedSetlists)) {
       if (entry.setlistfmId) {
-        // setlistfmId stores the full URL
+        const bareId = entry.setlistfmId.match(/([a-z0-9]+)(?:\.html)?$/i)?.[1] ?? entry.setlistfmId;
         initial[artistId] = {
           loaded: true,
           loading: false,
-          result: null,
+          result: entry.sets.length > 0
+            ? { id: bareId, artist: "", artistMbid: null, venue: "", city: "", country: "", date: concert.date, sets: entry.sets }
+            : null,
           error: null,
-          expanded: false,
+          expanded: true,
           showUrlInput: false,
           urlInput: "",
-          manualUrl: entry.setlistfmId,
+          manualUrl: setlistfmUrl(entry.setlistfmId),
         };
       }
     }
     return initial;
   });
 
-  const sortedArtists = [...concert.artists].sort(
+  const billed = [...concert.artists].sort(
     (a, b) => (ROLE_ORDER[a.role] ?? 99) - (ROLE_ORDER[b.role] ?? 99),
   );
+  // Visitors only see artists that have a cached setlist; admins see everyone to link more.
+  const sortedArtists = isAdmin ? billed : billed.filter((a) => artistStates[a.id]?.result);
 
   if (sortedArtists.length === 0) return null;
 
@@ -2530,7 +2544,7 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {!state.loaded && !state.loading && !state.showUrlInput && (
+                    {isAdmin && !state.loaded && !state.loading && !state.showUrlInput && (
                       <>
                         <button
                           onClick={() => void handleLoad(artist)}
@@ -2593,7 +2607,7 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
                         setlist.fm ↗
                       </a>
                     )}
-                    {state.manualUrl && !state.result && !state.showUrlInput && (
+                    {isAdmin && state.manualUrl && !state.showUrlInput && (
                       <>
                         <button
                           onClick={() => handleEditSetlist(artist.id)}
@@ -2674,7 +2688,7 @@ function SetlistSection({ concert, savedSetlists }: { concert: ConcertDetail; sa
       )}
 
       {/* Hint when nothing loaded yet */}
-      {!anyLoaded && !unavailable && (
+      {isAdmin && !anyLoaded && !unavailable && (
         <p className="px-4 pb-3 text-sm text-text-subtle">
           Click "Load" to search setlist.fm, or "URL" to paste a link directly.
         </p>
@@ -2842,10 +2856,8 @@ export function ConcertDetailPage() {
           {/* Setlists and media only make sense for a show you were at. */}
           {attended ? (
             <>
-              {/* Setlist (admin only) */}
-              {isAdmin && (
-                <SetlistSection concert={concert} savedSetlists={savedSetlists} />
-              )}
+              {/* Setlists: cached songs for everyone; linking tools for admins */}
+              <SetlistSection key={concert.id} concert={concert} savedSetlists={savedSetlists} isAdmin={isAdmin} />
 
               {/* Photo gallery */}
               <div className="card p-4 sm:p-5">

@@ -25,6 +25,7 @@ import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
 import { requireUser, requireAdmin } from "../auth/middleware.js";
 import { slugify } from "@tagg/shared";
+import { cacheSetlist, ensureCached, loadCachedSets, parseSetlistId, type CachedSet } from "../lib/setlist-cache.js";
 import { BILLING_ORDER_SQL, loadShowInfo } from "../lib/show-info.js";
 
 /** Direct public URL for a MinIO object (bucket is set to anonymous download). */
@@ -567,14 +568,19 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         id: schema.setlists.id,
         artistId: schema.setlists.artistId,
         setlistfmId: schema.setlists.setlistfmId,
+        fetchedAt: schema.setlists.fetchedAt,
       })
       .from(schema.setlists)
       .where(eq(schema.setlists.concertId, concert.id));
 
-    const setlistsByArtist: Record<string, { id: string; setlistfmId: string | null }> = {};
+    // Songs come from the local cache; links that were never fetched are filled now.
+    await ensureCached(setlistRows, req.log);
+    const cachedSets = await loadCachedSets(setlistRows.map((r) => r.id));
+
+    const setlistsByArtist: Record<string, { id: string; setlistfmId: string | null; sets: CachedSet[] }> = {};
     for (const row of setlistRows) {
       if (row.artistId) {
-        setlistsByArtist[row.artistId] = { id: row.id, setlistfmId: row.setlistfmId };
+        setlistsByArtist[row.artistId] = { id: row.id, setlistfmId: row.setlistfmId, sets: cachedSets.get(row.id) ?? [] };
       }
     }
 
@@ -1466,7 +1472,10 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
     });
     if (!artist) return reply.code(404).send({ error: "Artist not found." });
 
-    const { setlistfmId } = parsed.data;
+    // Store the bare setlist.fm id so the same setlist pasted as a URL and as
+    // an id is recognised as one link (setlistfm_id is unique).
+    const setlistfmId = parseSetlistId(parsed.data.setlistfmId);
+    if (!setlistfmId) return reply.code(400).send({ error: "Not a setlist.fm link or id." });
 
     // Upsert the setlist
     const [setlist] = await db
@@ -1481,6 +1490,13 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         set: { concertId, artistId },
       })
       .returning({ id: schema.setlists.id });
+
+    // Copy the songs now so the show page never has to ask setlist.fm again.
+    if (setlist) {
+      await cacheSetlist(setlist.id, setlistfmId).catch((err) => {
+        req.log.warn({ err }, "setlist.fm cache on link failed — will retry on next view");
+      });
+    }
 
     return reply.send({ ok: true, setlistId: setlist?.id ?? null });
   });

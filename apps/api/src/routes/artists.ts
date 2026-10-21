@@ -24,6 +24,7 @@ import { requireUser, requireAdmin } from "../auth/middleware.js";
 import { isLastfmConfigured, fetchArtistEnrichment } from "../lib/lastfm.js";
 import { artistEnrichQueue } from "../lib/queues.js";
 import { QUEUE_ARTIST_ENRICH } from "@tagg/shared";
+import { ensureCached } from "../lib/setlist-cache.js";
 
 /** Return a browser-accessible URL for a MinIO object key. */
 function mediaUrl(key: string): string {
@@ -124,7 +125,10 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
       .where(eq(schema.concertArtists.artistId, artist.id))
       .orderBy(desc(schema.concerts.date));
 
-    const concerts = concertRows.map((r) => ({
+    // Missed and cancelled shows stay on the Shows page only; the artist page
+    // is about shows that happened (attended) or are coming up.
+    const VISIBLE = new Set(["attended", "attending", "interested"]);
+    const concerts = concertRows.filter((r) => r.attendanceStatus && VISIBLE.has(r.attendanceStatus)).map((r) => ({
       id: r.concertId,
       date: r.date,
       type: r.type,
@@ -659,6 +663,7 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
       .select({
         setlistId: schema.setlists.id,
         setlistfmId: schema.setlists.setlistfmId,
+        fetchedAt: schema.setlists.fetchedAt,
         concertId: schema.concerts.id,
         concertDate: schema.concerts.date,
         venueName: schema.venues.name,
@@ -673,6 +678,9 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
     if (setlistRows.length === 0) {
       return reply.send({ artist, setlists: [], total: 0 });
     }
+
+    // Fill the song cache for links that were never fetched, then read it.
+    await ensureCached(setlistRows.map((r) => ({ id: r.setlistId, setlistfmId: r.setlistfmId, fetchedAt: r.fetchedAt })), req.log);
 
     // Get songs for each setlist
     const setlistIds = setlistRows.map((r) => r.setlistId);

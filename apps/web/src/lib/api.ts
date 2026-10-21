@@ -651,7 +651,10 @@ export interface ConcertDetail extends ConcertListItem {
 
 export interface ConcertSetlistEntry {
   id: string;
+  /** Bare setlist.fm id (older rows may still hold a full URL). */
   setlistfmId: string | null;
+  /** Songs cached from setlist.fm, grouped by set/encore; empty until fetched. */
+  sets: SetlistfmSet[];
 }
 
 export interface ConcertDetailResponse {

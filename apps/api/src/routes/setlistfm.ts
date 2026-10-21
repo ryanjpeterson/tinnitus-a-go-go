@@ -18,6 +18,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { env } from "../lib/env.js";
+import { parseSetlistId } from "../lib/setlist-cache.js";
 
 type SetlistfmError =
   | "auth_error"
@@ -206,18 +207,10 @@ export async function setlistfmRoutes(app: FastifyInstance): Promise<void> {
       return reply.send({ result: null, available: false, error: null });
     }
 
-    let setlistId = parsed.data.id;
-
-    // Parse ID from full URL if provided
-    // URL format: https://www.setlist.fm/setlist/artist-name/year/venue-city-country-XXXXX.html
-    // The ID is the alphanumeric string before .html
-    if (setlistId.includes("setlist.fm")) {
-      const match = setlistId.match(/([a-z0-9]+)\.html$/i);
-      if (match) {
-        setlistId = match[1]!;
-      } else {
-        return reply.code(400).send({ error: "Could not parse setlist ID from URL." });
-      }
+    // Accepts a bare id or a full URL (…/venue-city-country-XXXXX.html).
+    const setlistId = parseSetlistId(parsed.data.id);
+    if (!setlistId) {
+      return reply.code(400).send({ error: "Could not parse setlist ID from URL." });
     }
 
     const url = `https://api.setlist.fm/rest/1.0/setlist/${setlistId}`;

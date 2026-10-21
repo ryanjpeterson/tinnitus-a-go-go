@@ -413,6 +413,8 @@ export const setlistSongs = pgTable("setlist_songs", {
   isCover: boolean("is_cover").notNull().default(false),
   coverArtist: text("cover_artist"),
   notes: text("notes"),
+  // Which set the song belongs to: null = main set, "Encore", "Encore 2", or a named set.
+  setName: text("set_name"),
 });
 
 // ===== Venue aliases =====

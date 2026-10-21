@@ -121,14 +121,17 @@ export function Hero({ imageUrl, imageAlt, eyebrow, title, children, actions, ba
 
   return (
     <section className="relative isolate -mx-4 -mt-6 mb-5 overflow-hidden sm:mx-0 sm:mt-0 sm:mb-6 sm:rounded-2xl sm:border sm:border-border">
-      {/* Backdrop */}
+      {/* Backdrop: the image itself, blurred and scaled up so it fills the whole
+          banner edge to edge (scaling hides the soft edges blur leaves behind). */}
       {imageUrl ? (
         <img src={imageUrl} alt="" aria-hidden="true"
-          className="absolute inset-0 -z-20 h-full w-full scale-125 object-cover opacity-60 blur-2xl" />
+          className="absolute inset-0 -z-20 h-full w-full scale-150 object-cover blur-2xl saturate-150" />
       ) : (
         <div className={cn("absolute inset-0 -z-20 bg-gradient-to-br to-bg", glow)} />
       )}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-bg via-bg/80 to-bg/30" />
+      {/* Light overall dim, darker toward the bottom where the text sits. */}
+      <div className="absolute inset-0 -z-10 bg-black/35" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-bg/85 via-bg/30 to-transparent" />
 
       {back && (
         <div className="px-4 pt-3 sm:px-6 sm:pt-5">

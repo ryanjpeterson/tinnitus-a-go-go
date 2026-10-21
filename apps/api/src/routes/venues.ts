@@ -154,7 +154,8 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(404).send({ error: "Venue not found." });
     }
 
-    // All concerts at this venue (no user filtering)
+    // Shows at this venue that were attended or are coming up. Missed and
+    // cancelled shows stay on the Shows page only.
     const concertRows = await db
       .select({
         concertId: schema.concerts.id,
@@ -162,10 +163,23 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
         type: schema.concerts.type,
         headlinerHint: schema.concerts.headlinerHint,
         seriesName: schema.eventSeries.name,
+        status: sql<string>`(
+          select ca.status::text from concert_attendees ca
+          where ca.concert_id = ${schema.concerts.id}
+          order by case ca.status::text when 'attended' then 0 when 'attending' then 1 else 2 end
+          limit 1
+        )`,
       })
       .from(schema.concerts)
       .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
-      .where(eq(schema.concerts.venueId, venue.id))
+      .where(and(
+        eq(schema.concerts.venueId, venue.id),
+        sql`exists (
+          select 1 from concert_attendees ca
+          where ca.concert_id = ${schema.concerts.id}
+            and ca.status in ('attended', 'attending', 'interested')
+        )`,
+      ))
       .orderBy(desc(schema.concerts.date));
 
     // Fetch headliner names for all these concerts in a single query
@@ -211,6 +225,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
         headlinerSlug: headliner?.slug ?? null,
         eventSeries: r.seriesName ? { name: r.seriesName } : null,
         info: showInfo.get(r.concertId) ?? null,
+        attendance: r.status ? { status: r.status } : null,
       };
     });
 
@@ -245,8 +260,9 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
       stats: {
         total: concerts.length,
         uniqueArtists,
-        firstVisit: concerts.at(-1)?.date ?? null,
-        lastVisit: concerts[0]?.date ?? null,
+        // Visits are attended shows only — an upcoming show isn't a visit yet.
+        firstVisit: concerts.filter((c) => c.attendance?.status === "attended").at(-1)?.date ?? null,
+        lastVisit: concerts.find((c) => c.attendance?.status === "attended")?.date ?? null,
       },
     });
   });

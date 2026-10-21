@@ -704,6 +704,15 @@ Applied migrations:
 | `0006_venue_aliases.sql` | Add `venue_aliases` table with canonical FK, slug, date range, notes |
 | `0007_photo_artists.sql` | Add `photo_artists` junction table (photo_id, artist_id PK + indexes) |
 | `0008_site_copy.sql` | Add `site_copy` CMS table; seed default landing-page copy keys |
+| `0009_festivals_refactor.sql` | Festivals as first-class entities: venue, dates, flyer on `event_series`; `festival_sets`, `festival_attendees` |
+| `0010_setlist_song_sets.sql` | `set_name` on `setlist_songs` (main set / "Encore" / named set) for the setlist.fm song cache |
+
+0005–0010 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
+
+```bash
+docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0010_setlist_song_sets.sql
+docker compose exec api npx tsx src/scripts/cache-setlists.ts
+```
 
 For destructive changes (drop column/table, rename), use **expand/contract**: add the new shape, backfill, switch reads/writes, then drop the old shape in a follow-up migration. Never edit a migration that has already been applied.
 

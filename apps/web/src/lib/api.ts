@@ -348,6 +348,25 @@ export const api = {
     request<{ ok: true }>(`/venues/${slug}/aliases/${aliasId}`, { method: "DELETE" }),
 
   // URL paste parser
+  // Admin data cleanup
+  dataDuplicates: (type: DataEntityType) =>
+    request<{ groups: DupGroup[] }>(`/admin/data/duplicates?type=${type}`),
+  dataMergePreview: (type: DataEntityType, keepId: string, removeId: string) =>
+    request<MergePreview>(`/admin/data/merge-preview?type=${type}&keepId=${keepId}&removeId=${removeId}`),
+  dataMerge: (type: DataEntityType, keepId: string, removeIds: string[]) =>
+    request<{ ok: true; merged: string[] }>("/admin/data/merge", { method: "POST", body: JSON.stringify({ type, keepId, removeIds }) }),
+  dataDismiss: (type: DataEntityType, ids: string[]) =>
+    request<{ ok: true }>("/admin/data/dismiss", { method: "POST", body: JSON.stringify({ type, ids }) }),
+  dataMerges: () => request<{ merges: MergeLogEntry[] }>("/admin/data/merges"),
+  dataUndoMerge: (id: string) => request<{ ok: true }>(`/admin/data/merges/${id}/undo`, { method: "POST" }),
+  dataHealth: () => request<{ checks: HealthCheck[] }>("/admin/data/health"),
+  dataHealthFix: (check: string, value?: string, to?: string) =>
+    request<{ ok: true; changed: number }>("/admin/data/health/fix", { method: "POST", body: JSON.stringify({ check, value, to }) }),
+  dataSimilar: (type: DataEntityType, name: string, city?: string) => {
+    const qs = new URLSearchParams({ type, name });
+    if (city) qs.set("city", city);
+    return request<{ matches: DupRecord[] }>(`/admin/data/similar?${qs}`);
+  },
   parseEventUrl: (url: string) =>
     request<ParsedEvent>("/concerts/parse-url", { method: "POST", body: JSON.stringify({ url }) }),
 
@@ -885,6 +904,53 @@ export interface VenueDetailResponse {
     firstVisit: string | null;
     lastVisit: string | null;
   };
+}
+
+// ─── Admin data cleanup ───────────────────────────────────────────────────────
+
+export type DataEntityType = "venue" | "artist";
+
+export interface DupRecord {
+  id: string;
+  name: string;
+  slug: string;
+  /** City for venues, first genre for artists. */
+  sub: string | null;
+  showCount: number;
+  firstDate: string | null;
+  lastDate: string | null;
+}
+
+export interface DupGroup {
+  reason: "same-name" | "same-core" | "similar-spelling";
+  records: DupRecord[];
+}
+
+export interface MergePreview {
+  keep: { id: string; name: string };
+  remove: { id: string; name: string };
+  moves: { label: string; count: number }[];
+  fills: string[];
+}
+
+export interface MergeLogEntry {
+  id: string;
+  entityType: DataEntityType;
+  keptId: string;
+  keptName: string;
+  removedName: string;
+  createdAt: string;
+  undoneAt: string | null;
+  canUndo: boolean;
+}
+
+export interface HealthCheck {
+  id: string;
+  title: string;
+  description: string;
+  items: { id: string; label: string; sub?: string | null; href?: string }[];
+  fix?: { label: string; confirm: string };
+  cityGroups?: { spellings: { city: string; venues: number }[] }[];
 }
 
 // ─── URL parser types ─────────────────────────────────────────────────────────

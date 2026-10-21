@@ -10,6 +10,7 @@ import { authRoutes } from "./routes/auth.js";
 import { inviteRoutes } from "./routes/invites.js";
 import { healthRoutes } from "./routes/health.js";
 import { adminImportRoutes } from "./routes/admin/imports.js";
+import { adminDataRoutes } from "./routes/admin/data.js";
 import { concertRoutes } from "./routes/concerts.js";
 import { exportRoutes } from "./routes/export.js";
 import { photoRoutes } from "./routes/photos.js";
@@ -71,6 +72,7 @@ async function start(): Promise<void> {
   await app.register(authRoutes);
   await app.register(inviteRoutes);
   await app.register(adminImportRoutes);
+  await app.register(adminDataRoutes);
   await app.register(concertRoutes);
   await app.register(exportRoutes);
   await app.register(photoRoutes);

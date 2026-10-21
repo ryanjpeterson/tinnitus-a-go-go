@@ -7,6 +7,15 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Added — Data cleanup (admin)
+
+- **Data cleanup page** (`/admin/data`, linked from Account) with three tabs:
+  - **Duplicates** — suggested duplicate venues and artists, grouped: same name ignoring case, accents, punctuation and a leading "The" ("The Bronson Centre" / "Bronson Centre"); same name apart from generic venue words ("Bronson Theatre"); or a similar spelling. Venues must share a city. Pick the record to keep (the one with the most shows is preselected), preview what moves ("Moves 9 shows, 2 photo tags. Fills in coordinates."), and merge: shows, festivals, festival sets, setlists and photo tags move to the kept record, blank details are filled in from the duplicate, and a merged venue's old name becomes an alias so imports keep matching and its old URL redirects. **Not duplicates** hides a group for good.
+  - **Health** — city spelled more than one way (pick the spelling to use), names with stray spaces (tidy all), venues and artists with no shows (delete all), shows with no status or no artists, and venues missing a city or map location — each with links to fix.
+  - **History** — every merge; the most recent one can be **undone**, restoring the removed record and everything that moved exactly.
+- **Add show warns about likely duplicates** — before creating, it checks the venue and each artist against existing records; "Venue "Bronson Centre" looks like The Bronson Centre · Ottawa (17 shows)" offers **Use it**, or **They're different — add anyway**.
+- Requires migration `0011_data_cleanup.sql` (apply by hand).
+
 ### Changed — Setlists cached locally, attended-and-upcoming pages, fuller show banner
 
 - **setlist.fm songs are cached in the database** — linking a setlist now copies its songs (with set and encore boundaries) into `setlist_songs`; older links are filled in the first time a show or artist page reads them (a few per request). Show pages render setlists from the cache with no setlist.fm call, and **visitors now see setlists too** on attended shows (read-only; linking stays admin-only). The artist page's setlists and Year in review's "Songs heard live" now have data. Links are stored as the bare setlist.fm id, so the same setlist pasted as a URL and as an id is one link. `src/scripts/cache-setlists.ts` normalises existing links, removes the duplicates that reveals, and fills the cache. Requires migration `0010_setlist_song_sets.sql`.

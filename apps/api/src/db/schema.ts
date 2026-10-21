@@ -440,6 +440,38 @@ export const venueAliases = pgTable(
   }),
 );
 
+// ===== Data cleanup =====
+
+/** One row per duplicate merge; `snapshot` holds what's needed to undo it. */
+export const mergeLog = pgTable(
+  "merge_log",
+  {
+    id:          uuid("id").defaultRandom().primaryKey(),
+    entityType:  text("entity_type").notNull(), // "venue" | "artist"
+    keptId:      uuid("kept_id").notNull(),
+    removedId:   uuid("removed_id").notNull(),
+    keptName:    text("kept_name").notNull(),
+    removedName: text("removed_name").notNull(),
+    snapshot:    jsonb("snapshot").notNull(),
+    userId:      uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt:   timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    undoneAt:    timestamp("undone_at", { withTimezone: true }),
+  },
+  (t) => ({ createdIdx: index("merge_log_created_idx").on(t.createdAt) }),
+);
+
+/** Pairs marked "not a duplicate" (idA < idB), hidden from suggestions. */
+export const duplicateDismissals = pgTable(
+  "duplicate_dismissals",
+  {
+    entityType: text("entity_type").notNull(),
+    idA:        uuid("id_a").notNull(),
+    idB:        uuid("id_b").notNull(),
+    createdAt:  timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.entityType, t.idA, t.idB] }) }),
+);
+
 // ===== Relations (required for Drizzle relational query API) =====
 
 export const usersRelations = relations(users, ({ many }) => ({

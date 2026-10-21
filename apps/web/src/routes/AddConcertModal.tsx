@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { api, type ArtistListItem, type VenueListItem, type SetlistfmResult, type SetlistfmError, type ParsedEvent } from "@/lib/api";
+import { api, type ArtistListItem, type VenueListItem, type SetlistfmResult, type SetlistfmError, type ParsedEvent, type DupRecord } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
 import { Sheet } from "@/components/ui/kit";
 
@@ -519,10 +519,45 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Possible duplicates found before creating; "Add anyway" skips the check.
+  const [similar, setSimilar] = useState<{ field: "venue" | number; typed: string; match: DupRecord }[] | null>(null);
+
+  const findSimilar = async (): Promise<{ field: "venue" | number; typed: string; match: DupRecord }[]> => {
+    const checks: Promise<{ field: "venue" | number; typed: string; match: DupRecord }[]>[] = [];
+    if (form.venueName.trim()) {
+      checks.push(api.dataSimilar("venue", form.venueName.trim(), form.venueCity.trim() || undefined)
+        .then((r) => r.matches.slice(0, 1).map((m) => ({ field: "venue" as const, typed: form.venueName.trim(), match: m }))));
+    }
+    form.artists.forEach((a, i) => {
+      if (!a.name.trim()) return;
+      checks.push(api.dataSimilar("artist", a.name.trim())
+        .then((r) => r.matches.slice(0, 1).map((m) => ({ field: i, typed: a.name.trim(), match: m }))));
+    });
+    // A failed check never blocks adding the show.
+    return (await Promise.all(checks.map((c) => c.catch(() => [])))).flat();
+  };
+
+  const useExisting = (w: { field: "venue" | number; match: DupRecord }): void => {
+    setForm((prev) => w.field === "venue"
+      ? { ...prev, venueName: w.match.name, venueCity: w.match.sub ?? prev.venueCity }
+      : { ...prev, artists: prev.artists.map((a, i) => (i === w.field ? { ...a, name: w.match.name } : a)) });
+    setSimilar((prev) => {
+      const next = (prev ?? []).filter((x) => x.field !== w.field);
+      return next.length > 0 ? next : null;
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent, skipSimilar = false) => {
     e.preventDefault();
     const err = validate();
     if (err) { setError(err); return; }
+
+    if (!skipSimilar) {
+      setSubmitting(true); // also blocks a double submit while checking
+      const found = await findSimilar();
+      if (found.length > 0) { setSimilar(found); setSubmitting(false); return; }
+    }
+    setSimilar(null);
 
     setSubmitting(true);
     setError(null);
@@ -933,6 +968,26 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                   className="w-full resize-none field py-2.5"
                 />
               </div>
+            </div>
+          )}
+
+          {/* Possible duplicates */}
+          {similar && (
+            <div className="space-y-3 rounded-xl border border-yellow-700 bg-yellow-950/30 p-4">
+              <p className="text-[15px] font-semibold text-yellow-300">Already in your log?</p>
+              {similar.map((w) => (
+                <div key={String(w.field)} className="flex items-center justify-between gap-3">
+                  <p className="min-w-0 text-sm text-text-muted">
+                    {w.field === "venue" ? "Venue" : "Artist"} “{w.typed}” looks like{" "}
+                    <span className="font-semibold text-text-base">{w.match.name}</span>
+                    {w.match.sub && <> · {w.match.sub}</>} ({w.match.showCount} show{w.match.showCount === 1 ? "" : "s"})
+                  </p>
+                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => useExisting(w)}>Use it</button>
+                </div>
+              ))}
+              <button type="button" className="link-action" onClick={(e) => void handleSubmit(e as unknown as React.FormEvent, true)}>
+                They're different — add anyway
+              </button>
             </div>
           )}
 

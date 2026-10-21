@@ -125,6 +125,7 @@ export function AccountPage() {
             <h2 className="h-section px-0.5">Admin</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               <LinkCard to="/admin/imports" eyebrow="Data" title="CSV imports" sub="Upload and track imports" />
+              <LinkCard to="/admin/data" eyebrow="Data" title="Data cleanup" sub="Merge duplicates, fix gaps" />
             </div>
           </div>
           <ServicesPanel />

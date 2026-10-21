@@ -19,6 +19,7 @@ import { FollowUpPrompt } from "./FollowUpPrompt";
 import { StatsPage } from "./StatsPage";
 import { MapPage } from "./MapPage";
 import { ImportsPage } from "./ImportsPage";
+import { DataCleanupPage } from "./DataCleanupPage";
 import { RequireAdmin } from "./RequireAdmin";
 import { YearReviewIndex, YearReviewPage } from "./YearReviewPage";
 
@@ -169,6 +170,7 @@ export function AppShell() {
           <Route path="/stats" element={<Navigate to="/" replace />} />
           <Route path="/account" element={user ? <AccountPage /> : <Navigate to="/login" replace />} />
           <Route path="/admin/imports" element={<RequireAdmin><ImportsPage /></RequireAdmin>} />
+          <Route path="/admin/data" element={<RequireAdmin><DataCleanupPage /></RequireAdmin>} />
 
           {/* Fallback for unmatched paths */}
           <Route path="*" element={<Navigate to="/" replace />} />

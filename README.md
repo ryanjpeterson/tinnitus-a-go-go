@@ -584,6 +584,18 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 
 ### Admin (requires `is_admin = true`)
 
+Data cleanup (`/admin/data` in the app):
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `GET`  | `/admin/data/duplicates?type=venue\|artist` | Suggested duplicate groups: same name (ignoring case, accents, punctuation, a leading "The"), same name apart from generic venue words, or similar spelling; venues must share a city |
+| `GET`  | `/admin/data/merge-preview?type&keepId&removeId` | What a merge would move and which blank fields it would fill |
+| `POST` | `/admin/data/merge` | `{ type, keepId, removeIds[] }` — move every reference onto `keepId`, keep old venue names as aliases, delete the duplicates; logged with an undo snapshot |
+| `POST` | `/admin/data/dismiss` | `{ type, ids[] }` — mark records as not duplicates |
+| `GET`  | `/admin/data/merges` · `POST /admin/data/merges/:id/undo` | Merge history; undo the most recent merge |
+| `GET`  | `/admin/data/health` · `POST /admin/data/health/fix` | Health checks (city spellings, untidy names, records with no shows, shows with no status/lineup, venues without a location) and their one-tap fixes |
+| `GET`  | `/admin/data/similar?type&name&city` | Existing records a new name would duplicate (used by Add show) |
+
 | Method  | Path                    | Description                                                        |
 | ------- | ----------------------- | ------------------------------------------------------------------ |
 | `POST`  | `/admin/imports`        | Upload a CSV file for async import; returns `importId`             |
@@ -706,11 +718,13 @@ Applied migrations:
 | `0008_site_copy.sql` | Add `site_copy` CMS table; seed default landing-page copy keys |
 | `0009_festivals_refactor.sql` | Festivals as first-class entities: venue, dates, flyer on `event_series`; `festival_sets`, `festival_attendees` |
 | `0010_setlist_song_sets.sql` | `set_name` on `setlist_songs` (main set / "Encore" / named set) for the setlist.fm song cache |
+| `0011_data_cleanup.sql` | `merge_log` (each duplicate merge with an undo snapshot) and `duplicate_dismissals` ("not a duplicate" pairs) |
 
-0005–0010 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
+0005–0011 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
 
 ```bash
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0010_setlist_song_sets.sql
+docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0011_data_cleanup.sql
 docker compose exec api npx tsx src/scripts/cache-setlists.ts
 ```
 

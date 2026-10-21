@@ -7,7 +7,8 @@
  * gradient, date blocks on show rows, chevrons on anything that navigates.
  */
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import type { AttendanceStatus } from "@tagg/shared";
 import { cn } from "@/lib/cn";
@@ -96,11 +97,86 @@ export function BackButton({ to, label, overlay = false }: { to: string; label: 
 }
 
 /**
- * Hero banner for detail pages: the entity's image blurred behind a dark
- * gradient, a sharp thumbnail, eyebrow, big title, meta and actions.
- * Full-bleed on phones, a rounded panel from sm up.
+ * Full-width banner at the top of a page: the backdrop runs edge to edge of
+ * the screen with no frame, while its content lines up with the page column.
+ * Used by the show, artist, venue and festival pages (via Hero) and Year in review.
  */
-export function Hero({ imageUrl, imageAlt, eyebrow, title, children, actions, back, accent = "lime", square = false }: {
+export function Banner({ backdrop, glow = "lime", back, badge, children }: {
+  /** Image blurred to fill the banner; falls back to a soft accent gradient. */
+  backdrop?: string | null;
+  glow?: "lime" | "pink" | "yellow" | "purple";
+  back?: { to: string; label: string };
+  /** Top-right of the banner, opposite the back button (e.g. a status flag). */
+  badge?: ReactNode;
+  children: ReactNode;
+}) {
+  const glowCls = {
+    lime: "from-lime-900/70",
+    pink: "from-rose-900/70",
+    yellow: "from-yellow-900/70",
+    purple: "from-purple-900/70",
+  }[glow];
+
+  return (
+    // Breaks out of the page column to the full screen width and up against the app bar.
+    <section className="relative isolate -mt-6 mb-6 ml-[calc(50%-50vw)] w-screen overflow-hidden sm:-mt-8 sm:mb-8">
+      {/* Backdrop: the image itself, blurred and scaled up so it fills the whole
+          banner edge to edge (scaling hides the soft edges blur leaves behind). */}
+      {backdrop ? (
+        <img src={backdrop} alt="" aria-hidden="true"
+          className="absolute inset-0 -z-20 h-full w-full scale-150 object-cover blur-2xl saturate-150" />
+      ) : (
+        <div className={cn("absolute inset-0 -z-20 bg-gradient-to-br to-bg", glowCls)} />
+      )}
+      {/* Light overall dim, fading into the page at the bottom so there's no hard edge. */}
+      <div className="absolute inset-0 -z-10 bg-black/35" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-bg via-bg/40 to-transparent" />
+
+      <div className="mx-auto max-w-5xl px-4 sm:px-6">
+        {(back || badge) && (
+          <div className="flex min-h-[56px] items-center justify-between gap-3 pt-3 sm:pt-4">
+            {back ? <BackButton to={back.to} label={back.label} overlay /> : <span />}
+            {badge}
+          </div>
+        )}
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** Full-size image over the page; tap anywhere or press Escape to close. */
+export function ImageViewer({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = prev; document.removeEventListener("keydown", onKey); };
+  }, [onClose]);
+
+  // Portalled to <body> so it covers the app bar and tab bar (the banner it
+  // opens from is its own stacking context).
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label={alt} onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 pt-[calc(1rem+env(safe-area-inset-top))] backdrop-blur-md">
+      <img src={src} alt={alt} className="max-h-full max-w-full rounded-lg object-contain shadow-2xl" />
+      <button onClick={onClose} aria-label="Close"
+        className="absolute right-4 top-[calc(1rem+env(safe-area-inset-top))] flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md hover:bg-white/20">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+    </div>,
+    document.body,
+  );
+}
+
+/**
+ * Banner for detail pages: thumbnail (tap for full size), eyebrow, big title,
+ * meta lines and pill actions over the blurred image.
+ */
+export function Hero({ imageUrl, imageAlt, eyebrow, title, children, actions, back, badge, accent = "lime", square = false }: {
   imageUrl?: string | null;
   imageAlt?: string;
   eyebrow?: ReactNode;
@@ -108,6 +184,8 @@ export function Hero({ imageUrl, imageAlt, eyebrow, title, children, actions, ba
   children?: ReactNode;
   actions?: ReactNode;
   back?: { to: string; label: string };
+  /** Shown top-right, e.g. the attendance status. */
+  badge?: ReactNode;
   accent?: "lime" | "pink" | "yellow" | "purple";
   /** Square thumbnail (artists/venues) instead of a portrait one (flyers). */
   square?: boolean;
@@ -118,48 +196,42 @@ export function Hero({ imageUrl, imageAlt, eyebrow, title, children, actions, ba
     yellow: "from-yellow-900/70",
     purple: "from-purple-900/70",
   }[accent];
+  const [viewing, setViewing] = useState(false);
+  const thumbCls = cn(
+    "shrink-0 overflow-hidden rounded-xl border border-white/10 bg-surface-2 shadow-2xl shadow-black/50",
+    square ? "h-24 w-24 sm:h-44 sm:w-44" : "h-32 w-24 sm:h-60 sm:w-44",
+  );
 
   return (
-    <section className="relative isolate -mx-4 -mt-6 mb-5 overflow-hidden sm:mx-0 sm:mt-0 sm:mb-6 sm:rounded-2xl sm:border sm:border-border">
-      {/* Backdrop: the image itself, blurred and scaled up so it fills the whole
-          banner edge to edge (scaling hides the soft edges blur leaves behind). */}
-      {imageUrl ? (
-        <img src={imageUrl} alt="" aria-hidden="true"
-          className="absolute inset-0 -z-20 h-full w-full scale-150 object-cover blur-2xl saturate-150" />
-      ) : (
-        <div className={cn("absolute inset-0 -z-20 bg-gradient-to-br to-bg", glow)} />
-      )}
-      {/* Light overall dim, darker toward the bottom where the text sits. */}
-      <div className="absolute inset-0 -z-10 bg-black/35" />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-bg/85 via-bg/30 to-transparent" />
-
-      {back && (
-        <div className="px-4 pt-3 sm:px-6 sm:pt-5">
-          <BackButton to={back.to} label={back.label} overlay />
-        </div>
-      )}
-
-      <div className="flex items-end gap-4 px-4 pb-5 pt-10 sm:gap-6 sm:px-6 sm:pb-6 sm:pt-14">
-        <div className={cn(
-          "shrink-0 overflow-hidden rounded-xl border border-white/10 bg-surface-2 shadow-2xl shadow-black/50",
-          square ? "h-24 w-24 sm:h-36 sm:w-36" : "h-32 w-24 sm:h-48 sm:w-36",
-        )}>
+    <Banner backdrop={imageUrl} glow={accent} back={back} badge={badge}>
+      {viewing && imageUrl && <ImageViewer src={imageUrl} alt={imageAlt ?? title} onClose={() => setViewing(false)} />}
+      <div className="flex items-end gap-4 pb-6 pt-6 sm:gap-8 sm:pb-8 sm:pt-10">
+        <div className={thumbCls}>
           {imageUrl ? (
-            <img src={imageUrl} alt={imageAlt ?? title} className="h-full w-full object-cover" />
+            <button type="button" onClick={() => setViewing(true)} aria-label="View full size"
+              className="group relative block h-full w-full cursor-zoom-in">
+              <img src={imageUrl} alt={imageAlt ?? title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+              {/* Small expand hint in the corner */}
+              <span className="absolute bottom-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white/90 backdrop-blur-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                </svg>
+              </span>
+            </button>
           ) : (
             <div className={cn("flex h-full w-full items-center justify-center bg-gradient-to-br to-surface-2", glow)}>
-              <span className="font-display text-3xl text-white/40 sm:text-4xl">{initials(title)}</span>
+              <span className="font-display text-3xl text-white/40 sm:text-5xl">{initials(title)}</span>
             </div>
           )}
         </div>
         <div className="min-w-0 flex-1">
           {eyebrow && <p className="eyebrow mb-1.5 text-text-muted">{eyebrow}</p>}
-          <h1 className="font-display text-[28px] leading-[1.05] text-white break-words sm:text-5xl">{title}</h1>
-          {children && <div className="mt-2 space-y-0.5 text-[15px] text-text-muted sm:text-base">{children}</div>}
+          <h1 className="font-display text-[28px] leading-[1.05] text-white break-words sm:text-6xl">{title}</h1>
+          {children && <div className="mt-2 space-y-0.5 text-[15px] text-text-muted sm:mt-3 sm:text-lg">{children}</div>}
         </div>
       </div>
-      {actions && <div className="flex flex-wrap gap-2 px-4 pb-5 sm:px-6 sm:pb-6">{actions}</div>}
-    </section>
+      {actions && <div className="flex flex-wrap gap-2 pb-6 sm:pb-8">{actions}</div>}
+    </Banner>
   );
 }
 

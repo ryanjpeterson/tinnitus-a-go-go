@@ -11,7 +11,7 @@ import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, type YearReviewResponse } from "@/lib/api";
 import {
-  BackButton, Chevron, EmptyState, LinkCard, Loading, RankedList, Section, SelectField, StatGrid, StatTile, type RankedItem,
+  Banner, Chevron, EmptyState, LinkCard, Loading, RankedList, Section, SelectField, StatGrid, StatTile, type RankedItem,
 } from "@/components/ui/kit";
 import { MiniVBars } from "./StatsPage";
 import { dayLabel, showTitle } from "@/lib/showTitle";
@@ -199,21 +199,26 @@ export function YearReviewPage() {
   const nextYear = ascending.find((y) => y > year);
   const isCurrentYear = year === new Date().getFullYear();
 
+  // Same full-width banner as the detail pages, over the year's first flyer.
   const header = (
-    <header className="space-y-4">
-      <BackButton to="/" label="Stats" />
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="eyebrow mb-1">Year in review{isCurrentYear ? " · so far" : ""}</p>
-          <h1 className="font-display text-7xl leading-[0.9] text-accent-lime sm:text-8xl">{year}</h1>
-        </div>
-        <div className="flex gap-2 pb-1">
+    <Banner
+      backdrop={d.shows.find((s) => s.flyerUrl)?.flyerUrl}
+      back={{ to: "/", label: "Stats" }}
+      badge={
+        <div className="flex gap-2">
           <YearArrow to={prevYear} dir="left" />
           <YearArrow to={nextYear} dir="right" />
         </div>
+      }
+    >
+      <div className="space-y-4 pb-6 pt-6 sm:pb-8 sm:pt-10">
+        <div>
+          <p className="eyebrow mb-1 text-text-muted">Year in review{isCurrentYear ? " · so far" : ""}</p>
+          <h1 className="font-display text-7xl leading-[0.9] text-accent-lime sm:text-9xl">{year}</h1>
+        </div>
+        {d.years.length > 1 && <YearPicker years={d.years} current={year} />}
       </div>
-      {d.years.length > 1 && <YearPicker years={d.years} current={year} />}
-    </header>
+    </Banner>
   );
 
   if (d.totalShows === 0) {
@@ -405,7 +410,7 @@ export function YearReviewPage() {
 }
 
 function YearArrow({ to, dir }: { to: number | undefined; dir: "left" | "right" }) {
-  const cls = "flex h-11 w-11 items-center justify-center rounded-full border transition-colors";
+  const cls = "flex h-10 w-10 items-center justify-center rounded-full border bg-black/35 backdrop-blur-md transition-colors";
   if (to == null) return <span className={`${cls} border-border text-text-subtle opacity-30`}><Chevron dir={dir} /></span>;
   return (
     <Link to={`/year/${to}`} aria-label={String(to)} title={String(to)}

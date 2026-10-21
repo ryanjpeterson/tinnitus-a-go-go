@@ -141,17 +141,16 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!venue) {
-      // Check if it's an alias slug — redirect to canonical
+      // An alias slug (an old or merged name) serves its canonical venue. The
+      // response carries the canonical slug and the page swaps its URL to it.
+      // (An HTTP redirect here pointed the browser's API request at the web
+      // route, so alias links showed "Venue not found".)
       const alias = await db.query.venueAliases.findFirst({
         where: eq(schema.venueAliases.slug, slug),
         with: { canonicalVenue: true },
       });
-      if (alias?.canonicalVenue) {
-        // Fastify 5: redirect(url) — status code set separately
-        void reply.code(302).redirect(`/venues/${alias.canonicalVenue.slug}`);
-        return reply;
-      }
-      return reply.code(404).send({ error: "Venue not found." });
+      if (!alias?.canonicalVenue) return reply.code(404).send({ error: "Venue not found." });
+      venue = alias.canonicalVenue;
     }
 
     // Shows at this venue that were attended or are coming up. Missed and

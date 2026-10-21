@@ -3,7 +3,7 @@
  */
 
 import { useState, useRef } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type VenueAlias } from "@/lib/api";
 import { VenueMap } from "@/components/VenueMap";
@@ -309,6 +309,9 @@ export function VenuePage() {
   }
 
   const { venue, concerts, stats } = q.data;
+
+  // Reached through an old or merged name: show the venue under its current URL.
+  if (slug && venue.slug !== slug) return <Navigate to={`/venues/${venue.slug}`} replace />;
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];

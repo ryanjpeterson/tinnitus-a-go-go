@@ -69,7 +69,7 @@ export function AppShell() {
   ];
 
   return (
-    <div className="min-h-full">
+    <div className="min-h-full overflow-x-clip">
       {/* Global "Add show" modal — triggered by N shortcut from any page (admin only) */}
       {isAdmin && globalAddOpen && <AddConcertModal onClose={() => setGlobalAddOpen(false)} />}
 

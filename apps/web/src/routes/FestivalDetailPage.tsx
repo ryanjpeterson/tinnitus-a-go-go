@@ -385,9 +385,9 @@ export function FestivalDetailPage() {
         eyebrow="Festival"
         title={festival.name}
         accent="yellow"
+        badge={attendance && <StatusBadge status={attendance.status} className="h-9 px-4 text-sm" />}
         actions={
           <>
-            {attendance && <StatusBadge status={attendance.status} className="h-10 px-4 text-sm" />}
             {isAdmin && !editing && <Button variant="secondary" className="rounded-full" onClick={startEdit}>Edit festival</Button>}
             {isAdmin && (
               <label className={`inline-flex h-10 cursor-pointer items-center rounded-full border border-border bg-surface-2 px-4 text-sm font-semibold transition-colors hover:bg-surface ${flyerBusy ? "pointer-events-none opacity-50" : ""}`}>

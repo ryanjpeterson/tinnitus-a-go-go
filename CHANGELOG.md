@@ -7,6 +7,17 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Changed — Full-width banners, tap-to-view flyers, nicer cards
+
+- **Full-width banner** on show, artist, venue and festival pages (and Year in review): the blurred image now runs edge to edge with no frame or rounded corners and fades into the page, while its text lines up with the page column. A top bar holds the back button on the left and the **status flag on the right** (shown to everyone on show pages). Year in review uses the same banner over the year's first flyer, with the previous/next year arrows top-right.
+- **Tap the banner image for full size** — the poster, artist image, venue photo or festival flyer opens full screen (tap or Escape to close).
+- **No second poster on show pages** — the large flyer card below the banner is gone; admins upload, replace, import from a URL or remove the flyer from the banner's buttons. Show pages are one column, with the map in a Location section on every screen size.
+- **Cards** — a soft top-to-bottom gradient, a faint top highlight and a gentle shadow everywhere; the Lineup shows each artist with an initials avatar, top-billed artists highlighted in lime with their billing.
+
+### Fixed
+
+- **Old venue links said "Venue not found"** — a venue's alias URL (for example one left by a merge) answered with an HTTP redirect, which the page's API request followed to the web route. The API now returns the venue for an alias and the page switches to its current URL.
+
 ### Changed — Export moved to admin, now CSV, JSON or Markdown
 
 - **Import & export** — the admin Imports page (Account → Import & export) now has an **Export** section next to the CSV import, with three downloads: **CSV** (same columns as the import file plus `setlist`; can be imported again), **JSON** (every show with venue, status, rating, notes, ticket, lineup and setlists) and **Markdown** (a readable log grouped by year, newest first, with each setlist under its show). The Export button is gone from the Shows page.

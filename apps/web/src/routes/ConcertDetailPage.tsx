@@ -15,6 +15,7 @@ import type { CarouselItem } from "@/components/PhotoCarousel";
 import { useAuth } from "@/lib/auth-context";
 import { Chevron, EmptyState, EventRow, Hero, List, Loading, StatusBadge } from "@/components/ui/kit";
 import { billLine } from "@/lib/showTitle";
+import { initials } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,7 +83,11 @@ function localUid(): string {
 // Flyer section
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; isAdmin?: boolean }) {
+/**
+ * Admin flyer controls, shown with the show banner's actions: upload, import
+ * from a URL, remove. The flyer itself is the banner image (tap for full size).
+ */
+function FlyerControls({ concert }: { concert: ConcertDetail }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -191,141 +196,35 @@ function FlyerSection({ concert, isAdmin = false }: { concert: ConcertDetail; is
     }
   };
 
+  const busy = uploading || urlImporting;
+  const hasFlyer = !!currentUrl && !concert.flyerInherited;
+
   return (
-    <div
-      className="card overflow-hidden relative"
-      onDragEnter={handleFlyerDragEnter}
-      onDragLeave={handleFlyerDragLeave}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => void handleFlyerDrop(e)}
-    >
-      {/* Drag-over overlay */}
-      {isDragging && (
-        <div className="absolute inset-0 z-10 border-2 border-dashed border-accent-lime bg-accent-lime/5 flex items-center justify-center pointer-events-none rounded-lg">
-          <span className="text-sm text-accent-lime font-bold">Drop flyer</span>
-        </div>
+    <>
+      <label className={`btn btn-secondary cursor-pointer ${busy ? "pointer-events-none opacity-50" : ""}`}>
+        {uploading ? "Uploading…" : hasFlyer ? "Replace flyer" : "Upload flyer"}
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic" className="sr-only"
+          onChange={(e) => void handleUpload(e.target.files)} disabled={busy} />
+      </label>
+      <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setShowUrlInput((v) => !v)}>
+        Flyer URL
+      </button>
+      {hasFlyer && (
+        <button type="button" className="btn btn-danger" disabled={busy} onClick={() => void handleRemove()}>
+          Remove flyer
+        </button>
       )}
-      {/* Image area — square on mobile/tablet, portrait (2:3) on desktop */}
-      <div className="relative aspect-square lg:aspect-[2/3] overflow-hidden bg-surface-2">
-        {currentUrl ? (
-          <button
-            className="w-full h-full focus:outline-none"
-            title="View full size"
-            onClick={() => setFlyerModal(true)}
-          >
-            <img
-              src={currentUrl}
-              alt="Flyer"
-              className="w-full h-full object-cover lg:object-contain"
-            />
-            {/* Expand hint */}
-            <span className="absolute bottom-2 right-2 bg-black/50 text-white/70 text-xs px-1.5 py-0.5 rounded pointer-events-none">
-              ⤢ full
-            </span>
+      {showUrlInput && (
+        <div className="flex w-full gap-2">
+          <input type="url" placeholder="Paste image URL" value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void handleUrlImport()} disabled={urlImporting} className="field h-11 flex-1" />
+          <button type="button" className="btn btn-primary" disabled={urlImporting || !urlInput.trim()} onClick={() => void handleUrlImport()}>
+            {urlImporting ? "Importing…" : "Import"}
           </button>
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-text-subtle">
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="opacity-20">
-              <rect x="6" y="4" width="36" height="40" rx="3" stroke="currentColor" strokeWidth="2"/>
-              <path d="M14 16h20M14 24h20M14 32h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <circle cx="34" cy="32" r="4" stroke="currentColor" strokeWidth="2"/>
-              <path d="M38 36l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            <span className="text-xs opacity-40">No flyer</span>
-          </div>
-        )}
-      </div>
-
-      {/* Full-size flyer modal — portalled to body to escape any parent stacking context */}
-      {flyerModal && currentUrl && createPortal(
-        <div
-          className="fixed inset-0 z-[200] bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
-          onClick={() => setFlyerModal(false)}
-        >
-          <button
-            className="absolute top-4 right-4 text-white/70 hover:text-white text-2xl w-10 h-10 flex items-center justify-center"
-            onClick={() => setFlyerModal(false)}
-          >×</button>
-          <img
-            src={currentUrl}
-            alt="Flyer"
-            className="max-h-[90vh] max-w-full object-contain rounded"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>,
-        document.body
-      )}
-
-      {/* Controls below image (admin only) */}
-      {isAdmin && (
-        <div className="px-3 py-2.5 border-t border-border space-y-2">
-          <div className="flex items-center gap-2">
-            <label className={clsx(
-              "flex-1 text-center text-xs  px-2 py-1.5 rounded border cursor-pointer transition-colors",
-              uploading || urlImporting
-                ? "border-border text-text-subtle cursor-not-allowed"
-                : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
-            )}>
-              {uploading ? "Uploading…" : currentUrl ? "Replace" : "Set flyer"}
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
-                disabled={uploading || urlImporting}
-                onChange={(e) => void handleUpload(e.target.files)}
-              />
-            </label>
-            <button
-              onClick={() => setShowUrlInput((v) => !v)}
-              disabled={uploading || urlImporting}
-              className={clsx(
-                "text-xs  px-2 py-1.5 rounded border transition-colors",
-                showUrlInput
-                  ? "border-accent-lime text-accent-lime"
-                  : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
-                (uploading || urlImporting) && "opacity-50 cursor-not-allowed",
-              )}
-              title="Import from URL"
-            >
-              URL
-            </button>
-            {currentUrl && !uploading && !urlImporting && (
-              <button
-                onClick={() => void handleRemove()}
-                className="link-action hover:text-accent-pink"
-              >
-                Remove
-              </button>
-            )}
-          </div>
-
-          {/* URL input */}
-          {showUrlInput && (
-            <div className="flex gap-2">
-              <input
-                type="url"
-                placeholder="Paste image URL…"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleUrlImport(); } }}
-                disabled={urlImporting}
-                className="flex-1 field h-11"
-              />
-              <button
-                onClick={() => void handleUrlImport()}
-                disabled={urlImporting || !urlInput.trim()}
-                className="btn btn-sm btn-secondary"
-              >
-                {urlImporting ? "Importing…" : "Import"}
-              </button>
-            </div>
-          )}
         </div>
       )}
-
-      {isAdmin && error && <p className="text-sm text-accent-pink px-3 pb-2">{error}</p>}
-    </div>
+      {error && <p className="w-full text-sm text-accent-pink">{error}</p>}
+    </>
   );
 }
 
@@ -2060,16 +1959,27 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
           {sortedArtists.length === 0 ? (
             <p className="text-sm text-text-subtle">No artists recorded.</p>
           ) : (
-            // Billing order says who headlined: top-billed names are larger, support below.
-            <ul className="-mx-2">
+            // Billing order: top-billed artists get a lime avatar and a label, support sits quieter below.
+            <ul className="-mx-2 space-y-1">
               {sortedArtists.map((a) => {
                 const top = a.role === "headliner" || a.role === "co_headliner";
                 return (
                   <li key={a.id}>
                     <Link to={`/artists/${a.slug}`}
-                      className="group flex min-h-[44px] items-center justify-between gap-3 rounded-lg px-2 transition-colors hover:bg-surface-2/70">
-                      <span className={top ? "truncate text-base font-semibold" : "truncate text-[15px] text-text-muted"}>{a.name}</span>
-                      <Chevron className="text-text-subtle group-hover:text-accent-lime" />
+                      className="group flex min-h-[56px] items-center gap-3 rounded-xl px-2 transition-colors hover:bg-white/[0.04]">
+                      <span className={clsx(
+                        "flex shrink-0 items-center justify-center rounded-full font-display",
+                        top
+                          ? "h-11 w-11 bg-accent-lime/15 text-base text-accent-lime ring-1 ring-accent-lime/40"
+                          : "h-9 w-9 bg-surface-2 text-sm text-text-subtle ring-1 ring-white/5",
+                      )}>
+                        {initials(a.name)}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className={clsx("block truncate", top ? "text-base font-semibold" : "text-[15px] text-text-muted")}>{a.name}</span>
+                        {top && <span className="block text-xs font-semibold uppercase tracking-wider text-accent-lime/80">{ROLE_LABEL[a.role] ?? "Headliner"}</span>}
+                      </span>
+                      <Chevron className="text-text-subtle transition-transform group-hover:translate-x-0.5 group-hover:text-accent-lime" />
                     </Link>
                   </li>
                 );
@@ -2770,9 +2680,11 @@ export function ConcertDetailPage() {
         }
         title={title}
         accent={isFestivalDay ? "yellow" : "lime"}
+        badge={(concert.attendance?.status ?? concert.status) && (
+          <StatusBadge status={(concert.attendance?.status ?? concert.status)!} className="h-9 px-4 text-sm" />
+        )}
         actions={
           <>
-            {concert.attendance && <StatusBadge status={concert.attendance.status} className="h-10 px-4 text-sm" />}
             {concert.eventSeries && (
               <Link to={`/festivals/${concert.eventSeries.slug}`}>
                 <Button variant="secondary" className="rounded-full">{isFestivalDay ? "Festival lineup" : "Tour page"}</Button>
@@ -2783,6 +2695,7 @@ export function ConcertDetailPage() {
                 <Button variant="ghost" className="rounded-full">Event page ↗</Button>
               </a>
             )}
+            {isAdmin && <FlyerControls key={concert.id} concert={concert} />}
           </>
         }
       >
@@ -2798,17 +2711,8 @@ export function ConcertDetailPage() {
         )}
       </Hero>
 
-      {/* Two-column layout on desktop; single column on mobile/tablet */}
-      <div className="lg:grid lg:grid-cols-[300px_1fr] lg:gap-6">
-        {/* ── Left column: flyer + map (desktop only) ── */}
-        <div className="sticky top-24 hidden space-y-4 self-start lg:block">
-          <FlyerSection concert={concert} isAdmin={isAdmin} />
-          {concert.venue?.lat != null && concert.venue.lng != null && (
-            <VenueMap lat={concert.venue.lat} lng={concert.venue.lng} venueName={concert.venue.name} compact />
-          )}
-        </div>
-
-        {/* ── Right column (full width on mobile/tablet) ── */}
+      {/* One column: the flyer lives in the banner above */}
+      <div>
         <div className="min-w-0 space-y-6">
           {/* Concert info (admin only) */}
           {isAdmin && <ConcertMetaEditor key={concert.id} concert={concert} />}
@@ -2844,18 +2748,9 @@ export function ConcertDetailPage() {
           {/* Attendance (admin only) */}
           {isAdmin && <AttendanceEditor key={concert.id} concertId={concert.id} attendance={concert.attendance} />}
 
-          {/* Flyer — mobile/tablet only (desktop shows it in the left column) */}
-          {/* Skipped for visitors when there's nothing to show — the hero already has the thumbnail slot */}
-          {(concert.flyerUrl || isAdmin) && (
-            <section className="space-y-3 lg:hidden">
-              <h2 className="h-section px-0.5">Flyer</h2>
-              <FlyerSection concert={concert} isAdmin={isAdmin} />
-            </section>
-          )}
-
-          {/* Venue map — mobile/tablet only */}
+          {/* Venue map */}
           {concert.venue?.lat != null && concert.venue.lng != null && (
-            <section className="space-y-3 lg:hidden">
+            <section className="space-y-3">
               <div className="flex items-end justify-between gap-3 px-0.5">
                 <h2 className="h-section">Location</h2>
                 <Link to={`/venues/${concert.venue.slug}`} className="truncate text-sm font-semibold text-text-muted hover:text-accent-lime">

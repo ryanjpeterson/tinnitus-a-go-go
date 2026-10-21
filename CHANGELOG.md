@@ -7,6 +7,14 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Added — Automatic setlist finder
+
+- **Worker finds setlists on its own**, like artist enrichment: every hour it takes up to 30 artists on attended, past shows that have no setlist (newest shows first), searches setlist.fm by artist and date, and links a result only when the artist name and the venue's city match and the setlist has songs. Songs are stored straight away, so they show on the show page, artist page, Year in review and the CSV export. A setlist already linked to another show is left alone.
+- **Misses aren't searched every hour** — each search is recorded (`setlist_lookups`); a miss is retried at most twice more, 30 days apart, since setlists are often added after a show.
+- **Rate limits** — calls are spaced 1.2 s apart; the finder counts its calls per UTC day in Redis and stops at 700 (about half of setlist.fm's free ~1,440/day, leaving the rest for searches made in the app); a 429 pauses the whole queue for 15 minutes and puts the lookup back in line instead of recording a miss.
+- **Progress on Data cleanup → Health** — artists with a setlist out of all on attended shows, how many were found automatically, how many aren't on setlist.fm yet, how many are still to check, and calls used today; **Run now** queues a batch immediately.
+- Setlist.fm parsing and matching moved to `lib/setlistfm-core.ts`, shared by the API and the worker. The worker now receives `SETLISTFM_API_KEY`. Requires migration `0012_setlist_lookups.sql`.
+
 ### Fixed — Loaded setlists now save; setlists in the CSV export
 
 - **"Load" saves the setlist** — finding a setlist with **Load** on a show page now links it to the show and stores its songs, the same as pasting a setlist.fm URL. Before, Load only displayed the result, so it was gone after a refresh. Edit / Remove are available straight away.

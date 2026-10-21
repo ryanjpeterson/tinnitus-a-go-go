@@ -440,6 +440,21 @@ export const venueAliases = pgTable(
   }),
 );
 
+// ===== Automatic setlist finder =====
+
+/** setlist.fm searches the worker has made per (show, artist), so misses aren't repeated hourly. */
+export const setlistLookups = pgTable(
+  "setlist_lookups",
+  {
+    concertId:     uuid("concert_id").notNull().references(() => concerts.id, { onDelete: "cascade" }),
+    artistId:      uuid("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+    attempts:      integer("attempts").notNull().default(0),
+    lastResult:    text("last_result"), // linked | no_match | taken
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.concertId, t.artistId] }) }),
+);
+
 // ===== Data cleanup =====
 
 /** One row per duplicate merge; `snapshot` holds what's needed to undo it. */

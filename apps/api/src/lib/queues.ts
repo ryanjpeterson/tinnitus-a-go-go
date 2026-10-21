@@ -3,9 +3,11 @@ import {
   QUEUE_CSV_IMPORT,
   QUEUE_MEDIA_PROCESS,
   QUEUE_ARTIST_ENRICH,
+  QUEUE_SETLIST_ENRICH,
   type CsvImportJobData,
   type MediaProcessJobData,
   type ArtistEnrichJobData,
+  type SetlistEnrichJobData,
 } from "@tagg/shared";
 import { redis } from "./redis.js";
 
@@ -37,3 +39,7 @@ export const artistEnrichQueue = new Queue<ArtistEnrichJobData>(QUEUE_ARTIST_ENR
     removeOnFail: { age: 60 * 60 * 24 * 3 },
   },
 });
+
+// Automatic setlist finder — the worker schedules its own hourly scans; the API
+// only adds a scan when an admin presses "Run now".
+export const setlistEnrichQueue = new Queue<SetlistEnrichJobData>(QUEUE_SETLIST_ENRICH, { connection: redis });

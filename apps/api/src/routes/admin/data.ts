@@ -10,16 +10,22 @@
  *   GET  /admin/data/health                                     data health checks
  *   POST /admin/data/health/fix { check, value?, to? }
  *   GET  /admin/data/similar?type&name&city                     for the Add show warning
+ *   GET  /admin/data/setlist-finder                             automatic setlist finder progress
+ *   POST /admin/data/setlist-finder/run                         queue a scan now
  */
 
 import type { FastifyInstance } from "fastify";
-import { desc } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "../../db/client.js";
 import { requireAdmin } from "../../auth/middleware.js";
 import { dismissPair, findDuplicates, findSimilar } from "../../lib/duplicates.js";
 import { mergeRecords, previewMerge, undoMerge } from "../../lib/merge.js";
 import { applyFix, runHealthChecks } from "../../lib/data-health.js";
+import { setlistEnrichQueue } from "../../lib/queues.js";
+import { env } from "../../lib/env.js";
+import { redis } from "../../lib/redis.js";
+import { SETLIST_FINDER_DAILY_BUDGET, setlistfmUsageKey } from "@tagg/shared";
 
 const typeSchema = z.enum(["venue", "artist"]);
 
@@ -111,6 +117,45 @@ export async function adminDataRoutes(app: FastifyInstance): Promise<void> {
     } catch (err) {
       return reply.code(400).send({ error: (err as Error).message });
     }
+  });
+
+  app.get("/admin/data/setlist-finder", async (_req, reply) => {
+    const [row] = [...(await db.execute<{ found: number; no_match: number; to_check: number; with_setlist: number; total: number }>(sql`
+      with pairs as (
+        select c.id as concert_id, ca.artist_id
+        from concerts c join concert_artists ca on ca.concert_id = c.id
+        where c.date < current_date
+          and exists (select 1 from concert_attendees x where x.concert_id = c.id and x.status = 'attended')
+      )
+      select
+        (select count(*)::int from setlist_lookups where last_result = 'linked') as found,
+        (select count(*)::int from pairs p
+           join setlist_lookups l on l.concert_id = p.concert_id and l.artist_id = p.artist_id
+           where l.last_result in ('no_match', 'taken')
+             and not exists (select 1 from setlists s where s.concert_id = p.concert_id and s.artist_id = p.artist_id)) as no_match,
+        (select count(*)::int from pairs p
+           where not exists (select 1 from setlists s where s.concert_id = p.concert_id and s.artist_id = p.artist_id)
+             and not exists (select 1 from setlist_lookups l where l.concert_id = p.concert_id and l.artist_id = p.artist_id)) as to_check,
+        (select count(*)::int from pairs p
+           where exists (select 1 from setlists s where s.concert_id = p.concert_id and s.artist_id = p.artist_id)) as with_setlist,
+        (select count(*)::int from pairs) as total
+    `))];
+    const callsToday = Number((await redis.get(setlistfmUsageKey(new Date().toISOString().slice(0, 10)))) ?? 0);
+    return reply.send({
+      available: !!env.SETLISTFM_API_KEY,
+      callsToday,
+      dailyBudget: SETLIST_FINDER_DAILY_BUDGET,
+      foundAutomatically: row?.found ?? 0,
+      notOnSetlistfm: row?.no_match ?? 0,
+      stillToCheck: row?.to_check ?? 0,
+      withSetlist: row?.with_setlist ?? 0,
+      total: row?.total ?? 0,
+    });
+  });
+
+  app.post("/admin/data/setlist-finder/run", async (_req, reply) => {
+    await setlistEnrichQueue.add("scan", { kind: "scan" }, { jobId: `setlist-scan-${Date.now()}`, removeOnComplete: true, removeOnFail: true });
+    return reply.send({ ok: true });
   });
 
   app.get("/admin/data/similar", async (req, reply) => {

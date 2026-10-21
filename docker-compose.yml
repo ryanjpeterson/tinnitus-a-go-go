@@ -153,6 +153,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET: ${MINIO_BUCKET}
       LASTFM_API_KEY: ${LASTFM_API_KEY:-}
+      SETLISTFM_API_KEY: ${SETLISTFM_API_KEY:-}
     volumes:
       - ./apps/worker:/app/apps/worker
       # Worker imports the Drizzle schema directly from the api workspace, so it needs

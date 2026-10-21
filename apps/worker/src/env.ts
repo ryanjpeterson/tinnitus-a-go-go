@@ -12,6 +12,8 @@ const envSchema = z.object({
   MINIO_BUCKET: z.string(),
   // Optional: Last.fm API key for artist enrichment
   LASTFM_API_KEY: z.string().optional(),
+  // Optional: setlist.fm API key for the automatic setlist finder
+  SETLISTFM_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

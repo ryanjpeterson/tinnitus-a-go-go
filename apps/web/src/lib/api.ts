@@ -362,6 +362,8 @@ export const api = {
   dataHealth: () => request<{ checks: HealthCheck[] }>("/admin/data/health"),
   dataHealthFix: (check: string, value?: string, to?: string) =>
     request<{ ok: true; changed: number }>("/admin/data/health/fix", { method: "POST", body: JSON.stringify({ check, value, to }) }),
+  setlistFinderStatus: () => request<SetlistFinderStatus>("/admin/data/setlist-finder"),
+  setlistFinderRun: () => request<{ ok: true }>("/admin/data/setlist-finder/run", { method: "POST" }),
   dataSimilar: (type: DataEntityType, name: string, city?: string) => {
     const qs = new URLSearchParams({ type, name });
     if (city) qs.set("city", city);
@@ -931,6 +933,19 @@ export interface MergePreview {
   remove: { id: string; name: string };
   moves: { label: string; count: number }[];
   fills: string[];
+}
+
+/** Automatic setlist finder progress, counted per artist on attended past shows. */
+export interface SetlistFinderStatus {
+  available: boolean;
+  /** setlist.fm calls the finder has made today (UTC) and its daily cap. */
+  callsToday: number;
+  dailyBudget: number;
+  foundAutomatically: number;
+  notOnSetlistfm: number;
+  stillToCheck: number;
+  withSetlist: number;
+  total: number;
 }
 
 export interface MergeLogEntry {

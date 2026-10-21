@@ -15,5 +15,12 @@
     "declaration": false,
     "noEmit": false
   },
-  "include": ["src/**/*", "src/types/**/*", "../api/src/db/schema.ts"]
+  "include": [
+    "src/**/*",
+    "src/types/**/*",
+    "../api/src/db/schema.ts",
+    // Pure helpers shared with the API (no env/db imports)
+    "../api/src/lib/setlistfm-core.ts",
+    "../api/src/lib/names.ts"
+  ]
 }

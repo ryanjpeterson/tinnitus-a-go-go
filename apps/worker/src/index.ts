@@ -7,15 +7,18 @@ import {
   QUEUE_CSV_IMPORT,
   QUEUE_MEDIA_PROCESS,
   QUEUE_ARTIST_ENRICH,
+  QUEUE_SETLIST_ENRICH,
   type CsvImportJobData,
   type MediaProcessJobData,
   type ArtistEnrichJobData,
+  type SetlistEnrichJobData,
 } from "@tagg/shared";
 import { redis } from "./redis.js";
 import { runCsvImport } from "./jobs/csv-import.js";
 import { runMediaProcess } from "./jobs/media-processing.js";
 import { runArtistEnrich } from "./jobs/artist-enrich.js";
 import { runArtistEnrichScheduler } from "./jobs/artist-enrich-scheduler.js";
+import { bindSetlistWorker, runSetlistEnrich, setlistQueue } from "./jobs/setlist-enrich.js";
 
 // ── CSV import ─────────────────────────────────────────────────────────────
 
@@ -91,6 +94,39 @@ enrichWorker.on("failed", (job, err) =>
   console.error(`[worker] artist-enrich failed  job=${job?.id} ${err.message}`),
 );
 
+// ── Automatic setlist finder ───────────────────────────────────────────────
+
+const setlistWorker = new Worker<SetlistEnrichJobData>(
+  QUEUE_SETLIST_ENRICH,
+  async (job) => runSetlistEnrich(job),
+  {
+    connection: redis,
+    concurrency: 1,
+    // setlist.fm documents ~2 requests/second but throttled us at 0.7 s spacing
+    // in practice; 1.2 s keeps clear of it (a 429 still pauses the queue).
+    limiter: { max: 1, duration: 1200 },
+  },
+);
+
+bindSetlistWorker(setlistWorker);
+setlistWorker.on("ready", () => console.log(`[worker] listening on queue "${QUEUE_SETLIST_ENRICH}"`));
+setlistWorker.on("completed", (job, result) => {
+  if (result.result === "scanned") console.log(`[worker] setlist scan queued ${result.queued} lookup(s)`);
+  else if (result.result === "linked") console.log(`[worker] setlist linked concert=${job.data.kind === "lookup" ? job.data.concertId : ""}`);
+});
+setlistWorker.on("failed", (job, err) =>
+  console.error(`[worker] setlist-enrich failed job=${job?.id} ${err.message}`),
+);
+
+// Hourly scan, first one shortly after startup.
+const queueSetlistScan = (): void => {
+  void setlistQueue
+    .add("scan", { kind: "scan" }, { jobId: `setlist-scan-${Date.now()}`, removeOnComplete: true, removeOnFail: true })
+    .catch((err) => console.error("[scheduler] setlist scan error:", err));
+};
+setTimeout(queueSetlistScan, 30_000);
+const setlistScanInterval = setInterval(queueSetlistScan, 60 * 60 * 1000);
+
 // ── Scheduled artist enrichment ───────────────────────────────────────────
 // Runs every hour, queues up to 50 artists missing bio/image
 
@@ -124,7 +160,8 @@ startEnrichScheduler();
 const shutdown = async (signal: string): Promise<void> => {
   console.log(`[worker] ${signal} received, shutting down`);
   if (enrichSchedulerInterval) clearInterval(enrichSchedulerInterval);
-  await Promise.all([csvWorker.close(), mediaWorker.close(), enrichWorker.close()]);
+  clearInterval(setlistScanInterval);
+  await Promise.all([csvWorker.close(), mediaWorker.close(), enrichWorker.close(), setlistWorker.close()]);
   await redis.quit();
   process.exit(0);
 };

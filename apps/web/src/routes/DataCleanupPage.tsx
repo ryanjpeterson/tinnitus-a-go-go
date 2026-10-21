@@ -2,7 +2,7 @@
  * Admin data cleanup — /admin/data
  *
  *   Duplicates  suggested duplicate venues/artists; pick the one to keep, preview, merge
- *   Health      problems in the data with one-tap fixes where safe
+ *   Health      setlist finder progress, then problems in the data with one-tap fixes
  *   History     every merge, with undo for the most recent one
  */
 
@@ -216,13 +216,66 @@ function Check({ check }: { check: HealthCheck }) {
   );
 }
 
+function SetlistFinder() {
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["admin/data", "setlist-finder"],
+    queryFn: () => api.setlistFinderStatus(),
+    refetchInterval: 15_000, // numbers move while a batch runs
+  });
+  const run = useMutation({
+    mutationFn: () => api.setlistFinderRun(),
+    onSuccess: () => setTimeout(() => void qc.invalidateQueries({ queryKey: ["admin/data", "setlist-finder"] }), 5000),
+  });
+  const d = q.data;
+  if (!d) return null;
+
+  return (
+    <div className="card p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold">Setlist finder</p>
+          <p className="meta">
+            {d.available
+              ? `Searches setlist.fm every hour for artists on attended shows without a setlist, 30 at a time. ${d.callsToday} of ${d.dailyBudget} calls used today${d.callsToday >= d.dailyBudget ? " — paused until midnight UTC" : ""}.`
+              : "Off — set SETLISTFM_API_KEY for the worker to turn it on."}
+          </p>
+        </div>
+        {d.available && (
+          <Button size="sm" variant="secondary" disabled={run.isPending || d.stillToCheck === 0} onClick={() => run.mutate()}>
+            {run.isSuccess ? "Queued" : "Run now"}
+          </Button>
+        )}
+      </div>
+      <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          ["Have a setlist", `${d.withSetlist} / ${d.total}`],
+          ["Found automatically", d.foundAutomatically],
+          ["Not on setlist.fm yet", d.notOnSetlistfm],
+          ["Still to check", d.stillToCheck],
+        ].map(([label, value]) => (
+          <div key={String(label)} className="rounded-xl bg-surface-2 px-3 py-2.5">
+            <dt className="eyebrow">{label}</dt>
+            <dd className="font-display text-2xl">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 function Health() {
   const q = useQuery({ queryKey: ["admin/data", "health"], queryFn: () => api.dataHealth() });
   if (q.isLoading) return <Loading />;
   if (q.isError) return <EmptyState tone="error" title="Couldn't run the checks." />;
   // Problems first, clean checks after.
   const checks = [...q.data!.checks].sort((a, b) => Number(b.items.length > 0) - Number(a.items.length > 0));
-  return <div className="space-y-4">{checks.map((c) => <Check key={c.id} check={c} />)}</div>;
+  return (
+    <div className="space-y-4">
+      <SetlistFinder />
+      {checks.map((c) => <Check key={c.id} check={c} />)}
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -443,7 +443,7 @@ All defined in [.env.example](./.env.example). Highlights:
 | `CORS_ORIGINS`             | Comma-separated allowed web origins                               |
 | `RATE_LIMIT_MAX`           | Max requests per window per IP (default 200)                      |
 | `RATE_LIMIT_WINDOW`        | Rate-limit window (default `1 minute`)                            |
-| `SETLISTFM_API_KEY`        | Optional — enables setlist.fm concert lookups                     |
+| `SETLISTFM_API_KEY`        | Optional — setlist.fm lookups in the app, and the worker's hourly automatic setlist finder (passed to api and worker) |
 | `ANTHROPIC_API_KEY`        | Optional — enables Claude fallback for URL paste parser           |
 | `LASTFM_API_KEY`           | Optional — enables Last.fm artist enrichment (bio, genre, MBID)   |
 | `GOOGLE_MAPS_API_KEY`      | Optional — enables embedded maps; OSM link shown when absent      |
@@ -719,12 +719,14 @@ Applied migrations:
 | `0009_festivals_refactor.sql` | Festivals as first-class entities: venue, dates, flyer on `event_series`; `festival_sets`, `festival_attendees` |
 | `0010_setlist_song_sets.sql` | `set_name` on `setlist_songs` (main set / "Encore" / named set) for the setlist.fm song cache |
 | `0011_data_cleanup.sql` | `merge_log` (each duplicate merge with an undo snapshot) and `duplicate_dismissals` ("not a duplicate" pairs) |
+| `0012_setlist_lookups.sql` | `setlist_lookups`: which (show, artist) pairs the automatic setlist finder has searched, with attempts and result |
 
-0005–0011 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
+0005–0012 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
 
 ```bash
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0010_setlist_song_sets.sql
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0011_data_cleanup.sql
+docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0012_setlist_lookups.sql
 docker compose exec api npx tsx src/scripts/cache-setlists.ts
 ```
 

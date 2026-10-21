@@ -69,6 +69,18 @@ async function start(): Promise<void> {
     allowList: (req) => req.headers[OFFLINE_INJECT_HEADER] === OFFLINE_INJECT_SECRET,
   });
 
+  // Before the routes: an error handler applies to routes registered after it.
+  app.setErrorHandler((err: FastifyError, req, reply) => {
+    // Rules the database enforces (migration 0015) become clear 4xx answers.
+    const conflict = dbRuleMessage(err);
+    if (conflict) return reply.code(conflict.status).send({ error: conflict.message });
+    req.log.error({ err }, "request failed");
+    const status = err.statusCode ?? 500;
+    reply.code(status).send({
+      error: status >= 500 ? "Internal server error." : err.message,
+    });
+  });
+
   // Auth context on every request.
   app.addHook("preHandler", attachUser);
 
@@ -96,16 +108,25 @@ async function start(): Promise<void> {
     reply.code(404).send({ error: "Not found." });
   });
 
-  app.setErrorHandler((err: FastifyError, req, reply) => {
-    req.log.error({ err }, "request failed");
-    const status = err.statusCode ?? 500;
-    reply.code(status).send({
-      error: status >= 500 ? "Internal server error." : err.message,
-    });
-  });
-
   await app.listen({ port: env.PORT, host: env.HOST });
   app.log.info(`Tinnitus A Go Go API listening on http://${env.HOST}:${env.PORT}`);
+}
+
+/** Postgres errors from the show rules, as user-facing messages. */
+function dbRuleMessage(err: unknown): { status: number; message: string } | null {
+  const e = err as { code?: string; constraint_name?: string; message?: string; cause?: unknown };
+  const pg = e.code ? e : (e.cause as typeof e | undefined);
+  if (!pg?.code) return null;
+  if (pg.constraint_name === "concerts_festival_date_uq") {
+    return { status: 409, message: "That festival already has a show on that date." };
+  }
+  if (pg.constraint_name === "concert_artists_one_headliner_uq") {
+    return { status: 422, message: "A lineup can have only one headliner — use co-headliners for equal billing." };
+  }
+  if (pg.code === "23514" && /headliner/.test(pg.message ?? "")) {
+    return { status: 422, message: "A lineup cannot mix a headliner and co-headliners." };
+  }
+  return null;
 }
 
 start().catch((err) => {

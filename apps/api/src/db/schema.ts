@@ -224,8 +224,15 @@ export const concerts = pgTable(
     dateIsApproximate: boolean("date_is_approximate").notNull().default(false),
     venueId: uuid("venue_id").references(() => venues.id, { onDelete: "set null" }),
     eventSeriesId: uuid("event_series_id").references(() => eventSeries.id, { onDelete: "set null" }),
+    // Derived by the database (migration 0015): festival_day exactly when
+    // eventSeriesId is set. Writes don't need to set it.
     type: concertTypeEnum("type").notNull().default("concert"),
+    // Maintained by the database from the lineup: the headliner, the
+    // co-headliners joined with " & ", or the top of the bill.
     headlinerHint: text("headliner_hint"),
+    // Readable and unique, maintained by the database: festival or headliner
+    // name + date, e.g. "foo-fighters-2011-09-10". Changes when those do.
+    slug: text("slug").notNull().default(""),
     flyerKey: text("flyer_key"),   // MinIO object key for the concert flyer image
     flyerHash: text("flyer_hash"), // SHA-256 hex of the current flyer for duplicate detection
     eventNotes: text("event_notes"),
@@ -250,7 +257,8 @@ export const concertArtists = pgTable(
     artistId: uuid("artist_id")
       .notNull()
       .references(() => artists.id, { onDelete: "cascade" }),
-    role: concertArtistRoleEnum("role").notNull().default("headliner"),
+    // At most one headliner, and never alongside co-headliners (enforced in the database).
+    role: concertArtistRoleEnum("role").notNull().default("support"),
     setOrder: integer("set_order"),
     appearanceNotes: text("appearance_notes"),
     stageName: text("stage_name"), // festival days

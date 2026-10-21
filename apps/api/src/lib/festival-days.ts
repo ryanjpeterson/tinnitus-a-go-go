@@ -15,6 +15,7 @@ export interface FestivalDay {
   id: string;
   festivalId: string;
   date: string;
+  slug: string;
   /** The caller's attendance for this day, if any. */
   status: Status | null;
   artists: {
@@ -33,7 +34,7 @@ export interface FestivalDay {
 export async function loadFestivalDays(festivalIds: string[], userId: string | null): Promise<FestivalDay[]> {
   if (festivalIds.length === 0) return [];
   const days = await db
-    .select({ id: schema.concerts.id, festivalId: schema.concerts.eventSeriesId, date: schema.concerts.date })
+    .select({ id: schema.concerts.id, festivalId: schema.concerts.eventSeriesId, date: schema.concerts.date, slug: schema.concerts.slug })
     .from(schema.concerts)
     .where(and(inArray(schema.concerts.eventSeriesId, festivalIds), eq(schema.concerts.type, "festival_day")))
     .orderBy(asc(schema.concerts.date));
@@ -70,6 +71,7 @@ export async function loadFestivalDays(festivalIds: string[], userId: string | n
     id: d.id,
     festivalId: d.festivalId!,
     date: d.date,
+    slug: d.slug,
     status: statusByDay.get(d.id) ?? null,
     artists: artistRows.filter((a) => a.concertId === d.id).map(({ concertId: _c, ...a }) => a),
   }));
@@ -114,7 +116,7 @@ export async function ensureFestivalDay(
   }
   const [row] = await tx
     .insert(schema.concerts)
-    .values({ date, type: "festival_day", venueId, eventSeriesId: festival.id, createdByUserId: userId })
+    .values({ date, venueId, eventSeriesId: festival.id, createdByUserId: userId })
     .returning({ id: schema.concerts.id });
   return { id: row!.id, created: true };
 }

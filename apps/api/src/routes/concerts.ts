@@ -24,6 +24,7 @@ import { db, schema } from "../db/client.js";
 import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
 import { requireUser, requireAdmin } from "../auth/middleware.js";
+import { billingRoles } from "../lib/lineup.js";
 import { slugify } from "@tagg/shared";
 import { cacheSetlist, ensureCached, loadCachedSets, parseSetlistId, type CachedSet } from "../lib/setlist-cache.js";
 import { BILLING_ORDER_SQL, loadShowInfo } from "../lib/show-info.js";
@@ -109,6 +110,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
             type: schema.concerts.type,
             dateIsApproximate: schema.concerts.dateIsApproximate,
             headlinerHint: schema.concerts.headlinerHint,
+            slug: schema.concerts.slug,
             flyerKey: schema.concerts.flyerKey,
             venueId: schema.venues.id,
             venueName: schema.venues.name,
@@ -131,6 +133,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
             type: schema.concerts.type,
             dateIsApproximate: schema.concerts.dateIsApproximate,
             headlinerHint: schema.concerts.headlinerHint,
+            slug: schema.concerts.slug,
             flyerKey: schema.concerts.flyerKey,
             venueId: schema.venues.id,
             venueName: schema.venues.name,
@@ -271,6 +274,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         type: r.type,
         dateIsApproximate: r.dateIsApproximate,
         headlinerHint: r.headlinerHint,
+        slug: r.slug,
         flyerUrl: r.flyerKey ? mediaUrl(r.flyerKey) : null,
         venue: r.venueId
           ? { id: r.venueId, slug: r.venueSlug!, name: r.venueName!, city: r.venueCity, region: r.venueRegion }
@@ -379,6 +383,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         type: schema.concerts.type,
         dateIsApproximate: schema.concerts.dateIsApproximate,
         headlinerHint: schema.concerts.headlinerHint,
+        slug: schema.concerts.slug,
         flyerKey: schema.concerts.flyerKey,
         venueId: schema.venues.id,
         venueName: schema.venues.name,
@@ -436,6 +441,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       type: r.type,
       dateIsApproximate: r.dateIsApproximate,
       headlinerHint: r.headlinerHint,
+      slug: r.slug,
       flyerUrl: r.flyerKey ? mediaUrl(r.flyerKey) : null,
       venue: r.venueId
         ? { id: r.venueId, slug: r.venueSlug!, name: r.venueName!, city: r.venueCity, region: r.venueRegion }
@@ -516,8 +522,19 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         },
       });
     } else {
-      // Try to parse as slug: "series-slug-YYYY-MM-DD" or "venue-slug-YYYY-MM-DD"
-      const dateMatch = idOrSlug.match(/^(.+)-(\d{4}-\d{2}-\d{2})$/);
+      concert = await db.query.concerts.findFirst({
+        where: eq(schema.concerts.slug, idOrSlug),
+        with: {
+          venue: true,
+          eventSeries: true,
+          concertArtists: {
+            with: { artist: true },
+            orderBy: [schema.concertArtists.setOrder],
+          },
+        },
+      });
+      // Older links: "series-slug-YYYY-MM-DD" or "venue-slug-YYYY-MM-DD"
+      const dateMatch = concert ? null : idOrSlug.match(/^(.+)-(\d{4}-\d{2}-\d{2})$/);
       if (dateMatch) {
         const [, slugPart, date] = dateMatch;
         // Try series slug first, then venue slug
@@ -586,15 +603,15 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
 
     // For a festival day: every day of that festival, so the page can switch between them.
     const festivalDays = concert.type === "festival_day" && concert.eventSeriesId
-      ? (await db.execute<{ concert_id: string; date: string; lineup: string[] | null }>(sql`
-          select distinct on (c.date) c.id as concert_id, c.date::text as date,
+      ? (await db.execute<{ concert_id: string; slug: string; date: string; lineup: string[] | null }>(sql`
+          select distinct on (c.date) c.id as concert_id, c.slug, c.date::text as date,
             (select array_agg(a.name order by ${BILLING_ORDER_SQL})
                from concert_artists ca join artists a on a.id = ca.artist_id
               where ca.concert_id = c.id) as lineup
           from concerts c
           where c.event_series_id = ${concert.eventSeriesId} and c.type = 'festival_day'
           order by c.date, c.id
-        `)).map((r, i) => ({ number: i + 1, date: r.date, concertId: r.concert_id, lineup: r.lineup ?? [] }))
+        `)).map((r, i) => ({ number: i + 1, date: r.date, concertId: r.concert_id, slug: r.slug, lineup: r.lineup ?? [] }))
       : [];
 
     // Whether the show was attended/missed/etc., for everyone (the page hides
@@ -633,6 +650,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         type: concert.type,
         dateIsApproximate: concert.dateIsApproximate,
         headlinerHint: concert.headlinerHint,
+        slug: concert.slug,
         flyerUrl,
         flyerHash: concert.flyerHash ?? null,
         flyerInherited,
@@ -686,7 +704,8 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       .array(
         z.object({
           name: z.string().min(1).max(256),
-          role: z.enum(concertArtistRoles).optional().default("headliner"),
+          // Omitted everywhere: the last-listed act headlines (see lib/lineup.ts).
+          role: z.enum(concertArtistRoles).optional(),
           setOrder: z.number().int().min(0).optional(),
           appearanceNotes: z.string().max(1024).optional(),
         }),
@@ -708,6 +727,13 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
 
     const body = parsed.data;
     const userId = req.user!.id;
+
+    // A festival day is a show that belongs to a festival.
+    if (body.type === "festival_day" && !body.eventSeriesName?.trim()) {
+      return reply.code(400).send({ error: "A festival day needs the festival's name." });
+    }
+    const billing = billingRoles(body.artists.map((a) => a.role));
+    if ("error" in billing) return reply.code(422).send({ error: billing.error });
 
     // Upsert venue
     const venueSlug = slugify(`${body.venueName} ${body.venueCity ?? ""}`);
@@ -756,18 +782,14 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       if (artist) artistIds.push(artist.id);
     }
 
-    const headliner = body.artists.at(-1)?.name ?? body.artists[0]?.name ?? null;
-
-    // Create concert
+    // Create concert (type, headliner hint and slug are filled in by the database)
     const [concert] = await db
       .insert(schema.concerts)
       .values({
         date: body.date,
         dateIsApproximate: body.dateIsApproximate,
-        type: body.type,
         venueId: venue?.id ?? null,
         eventSeriesId: seriesId,
-        headlinerHint: headliner,
         eventNotes: body.eventNotes ?? null,
         sourceUrl: body.sourceUrl ?? null,
         createdByUserId: userId,
@@ -786,7 +808,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       await db.insert(schema.concertArtists).values({
         concertId: concert.id,
         artistId,
-        role: a.role,
+        role: billing.roles[i],
         setOrder: a.setOrder ?? i,
         appearanceNotes: a.appearanceNotes ?? null,
       });
@@ -805,7 +827,8 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       ticketPriceCurrency: body.ticketPriceCurrency ?? null,
     });
 
-    return reply.code(201).send({ concertId: concert.id });
+    const [created] = await db.select({ slug: schema.concerts.slug }).from(schema.concerts).where(eq(schema.concerts.id, concert.id));
+    return reply.code(201).send({ concertId: concert.id, slug: created?.slug ?? null });
   });
 
   // ── PATCH /concerts/:id ─────────────────────────────────────────────────────
@@ -911,7 +934,12 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
 
       if (body.date !== undefined) concertUpdates.date = body.date;
       if (body.dateIsApproximate !== undefined) concertUpdates.dateIsApproximate = body.dateIsApproximate;
-      if (body.type !== undefined) concertUpdates.type = body.type;
+      // Type follows the festival link (the database derives it): choosing
+      // "concert" detaches the show from its festival; "festival_day" needs one.
+      if (body.type === "concert" && body.eventSeriesName === undefined) concertUpdates.eventSeriesId = null;
+      if (body.type === "festival_day" && !body.eventSeriesName && !concert.eventSeriesId) {
+        return reply.code(400).send({ error: "A festival day needs the festival's name." });
+      }
       if (body.eventNotes !== undefined) concertUpdates.eventNotes = body.eventNotes;
       if (body.sourceUrl !== undefined) concertUpdates.sourceUrl = body.sourceUrl;
 
@@ -1045,7 +1073,9 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         if (hasConcertUpdate) {
           const concertPatch: Record<string, unknown> = { updatedAt: new Date() };
           if (u.date !== undefined) concertPatch.date = u.date;
-          if (u.type !== undefined) concertPatch.type = u.type;
+          // Type follows the festival link: "concert" detaches the show; a
+          // festival day can only be made by linking a festival.
+          if (u.type === "concert") concertPatch.eventSeriesId = null;
 
           if (u.venueName !== undefined) {
             if (!u.venueName.trim()) {
@@ -1348,15 +1378,9 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
 
     const { artists } = parsed.data;
 
-    // Enforce top-billing exclusivity: headliner and co_headliner cannot coexist
-    const hasHeadliner   = artists.some((a) => a.role === "headliner");
-    const hasCoHeadliner = artists.some((a) => a.role === "co_headliner");
-    if (hasHeadliner && hasCoHeadliner) {
-      return reply.code(422).send({
-        error: "A lineup cannot mix 'headliner' and 'co_headliner' roles. " +
-               "Use one headliner for single top billing, or multiple co-headliners for equal billing.",
-      });
-    }
+    // Top billing: one headliner, or several co-headliners — never both.
+    const billing = billingRoles(artists.map((a) => a.role));
+    if ("error" in billing) return reply.code(422).send({ error: billing.error });
 
     // Validate explicit artistIds exist before doing any writes
     const byIdArtists = artists.filter((a) => a.artistId);
@@ -1406,41 +1430,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       }
     });
 
-    // Keep headlinerHint in sync for fast list queries.
-    // For a single headliner: store their name.
-    // For co-headliners: join all names with " & ".
-    // For support-only lineups: null.
-    const headlinerIndices   = artists.map((a, i) => a.role === "headliner"    ? i : -1).filter((i) => i !== -1);
-    const coHeadlinerIndices = artists.map((a, i) => a.role === "co_headliner" ? i : -1).filter((i) => i !== -1);
-
-    const topBillingIndices = headlinerIndices.length > 0 ? headlinerIndices : coHeadlinerIndices;
-
-    if (topBillingIndices.length > 0) {
-      const topIds = topBillingIndices
-        .map((i) => resolvedIds.get(i))
-        .filter((id): id is string => id != null);
-
-      if (topIds.length > 0) {
-        const artistRows = await db
-          .select({ id: schema.artists.id, name: schema.artists.name })
-          .from(schema.artists)
-          .where(inArray(schema.artists.id, topIds));
-
-        // Preserve original order from the lineup
-        const nameMap = new Map(artistRows.map((r) => [r.id, r.name]));
-        const hint = topIds.map((id) => nameMap.get(id)).filter(Boolean).join(" & ");
-
-        if (hint) {
-          await db
-            .update(schema.concerts)
-            .set({ headlinerHint: hint })
-            .where(eq(schema.concerts.id, concertId));
-        }
-      }
-    } else {
-      await db.update(schema.concerts).set({ headlinerHint: null }).where(eq(schema.concerts.id, concertId));
-    }
-
+    // headlinerHint and the slug follow the lineup in the database.
     return reply.send({ ok: true });
   });
 

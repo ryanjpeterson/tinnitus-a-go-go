@@ -182,7 +182,7 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
     const concertsByDate: Record<string, { id: string; slug: string; status: string | null }> = {};
     for (const d of days) {
       setsByDate[d.date] = sets.filter((s) => s.concertId === d.id);
-      concertsByDate[d.date] = { id: d.id, slug: `${festival.slug}-${d.date}`, status: d.status };
+      concertsByDate[d.date] = { id: d.id, slug: d.slug, status: d.status };
     }
 
     return reply.send({
@@ -411,6 +411,24 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(404).send({ error: "Festival not found." });
     }
 
+    // The festival's dates must cover its days.
+    const startDate = body.startDate !== undefined ? body.startDate : festival.startDate;
+    const endDate = body.endDate !== undefined ? body.endDate : festival.endDate;
+    if (body.startDate !== undefined || body.endDate !== undefined) {
+      const [range] = await db
+        .select({ first: sql<string | null>`min(${schema.concerts.date})::text`, last: sql<string | null>`max(${schema.concerts.date})::text` })
+        .from(schema.concerts)
+        .where(eq(schema.concerts.eventSeriesId, festival.id));
+      if (range?.first && ((startDate && startDate > range.first) || ((endDate ?? startDate) && (endDate ?? startDate)! < range.last!))) {
+        return reply.code(400).send({
+          error: `This festival has days from ${range.first} to ${range.last}; its dates must include them.`,
+        });
+      }
+      if (startDate && endDate && endDate < startDate) {
+        return reply.code(400).send({ error: "End date must be on or after the start date." });
+      }
+    }
+
     const updates: Record<string, unknown> = { updatedAt: new Date() };
 
     if (body.name !== undefined) {
@@ -446,11 +464,23 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       }
     }
 
-    const [updated] = await db
-      .update(schema.eventSeries)
-      .set(updates)
-      .where(eq(schema.eventSeries.id, festival.id))
-      .returning();
+    const [updated] = await db.transaction(async (tx) => {
+      // Days at the festival's old venue move with it.
+      if (updates.venueId !== undefined && updates.venueId !== festival.venueId && updates.venueId !== null) {
+        await tx
+          .update(schema.concerts)
+          .set({ venueId: updates.venueId as string, updatedAt: new Date() })
+          .where(and(
+            eq(schema.concerts.eventSeriesId, festival.id),
+            festival.venueId ? eq(schema.concerts.venueId, festival.venueId) : sql`${schema.concerts.venueId} is null`,
+          ));
+      }
+      return tx
+        .update(schema.eventSeries)
+        .set(updates)
+        .where(eq(schema.eventSeries.id, festival.id))
+        .returning();
+    });
 
     return reply.send({
       festival: {
@@ -610,11 +640,24 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
           (existingDays.find((d) => d.id === day.id)?.artists ?? []).map((a) => [a.id, a.role]),
         );
         await tx.delete(schema.concertArtists).where(eq(schema.concertArtists.concertId, day.id));
+        // Kept roles where the artist was already on the day; a day with no
+        // top billing gets its first-listed act as headliner. Then the
+        // billing rules: one headliner, never alongside co-headliners.
+        const kept = entries.map(({ artistId }) => roles.get(artistId));
+        if (!kept.some((r) => r === "headliner" || r === "co_headliner")) kept[0] = "headliner";
+        const hasCo = kept.includes("co_headliner");
+        let headlined = false;
+        const dayRoles = kept.map((r) => {
+          if (r !== "headliner") return r === "co_headliner" ? r : "support";
+          if (hasCo || headlined) return "support";
+          headlined = true;
+          return r;
+        });
         await tx.insert(schema.concertArtists).values(
           entries.map(({ s, artistId }, i) => ({
             concertId: day.id,
             artistId,
-            role: (roles.get(artistId) ?? (i === 0 ? "headliner" : "support")) as typeof schema.concertArtists.$inferInsert.role,
+            role: dayRoles[i] as typeof schema.concertArtists.$inferInsert.role,
             setOrder: i,
             stageName: s.stageName ?? null,
             appearanceNotes: s.appearanceNotes ?? null,

@@ -197,7 +197,6 @@ async function applyParsedShows(
           date: show.date,
           venueId: venueId ?? null,
           eventSeriesId: seriesId,
-          type: show.type,
           createdByUserId: userId,
         })
         .returning({ id: schema.concerts.id });
@@ -206,7 +205,7 @@ async function applyParsedShows(
       counts.showsCreated++;
     }
 
-    for (const a of show.artists) {
+    for (const [j, a] of show.artists.entries()) {
       const artistId = artistIdBySlug.get(slugify(a.name));
       if (!artistId) continue;
       await db
@@ -214,10 +213,21 @@ async function applyParsedShows(
         .values({
           concertId,
           artistId,
-          role: "headliner", // refined later in UI
+          role: "support",
+          setOrder: j,
           appearanceNotes: a.appearanceNotes,
         })
         .onConflictDoNothing({ target: [schema.concertArtists.concertId, schema.concertArtists.artistId] });
+    }
+    // The last-listed act headlines, unless the show already has top billing
+    // (a lineup has at most one headliner — enforced by the database).
+    const lastId = artistIdBySlug.get(slugify(show.artists.at(-1)?.name ?? ""));
+    if (lastId) {
+      await db.execute(sql`
+        update concert_artists set role = 'headliner'
+        where concert_id = ${concertId} and artist_id = ${lastId}
+          and not exists (select 1 from concert_artists x
+                          where x.concert_id = ${concertId} and x.role in ('headliner', 'co_headliner'))`);
     }
 
     const [att] = await db

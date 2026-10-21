@@ -130,7 +130,6 @@ async function main() {
     const [concert] = await db.insert(s.concerts).values({
       date:            c.date,
       venueId:         venue?.id ?? null,
-      headlinerHint:   c.headliner,
       eventNotes:      c.notes ?? null,
       createdByUserId: admin!.id,
     }).returning();

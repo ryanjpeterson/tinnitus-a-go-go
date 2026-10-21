@@ -7,6 +7,21 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Added — Readable show links
+
+- **Shows have readable URLs** — the headliner (or festival) and date, e.g. `/shows/foo-fighters-2011-09-10` or `/shows/bluesfest-2025-2025-07-12`. Co-headliners are joined (`/shows/a-b-2019-05-01`); a second show with the same name and date gets `-2`. The slug follows the show: changing the lineup, date or festival, or renaming an artist, festival or venue updates it. Links by id and the older `venue-date` / `festival-date` links still open, and the address bar switches to the readable slug. Saved-for-offline shows are kept under both URLs.
+
+### Changed — Show and festival rules enforced by the database
+
+- **A show is a festival day exactly when it belongs to a festival.** The database sets the type from the festival link, so the two can't disagree. Adding a show with a festival makes it one of that festival's days; in the show editor, switching to "Concert" detaches it from its festival; a festival day without a festival is refused. Deleting a festival by any route leaves its days as ordinary shows.
+- **Add show: "Tour name" is now "Festival"** — the optional field makes the show a day of that festival. (Tours had no separate meaning: they were stored as festivals.)
+- **One show per festival per date** — a second one is refused ("That festival already has a show on that date").
+- **Festival dates and venue keep up with the days** — a day outside the festival's dates widens them; a festival without a venue or year takes its first day's. Editing a festival's dates so they'd cut off one of its days is refused, and changing its venue moves the days that were at the old one.
+- **Headliners** — a lineup has at most one headliner, and never a headliner alongside co-headliners (the database refuses both). New lineup rows default to *support*; when no billing is given, the last-listed act headlines. The show's headliner name (used for lists and search) is now maintained by the database from the lineup and artist renames, so it can't go stale; shows with no headliner use the top of the bill instead of the last-listed act.
+- **CSV import (admin)** no longer marks every artist as headliner: the last-listed act headlines, and re-importing a show keeps its billing.
+- **API errors** — the error handler is now registered before the routes, so it applies to them: database rule violations come back as clear 409/422 messages and unexpected errors as "Internal server error." without internal details.
+- Requires migration `0015_show_integrity_and_slugs.sql`.
+
 ### Changed — Festivals are made of their days
 
 - **One source for festival lineups and attendance.** A festival is now a container of day shows: each day is a show (like any multi-artist show) with its own lineup, attendance, photos and setlists, and the festival page is built from its days. Previously the lineup and attendance were stored twice — once on the festival (`festival_sets`, `festival_attendees`) and once on the day shows — and editing one never updated the other.

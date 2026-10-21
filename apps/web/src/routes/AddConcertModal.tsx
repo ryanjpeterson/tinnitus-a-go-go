@@ -45,7 +45,7 @@ interface FormState {
   venueName: string;
   venueCity: string;
   venueRegion: string;
-  eventSeriesName: string; // Tour name (e.g., "The Eras Tour")
+  eventSeriesName: string; // Festival this show was a day of, if any
   artists: ArtistRow[];
   status: AttendanceStatus;
   personalNotes: string;
@@ -61,7 +61,7 @@ const DEFAULT_FORM: FormState = {
   venueName: "",
   venueCity: "",
   venueRegion: "",
-  eventSeriesName: "", // Tour name
+  eventSeriesName: "", // Festival
   artists: [{ name: "", role: "headliner" }],
   status: "interested",
   personalNotes: "",
@@ -566,14 +566,15 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
         ? Math.round(parseFloat(form.ticketPrice) * 100)
         : undefined;
 
-      const { concertId } = await api.createConcert({
+      const { concertId, slug } = await api.createConcert({
         date: form.date,
         dateIsApproximate: form.dateIsApproximate || undefined,
-        type: "concert", // Always "concert" now; festivals are separate entities
+        // A show that belongs to a festival is one of its days.
+        type: form.eventSeriesName.trim() ? "festival_day" : "concert",
         venueName: form.venueName.trim(),
         venueCity: form.venueCity.trim() || undefined,
         venueRegion: form.venueRegion.trim() || undefined,
-        eventSeriesName: form.eventSeriesName.trim() || undefined, // Tour name
+        eventSeriesName: form.eventSeriesName.trim() || undefined, // Festival
         artists: form.artists.map((a, i) => ({
           name: a.name.trim(),
           role: a.role,
@@ -602,7 +603,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
 
       void qc.invalidateQueries({ queryKey: ["concerts"] });
       void qc.invalidateQueries({ queryKey: ["concerts/stats"] });
-      navigate(`/shows/${concertId}`);
+      navigate(`/shows/${slug ?? concertId}`);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create show.");
@@ -711,14 +712,14 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          {/* Tour name (optional) */}
+          {/* Festival (optional) — makes this show one of the festival's days */}
           <div>
             <label className="block mb-1 label">
-              Tour name <span className="text-text-subtle">(optional — e.g. The Eras Tour)</span>
+              Festival <span className="text-text-subtle">(optional — if this was a day of a festival)</span>
             </label>
             <input
               type="text"
-              placeholder="Tour name…"
+              placeholder="Festival name…"
               value={form.eventSeriesName}
               onChange={(e) => setField("eventSeriesName", e.target.value)}
               className="w-full field h-11"

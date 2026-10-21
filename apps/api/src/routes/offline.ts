@@ -34,8 +34,9 @@ export async function offlineRoutes(app: FastifyInstance): Promise<void> {
     let images: (string | null)[] = [];
     switch (parsed.data.part) {
       case "shows": {
-        const r = await rows(sql`select id from concerts`);
-        paths = r.flatMap((x) => [`/concerts/${x.id}`, `/concerts/${x.id}/photos`]);
+        // Shows open by readable slug or by id (older links), so both are saved.
+        const r = await rows(sql`select id, slug from concerts`);
+        paths = r.flatMap((x) => [`/concerts/${x.slug}`, `/concerts/${x.id}`, `/concerts/${x.id}/photos`]);
         break;
       }
       case "artists": {

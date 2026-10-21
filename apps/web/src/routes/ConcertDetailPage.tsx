@@ -1231,8 +1231,8 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
         venueName: form.venueName.trim(),
         venueCity: form.venueCity.trim() || null,
         venueRegion: form.venueRegion.trim() || null,
-        // Event name (concert) or festival name (festival_day)
-        eventSeriesName: form.eventSeriesName.trim() || null,
+        // A festival day belongs to its festival; a concert to none.
+        eventSeriesName: form.type === "festival_day" ? form.eventSeriesName.trim() || null : null,
         eventSeriesYear: (form.type === "festival_day" && form.eventSeriesYear)
           ? parseInt(form.eventSeriesYear, 10)
           : null,
@@ -1427,21 +1427,8 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
             </div>
           </div>
 
-          {/* Type-driven: Event name (concert) or Festival name + year (festival_day) */}
-          {form.type === "concert" ? (
-            <div>
-              <label className="block mb-1 label">
-                Event name <span className="text-text-subtle">(optional — e.g. The Eras Tour)</span>
-              </label>
-              <input
-                type="text"
-                value={form.eventSeriesName}
-                onChange={(e) => setField("eventSeriesName", e.target.value)}
-                placeholder="Event name…"
-                className="w-full field h-11"
-              />
-            </div>
-          ) : (
+          {/* A festival day names its festival; a concert has none. */}
+          {form.type === "concert" ? null : (
             <div>
               <label className="block mb-1 label">
                 Festival name <span className="text-accent-pink">*</span>
@@ -2637,6 +2624,16 @@ export function ConcertDetailPage() {
     enabled: !!id,
   });
 
+  // Opened by id or an older link: show the readable slug in the address bar,
+  // reusing what's loaded so there's no second fetch.
+  const qc = useQueryClient();
+  const loadedSlug = concertQuery.data?.concert.slug;
+  useEffect(() => {
+    if (!loadedSlug || !id || id === loadedSlug) return;
+    qc.setQueryData(["concerts", loadedSlug], concertQuery.data);
+    navigate(`/shows/${loadedSlug}${window.location.hash}`, { replace: true });
+  }, [loadedSlug, id, qc, navigate, concertQuery.data]);
+
   if (concertQuery.isLoading) return <Loading />;
   if (concertQuery.isError || !concertQuery.data) {
     return (
@@ -2733,7 +2730,7 @@ export function ConcertDetailPage() {
                 {festivalDays.map((d) => (
                   <div key={d.concertId} className={d.concertId === concert.id ? "bg-lime-950/30" : undefined}>
                     <EventRow
-                      to={`/shows/${d.concertId}`}
+                      to={`/shows/${d.slug ?? d.concertId}`}
                       date={d.date}
                       showYear={false}
                       title={d.concertId === concert.id ? `Day ${d.number} · you're here` : `Day ${d.number}`}

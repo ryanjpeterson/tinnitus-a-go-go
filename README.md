@@ -514,7 +514,7 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `GET`    | `/concerts/year-review`       | Every year with attended shows and its count, newest first (public)  |
 | `GET`    | `/concerts/year-review/:year` | One year's recap: totals (vs previous year), new artists/venues, cities, top artists/venues, festivals, most-heard songs, photo/video counts, every show with flyer (public, attended only) |
 | `GET`    | `/concerts/followup`          | Shows attended in the last 14 days without a rating or notes        |
-| `GET`    | `/concerts/:id`               | Single concert with artists, venue (incl. lat/lng), series, and attendance |
+| `GET`    | `/concerts/:idOrSlug`         | Single concert with artists, venue (incl. lat/lng), series, and attendance. Accepts the id, the readable `slug`, or an older `venue-slug-YYYY-MM-DD` / `festival-slug-YYYY-MM-DD` link |
 | `POST`   | `/concerts`                   | Create concert + attendee record                                    |
 | `PATCH`  | `/concerts/:id`               | Update attendance fields and/or shared concert fields               |
 | `PATCH`  | `/concerts/batch`             | Batch-update attendance for up to 200 concerts in one transaction   |
@@ -686,9 +686,9 @@ docker compose exec api pnpm db:migrate
 | `auth_events` | Audit log: login, logout, password change |
 | `email_verification_tokens` | Single-use tokens from signup email |
 | `invites` | Invite codes (hashed); tracks who issued and who used |
-| `concerts` | Canonical show record: date, type, venue FK, series FK, flyer, flyer hash, headliner hint |
+| `concerts` | Canonical show record: date, venue FK, series FK, flyer, flyer hash. Maintained by the database: `type` (`festival_day` exactly when it belongs to a festival), `headliner_hint` (from the lineup), and a unique readable `slug` (festival or headliner + date). One show per festival per date |
 | `concert_attendees` | Per-user junction: status, rating, notes, ticket price, timestamps |
-| `concert_artists` | Lineup: artist FK, role (`headliner` / `co_headliner` / `support`), set_order, appearance_notes, stage_name (festival days). `headliner` and `co_headliner` are mutually exclusive in any one lineup |
+| `concert_artists` | Lineup: artist FK, role (`headliner` / `co_headliner` / `support`, default `support`), set_order, appearance_notes, stage_name (festival days). At most one headliner, never alongside co-headliners (enforced by the database). `headliner` and `co_headliner` are mutually exclusive in any one lineup |
 | `artists` | Canonical artist: name, slug, genre, bio, MusicBrainz ID, image key |
 | `venues` | Canonical venue: name, slug, city, region, country, lat/lng, capacity, image key |
 | `venue_aliases` | Historical names for a venue (Air Canada Centre → Scotiabank Arena). Linked to `canonical_venue_id`; alias slugs redirect to canonical at the API level |
@@ -731,9 +731,10 @@ Applied migrations:
 | `0011_data_cleanup.sql` | `merge_log` (each duplicate merge with an undo snapshot) and `duplicate_dismissals` ("not a duplicate" pairs) |
 | `0012_setlist_lookups.sql` | `setlist_lookups`: which (show, artist) pairs the automatic setlist finder has searched, with attempts and result |
 | `0013_artist_photos.sql` | `enriched_at` and `image_source` on artists (automatic photos; hourly enrichment moves through the list) |
+| `0015_show_integrity_and_slugs.sql` | Database-enforced show rules: `type` derived from the festival link (+ check), one show per festival per date, festival dates/venue/year widened to cover its days, one headliner per lineup (no headliner + co-headliner mix), `headliner_hint` maintained from the lineup, readable unique `slug` on every show |
 | `0014_festival_days_single_source.sql` | Festival days become the only source for festival lineups and attendance: `stage_name` on `concert_artists`; anything only `festival_sets` / `festival_attendees` held is copied onto the days, then both tables are dropped |
 
-0005–0014 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
+0005–0015 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
 
 ```bash
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0010_setlist_song_sets.sql
@@ -741,6 +742,7 @@ docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0011_data
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0012_setlist_lookups.sql
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0013_artist_photos.sql
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0014_festival_days_single_source.sql
+docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0015_show_integrity_and_slugs.sql
 docker compose exec api npx tsx src/scripts/cache-setlists.ts
 ```
 

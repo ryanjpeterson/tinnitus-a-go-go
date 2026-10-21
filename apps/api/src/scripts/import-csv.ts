@@ -169,15 +169,12 @@ async function applyShows(
       concertId = existing.id;
       counts.showsExisting++;
     } else {
-      const headliner = show.artists.at(-1)?.name ?? null;
       const [created] = await db
         .insert(schema.concerts)
         .values({
           date: show.date,
           venueId: venueId ?? null,
           eventSeriesId: seriesId,
-          type: show.type,
-          headlinerHint: headliner,
           createdByUserId: userId,
         })
         .returning({ id: schema.concerts.id });
@@ -192,8 +189,9 @@ async function applyShows(
       if (!a) continue;
       const artistId = artistIdBySlug.get(slugify(a.name));
       if (!artistId) continue;
+      // A show that already existed keeps its billing (one headliner per lineup).
       const isLast = j === show.artists.length - 1;
-      const role = isLast ? "headliner" : "support";
+      const role = isLast && !existing ? "headliner" : "support";
 
       await db
         .insert(schema.concertArtists)

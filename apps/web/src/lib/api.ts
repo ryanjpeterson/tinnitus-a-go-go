@@ -173,7 +173,7 @@ export const api = {
     eventNotes?: string;
     sourceUrl?: string;
   }) =>
-    request<{ concertId: string }>("/concerts", { method: "POST", body: JSON.stringify(body) }),
+    request<{ concertId: string; slug: string | null }>("/concerts", { method: "POST", body: JSON.stringify(body) }),
   putConcertArtists: (
     concertId: string,
     artists: Array<{
@@ -639,6 +639,8 @@ export interface ConcertAttendance {
 
 export interface ConcertListItem {
   id: string;
+  /** Readable URL key, e.g. "foo-fighters-2011-09-10" — use with /shows/:slug. */
+  slug: string;
   date: string;
   type: "concert" | "festival_day";
   dateIsApproximate: boolean;
@@ -677,7 +679,7 @@ export interface ConcertDetailResponse {
   concert: ConcertDetail;
   setlists: Record<string, ConcertSetlistEntry>;
   /** Every day of the festival this show belongs to (festival days only). */
-  festivalDays?: Array<{ number: number; date: string; concertId: string; lineup: string[] }>;
+  festivalDays?: Array<{ number: number; date: string; concertId: string; slug: string; lineup: string[] }>;
 }
 
 /** Full bill and festival-day position for naming a show (see lib/showTitle). */

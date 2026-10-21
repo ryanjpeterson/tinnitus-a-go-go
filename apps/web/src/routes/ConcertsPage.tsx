@@ -221,7 +221,7 @@ export function ConcertsPage() {
                 {g.items.map((c) => (
                   <EventRow
                     key={c.id}
-                    to={`/shows/${c.id}`}
+                    to={`/shows/${c.slug || c.id}`}
                     date={c.date}
                     showYear={false}
                     approximate={c.dateIsApproximate}

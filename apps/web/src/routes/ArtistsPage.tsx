@@ -46,7 +46,7 @@ export function ArtistsPage() {
                 key={a.id}
                 to={`/artists/${a.slug}`}
                 name={a.name}
-                imageUrl={a.imageKey}
+                imageUrl={a.imageUrl}
                 // Count first so it survives truncation on narrow screens
                 sub={[plural(a.showCount, "show"), a.genre].filter(Boolean).join(" · ")}
                 round

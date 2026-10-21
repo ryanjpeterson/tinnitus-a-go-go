@@ -771,7 +771,9 @@ export interface ArtistListItem {
   name: string;
   slug: string;
   genre: string | null;
+  /** Storage key; use imageUrl to show the photo. */
   imageKey: string | null;
+  imageUrl: string | null;
   showCount: number;
 }
 

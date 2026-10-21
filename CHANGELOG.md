@@ -7,6 +7,10 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Artist thumbnails on the Artists list didn't load** — the list sent the photo's storage key rather than its URL, so the image link was broken while the artist page (which gets the URL) showed the photo. `GET /artists` now includes `imageUrl` and the list uses it.
+
 ### Added — Offline app, artist photos, venue map panel
 
 - **Works offline** — the installed app keeps every API response it loads for 60 days (network first, falling back to the saved copy after 4 s on a slow connection) and every flyer and photo for 180 days (shown instantly from the device, refreshed in the background). On launch it quietly pre-loads the main lists (Stats, Past and Upcoming shows, Artists, Venues, Festivals, Map, Year in review). **Account → Offline → Save everything for offline** stores every show, artist, venue and festival page with its images. A banner says when you're offline. Auth and admin responses are never cached, and signing out still clears the saved data.

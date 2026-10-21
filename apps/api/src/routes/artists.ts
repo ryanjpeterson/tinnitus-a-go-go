@@ -83,7 +83,8 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
 
     const total = countRows[0]?.total ?? 0;
     return reply.send({
-      artists: rows,
+      // imageUrl is what pages render; imageKey stays for anything that still reads it.
+      artists: rows.map((r) => ({ ...r, imageUrl: r.imageKey ? mediaUrl(r.imageKey) : null })),
       total,
       page,
       totalPages: Math.ceil(total / limit),

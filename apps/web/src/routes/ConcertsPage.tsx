@@ -38,6 +38,9 @@ const VIEW_TABS: { value: View; label: string }[] = [
   { value: "upcoming", label: "Upcoming" },
 ];
 
+// Each tab opens on its main status; "All" has to be picked explicitly (?status=all).
+const DEFAULT_STATUS: Record<View, AttendanceStatus> = { past: "attended", upcoming: "attending" };
+
 const ALL_OPTION = { value: "all" as StatusValue, label: "All", activeClass: "border-accent-lime bg-accent-lime text-bg" };
 const STATUS_OPTIONS: Record<View, { value: StatusValue; label: string; activeClass: string }[]> = {
   upcoming: [
@@ -134,7 +137,9 @@ export function ConcertsPage() {
     viewParam === "past" || viewParam === "upcoming" ? viewParam
     : statusParam && VIEW_STATUSES.upcoming.includes(statusParam) ? "upcoming"
     : "past"; // Past is the default tab
-  const status: StatusValue = STATUS_OPTIONS[view].some((o) => o.value === statusParam) ? (statusParam as StatusValue) : "all";
+  const status: StatusValue = STATUS_OPTIONS[view].some((o) => o.value === statusParam)
+    ? (statusParam as StatusValue)
+    : DEFAULT_STATUS[view];
   const statusFilter = status === "all" ? VIEW_STATUSES[view] : [status];
   // Upcoming reads soonest-first, past newest-first, unless the sort is changed.
   const sortParam = searchParams.get("sort");
@@ -194,7 +199,7 @@ export function ConcertsPage() {
         <div className={isAdmin ? "grid grid-cols-2 gap-3 sm:hidden" : "sm:hidden"}>
           {isAdmin && (
             <SelectField label="Status" value={status} options={STATUS_OPTIONS[view]}
-              onChange={(v) => setFilter({ status: v === "all" ? undefined : v })} />
+              onChange={(v) => setFilter({ status: v === DEFAULT_STATUS[view] ? undefined : v })} />
           )}
           <SelectField label="Sort" value={sort} options={SORT_OPTIONS[view]}
             onChange={(v) => setFilter({ sort: v })} />
@@ -202,7 +207,7 @@ export function ConcertsPage() {
         <div className="hidden items-center justify-between gap-3 sm:flex">
           {isAdmin ? (
             <PillTabs value={status} options={STATUS_OPTIONS[view]}
-              onChange={(v) => setFilter({ status: v === "all" ? undefined : v })} />
+              onChange={(v) => setFilter({ status: v === DEFAULT_STATUS[view] ? undefined : v })} />
           ) : <span />}
           <SelectField label="Sort" value={sort} options={SORT_OPTIONS[view]} className="w-44"
             onChange={(v) => setFilter({ sort: v })} />
@@ -228,7 +233,7 @@ export function ConcertsPage() {
           action={<Button variant="secondary" onClick={() => setPage(1)}>Back to page 1</Button>}
         />
       ) : concerts.length === 0 ? (
-        q || status !== "all" ? (
+        q || (status !== "all" && status !== DEFAULT_STATUS[view]) ? (
           <EmptyState title="No shows match." body="Try a different search or filter." />
         ) : view === "upcoming" ? (
           <EmptyState

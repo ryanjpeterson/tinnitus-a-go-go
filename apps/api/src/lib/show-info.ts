@@ -13,9 +13,9 @@ export interface ShowInfo {
   lineup: string[];
   seriesName: string | null;
   seriesSlug: string | null;
-  /** 1-based day of the festival (by distinct festival-day dates), festival days only. */
+  /** 1-based day of the festival, counted from its start date (else by logged days), festival days only. */
   dayNumber: number | null;
-  /** How many days the festival has, festival days only. */
+  /** How many days the festival runs (from its dates, else logged days), festival days only. */
   dayCount: number | null;
 }
 
@@ -52,13 +52,15 @@ export async function loadShowInfo(concertIds: string[]): Promise<Map<string, Sh
         where ca.concert_id = c.id) as lineup,
       es.name as series_name,
       es.slug as series_slug,
-      case when c.type = 'festival_day' and c.event_series_id is not null then
-        (select count(distinct c2.date)::int from concerts c2
-          where c2.event_series_id = c.event_series_id and c2.type = 'festival_day' and c2.date <= c.date)
+      case when c.event_series_id is not null then
+        coalesce((c.date - es.start_date) + 1,
+          (select count(distinct c2.date)::int from concerts c2
+            where c2.event_series_id = c.event_series_id and c2.date <= c.date))
       end as day_number,
-      case when c.type = 'festival_day' and c.event_series_id is not null then
-        (select count(distinct c2.date)::int from concerts c2
-          where c2.event_series_id = c.event_series_id and c2.type = 'festival_day')
+      case when c.event_series_id is not null then
+        greatest(
+          (coalesce(es.end_date, es.start_date) - es.start_date) + 1,
+          (select count(distinct c2.date)::int from concerts c2 where c2.event_series_id = c.event_series_id))
       end as day_count
     from concerts c
     left join event_series es on es.id = c.event_series_id

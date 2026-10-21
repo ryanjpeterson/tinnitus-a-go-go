@@ -50,7 +50,7 @@ const PINK_MARKER_ICON_SELECTED = "data:image/svg+xml," + encodeURIComponent(`
 // Venue info popup
 function VenuePopup({ venue, onClose }: { venue: VenueMapItem; onClose: () => void }) {
   return (
-    <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-10">
+    <div className="absolute bottom-[calc(6rem+env(safe-area-inset-bottom))] left-4 right-4 z-10 sm:bottom-4 sm:left-auto sm:right-4 sm:w-80">
       <div className="card p-4 shadow-2xl shadow-black/60">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -334,11 +334,11 @@ export function MapPage() {
     );
   }
 
-  // The map fills the screen edge to edge between the app bar and the tab bar
-  // (desktop: down to the bottom), breaking out of the page column and padding.
+  // The map fills the screen edge to edge below the app bar, running under the
+  // floating tab bar on phones, breaking out of the page column and padding.
   return (
     <div className="relative -mt-6 ml-[calc(50%-50vw)] w-screen -mb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:-mb-8 sm:-mt-8">
-      <div className="relative h-[calc(100dvh-3.5rem-4rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[360px] sm:h-[calc(100dvh-4rem-env(safe-area-inset-top))]">
+      <div className="relative h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] min-h-[360px] sm:h-[calc(100dvh-4rem-env(safe-area-inset-top))]">
         <APIProvider apiKey={API_KEY}>
           <Map
             defaultCenter={center}

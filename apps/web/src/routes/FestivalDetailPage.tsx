@@ -327,14 +327,17 @@ export function FestivalDetailPage() {
   const flyerBusy = uploadingFlyer || flyerUrlImporting;
 
   // Lineup view: the whole festival at once (default), every day stacked, or one day.
-  // Kept in ?day= (all | 1..n) so a specific day can be linked to.
+  // Kept in ?day= (all | day number) so a specific day can be linked to. Day
+  // numbers count from the festival's start, so logged days can skip (1, 3, 5).
   const dayEntries = Object.entries(setsByDate);
+  const dayNumber = (date: string, i: number): number => concertsByDate[date]?.number ?? i + 1;
+  const dayNumbers = dayEntries.map(([date], i) => String(dayNumber(date, i)));
   const dayParam = searchParams.get("day");
   type LineupView = "lineup" | "days" | `${number}`;
   const lineupView: LineupView =
     dayEntries.length <= 1 ? "days"
     : dayParam === "all" ? "days"
-    : dayParam && Number(dayParam) >= 1 && Number(dayParam) <= dayEntries.length ? (dayParam as LineupView)
+    : dayParam && dayNumbers.includes(dayParam) ? (dayParam as LineupView)
     : "lineup";
   const setLineupView = (v: LineupView): void => {
     setSearchParams((cur) => {
@@ -348,15 +351,15 @@ export function FestivalDetailPage() {
     { value: "lineup", label: `Full lineup · ${stats.totalArtists}` },
     { value: "days", label: "All days" },
     ...dayEntries.map(([date, ds], i) => ({
-      value: String(i + 1) as LineupView,
-      label: date === "unknown" ? `Date TBD · ${ds.length}` : `Day ${i + 1} · ${fmtDateShort(date)}`,
+      value: String(dayNumber(date, i)) as LineupView,
+      label: date === "unknown" ? `Date TBD · ${ds.length}` : `Day ${dayNumber(date, i)} · ${fmtDateShort(date)}`,
     })),
   ];
   // Whole-festival lineup: each artist once, in day then set order, tagged with their day.
   const fullLineup = (() => {
     const seen = new Map<string, { set: FestivalSet; day: number }>();
-    dayEntries.forEach(([, ds], i) => ds.forEach((set: FestivalSet) => {
-      if (!seen.has(set.artist.id)) seen.set(set.artist.id, { set, day: i + 1 });
+    dayEntries.forEach(([date, ds], i) => ds.forEach((set: FestivalSet) => {
+      if (!seen.has(set.artist.id)) seen.set(set.artist.id, { set, day: dayNumber(date, i) });
     }));
     return [...seen.values()];
   })();
@@ -455,17 +458,17 @@ export function FestivalDetailPage() {
         <StatTile label="Artists" value={stats.totalArtists} accent="lime" />
         <StatTile label="Days" value={stats.totalDays} />
         {attendance && stats.totalDays > 1 && (
-          <StatTile label="Days attended" value={`${attendance.daysAttended}/${attendance.totalDays}`} />
+          <StatTile label="Days attended" value={`${attendance.daysAttended}/${stats.totalDays}`} />
         )}
       </div>
 
       {/* Attendance lives on each day; this sets them all at once (admin only) */}
-      {isAdmin && stats.totalDays > 0 && (
+      {isAdmin && stats.loggedDays > 0 && (
         <div className="card space-y-3 p-4 sm:p-5">
           <div>
             <h2 className="h-section">Attendance</h2>
             <p className="meta mt-1">
-              {stats.totalDays > 1 ? "Set every day at once, or open a day to set just that one." : "Set your attendance for this festival."}
+              {stats.loggedDays > 1 ? "Set every day at once, or open a day to set just that one." : "Set your attendance for this festival."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -602,7 +605,7 @@ export function FestivalDetailPage() {
             {Object.entries(setsByDate).map(([date, dateSets], dayIdx) => {
               // "lineup" shows the combined list above; a day number shows just that day.
               if (lineupView === "lineup") return null;
-              if (lineupView !== "days" && lineupView !== String(dayIdx + 1)) return null;
+              if (lineupView !== "days" && lineupView !== String(dayNumber(date, dayIdx))) return null;
               const concert = concertsByDate[date];
               const concertUrl = concert ? `/shows/${concert.slug}` : null;
 
@@ -616,7 +619,7 @@ export function FestivalDetailPage() {
                     <Link to={concertUrl} className="group flex min-h-[64px] items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface-2/70">
                       <DateBlock date={date} />
                       <span className="flex-1 text-[15px] font-semibold group-hover:text-accent-lime">
-                        Day {dayIdx + 1}
+                        Day {dayNumber(date, dayIdx)}
                         <span className="block text-sm font-normal text-text-subtle">Open this day</span>
                       </span>
                       {concert?.status

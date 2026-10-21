@@ -2642,7 +2642,7 @@ export function ConcertDetailPage() {
     );
   }
 
-  const { concert, setlists: savedSetlists, festivalDays = [] } = concertQuery.data;
+  const { concert, setlists: savedSetlists, festivalDays = [], festivalLength } = concertQuery.data;
 
   // Sort artists: headliner first, then by role order, then by setOrder
   const sortedArtists = [...concert.artists].sort((a, b) => {
@@ -2672,7 +2672,7 @@ export function ConcertDetailPage() {
         imageUrl={concert.flyerUrl}
         eyebrow={
           isFestivalDay
-            ? (thisDay && multiDay ? `Festival · Day ${thisDay.number} of ${festivalDays.length}` : "Festival")
+            ? (thisDay && (festivalLength ?? festivalDays.length) > 1 ? `Festival · Day ${thisDay.number} of ${festivalLength ?? festivalDays.length}` : "Festival")
             : (concert.eventSeries ? concert.eventSeries.name : "Concert")
         }
         title={title}

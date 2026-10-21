@@ -7,6 +7,11 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Changed — Floating tab bar, festival days counted from the dates
+
+- **Phone tab bar is a floating dock** — a rounded, frosted bar lifted above the home indicator, with a soft shadow. The current tab gets a tinted pill and a filled icon, taps shrink slightly for feedback, and tapping the tab you're already on scrolls back to the top. Pages fade out beneath it; the follow-up count shows as a number badge on Shows. The map now runs to the bottom of the screen under the dock, with the venue card lifted above it.
+- **Festival days count from the festival's dates** — a festival runs from its start to its end date, not just the days you logged. The 20th of a festival that starts on the 16th is **Day 5 of 5** everywhere (festival page, show page, Shows list), the **Days** stat is the festival's length, and **Days attended** shows on any multi-day festival (e.g. 1/5 when you went to one day of five). Festival links like `?day=5` use the real day number.
+
 ### Added — Readable show links
 
 - **Shows have readable URLs** — the headliner (or festival) and date, e.g. `/shows/foo-fighters-2011-09-10` or `/shows/bluesfest-2025-2025-07-12`. Co-headliners are joined (`/shows/a-b-2019-05-01`); a second show with the same name and date gets `-2`. The slug follows the show: changing the lineup, date or festival, or renaming an artist, festival or venue updates it. Links by id and the older `venue-date` / `festival-date` links still open, and the address bar switches to the readable slug. Saved-for-offline shows are kept under both URLs.

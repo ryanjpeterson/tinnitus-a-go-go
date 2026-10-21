@@ -77,17 +77,37 @@ export async function loadFestivalDays(festivalIds: string[], userId: string | n
   }));
 }
 
+const dayMs = 86_400_000;
+const utc = (iso: string) => Date.parse(`${iso}T00:00:00Z`);
+
+/**
+ * How long the festival runs, from its dates — not just the days logged as
+ * shows (you may have been to one day of five). Falls back to the logged days
+ * when the festival has no dates.
+ */
+export function festivalLength(festival: { startDate: string | null; endDate: string | null }, loggedDays: number): number {
+  if (!festival.startDate) return loggedDays;
+  const span = Math.round((utc(festival.endDate ?? festival.startDate) - utc(festival.startDate)) / dayMs) + 1;
+  return Math.max(span, loggedDays);
+}
+
+/** 1-based day of the festival a date falls on, counted from its start date. */
+export function festivalDayNumber(festival: { startDate: string | null }, date: string, fallback: number): number {
+  if (!festival.startDate) return fallback;
+  return Math.round((utc(date) - utc(festival.startDate)) / dayMs) + 1;
+}
+
 const PRECEDENCE: Status[] = ["attended", "attending", "interested", "missed", "cancelled", "dismissed"];
 
 /**
  * A festival's attendance, summarised from its days: attended if any day was
  * attended, otherwise the most committed status any day has.
  */
-export function festivalAttendance(days: Pick<FestivalDay, "status">[]): { status: Status; daysAttended: number; totalDays: number } | null {
+export function festivalAttendance(days: Pick<FestivalDay, "status">[], totalDays = days.length): { status: Status; daysAttended: number; totalDays: number } | null {
   const statuses = days.map((d) => d.status).filter((s): s is Status => !!s);
   const status = PRECEDENCE.find((s) => statuses.includes(s));
   if (!status) return null;
-  return { status, daysAttended: statuses.filter((s) => s === "attended").length, totalDays: days.length };
+  return { status, daysAttended: statuses.filter((s) => s === "attended").length, totalDays };
 }
 
 /** The festival's day show for a date, created if it doesn't exist yet. */

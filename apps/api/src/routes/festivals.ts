@@ -25,7 +25,7 @@ import { db, schema } from "../db/client.js";
 import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
 import { requireAdmin } from "../auth/middleware.js";
-import { dateRange, ensureFestivalDay, festivalAttendance, loadFestivalDays } from "../lib/festival-days.js";
+import { dateRange, ensureFestivalDay, festivalAttendance, festivalDayNumber, festivalLength, loadFestivalDays } from "../lib/festival-days.js";
 import { slugify } from "@tagg/shared";
 
 /** Direct public URL for a MinIO object */
@@ -131,8 +131,8 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
           ? { id: r.venueId, slug: r.venueSlug!, name: r.venueName!, city: r.venueCity, region: r.venueRegion }
           : null,
         artistCount: new Set(own.flatMap((d) => d.artists.map((a) => a.id))).size,
-        dayCount: own.length,
-        attendance: festivalAttendance(own),
+        dayCount: festivalLength(r, own.length),
+        attendance: festivalAttendance(own, festivalLength(r, own.length)),
       };
     });
 
@@ -179,11 +179,14 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
 
     // One entry per day, in date order — including days with no artists yet.
     const setsByDate: Record<string, typeof sets> = {};
-    const concertsByDate: Record<string, { id: string; slug: string; status: string | null }> = {};
-    for (const d of days) {
+    // Days are numbered by the festival's dates: the 20th of a festival that
+    // starts on the 16th is Day 5, even if it's the only day logged.
+    const concertsByDate: Record<string, { id: string; slug: string; status: string | null; number: number }> = {};
+    days.forEach((d, i) => {
       setsByDate[d.date] = sets.filter((s) => s.concertId === d.id);
-      concertsByDate[d.date] = { id: d.id, slug: d.slug, status: d.status };
-    }
+      concertsByDate[d.date] = { id: d.id, slug: d.slug, status: d.status, number: festivalDayNumber(festival, d.date, i + 1) };
+    });
+    const length = festivalLength(festival, days.length);
 
     return reply.send({
       festival: {
@@ -215,10 +218,11 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       sets,
       setsByDate,
       concertsByDate,
-      attendance: festivalAttendance(days),
+      attendance: festivalAttendance(days, length),
       stats: {
         totalArtists: new Set(sets.map((s) => s.artist.id)).size,
-        totalDays: days.length,
+        totalDays: length,
+        loggedDays: days.length,
       },
     });
   });

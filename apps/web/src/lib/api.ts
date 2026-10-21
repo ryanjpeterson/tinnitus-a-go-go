@@ -679,7 +679,10 @@ export interface ConcertDetailResponse {
   concert: ConcertDetail;
   setlists: Record<string, ConcertSetlistEntry>;
   /** Every day of the festival this show belongs to (festival days only). */
+  /** Every logged day of this show's festival; `number` counts from the festival's start date. */
   festivalDays?: Array<{ number: number; date: string; concertId: string; slug: string; lineup: string[] }>;
+  /** How many days the festival runs (from its dates). */
+  festivalLength?: number | null;
 }
 
 /** Full bill and festival-day position for naming a show (see lib/showTitle). */
@@ -1101,11 +1104,14 @@ export interface FestivalDetailResponse {
   sets: FestivalSet[];
   setsByDate: Record<string, FestivalSet[]>;
   /** Every day of the festival, in date order — the day's show and your attendance. */
-  concertsByDate: Record<string, { id: string; slug: string; status: AttendanceStatus | null }>;
+  concertsByDate: Record<string, { id: string; slug: string; status: AttendanceStatus | null; number: number }>;
   attendance: FestivalAttendance | null;
   stats: {
     totalArtists: number;
+    /** How many days the festival runs, from its dates. */
     totalDays: number;
+    /** How many of those days are logged as shows. */
+    loggedDays: number;
   };
 }
 

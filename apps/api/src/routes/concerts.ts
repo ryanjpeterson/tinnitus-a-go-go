@@ -62,7 +62,12 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
   // ── GET /concerts ───────────────────────────────────────────────────────────
 
   const listQuerySchema = z.object({
-    status: z.enum(attendanceStatuses).optional(),
+    // One status or a comma-separated list ("interested,attending").
+    status: z
+      .string()
+      .optional()
+      .transform((v) => (v ? v.split(",").map((x) => x.trim()).filter(Boolean) : []))
+      .pipe(z.array(z.enum(attendanceStatuses))),
     year: z.coerce.number().int().min(1900).max(2100).optional(),
     q: z.string().max(128).optional(),
     sort: z.enum(["date_desc", "date_asc"]).optional().default("date_desc"),
@@ -88,14 +93,14 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
     }
 
     // When filtering by status, we need to join with concert_attendees
-    if (status) {
-      conditions.push(eq(schema.concertAttendees.status, status));
+    if (status.length > 0) {
+      conditions.push(inArray(schema.concertAttendees.status, status) as unknown as SQL);
     }
 
     const where = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0]! : and(...conditions);
 
     // Build base query - join with attendees when filtering by status
-    const baseQuery = status
+    const baseQuery = status.length > 0
       ? db
           .select({
             concertId: schema.concerts.id,
@@ -163,7 +168,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
     }
 
     // Count total - must match the same join structure as the base query
-    const countBaseQuery = status
+    const countBaseQuery = status.length > 0
       ? db
           .select({ total: sql<number>`count(*)::int` })
           .from(schema.concerts)
@@ -586,6 +591,13 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         `)).map((r, i) => ({ number: i + 1, date: r.date, concertId: r.concert_id, lineup: r.lineup ?? [] }))
       : [];
 
+    // Whether the show was attended/missed/etc., for everyone (the page hides
+    // media and setlists until it's attended). Prefers the signed-in user's row.
+    const anyAttendee = await db.query.concertAttendees.findFirst({
+      where: eq(schema.concertAttendees.concertId, concert.id),
+      columns: { status: true },
+    });
+
     // The signed-in user's own attendance (same row PATCH /concerts/:id writes).
     // Omitted for anonymous visitors so personal notes and ticket prices stay private.
     const attendanceRow = req.user
@@ -643,6 +655,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
           appearanceNotes: ca.appearanceNotes,
         })),
         attendance,
+        status: attendance?.status ?? anyAttendee?.status ?? null,
         createdAt: concert.createdAt,
         updatedAt: concert.updatedAt,
       },

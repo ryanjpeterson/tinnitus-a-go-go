@@ -70,7 +70,8 @@ export const api = {
 
   // Concerts
   listConcerts: (params?: {
-    status?: AttendanceStatus;
+    /** One status, or several (sent comma-separated). */
+    status?: AttendanceStatus | AttendanceStatus[];
     year?: number;
     q?: string;
     sort?: "date_desc" | "date_asc";
@@ -78,7 +79,9 @@ export const api = {
     limit?: number;
   }) => {
     const qs = new URLSearchParams();
-    if (params?.status) qs.set("status", params.status);
+    if (params?.status && params.status.length > 0) {
+      qs.set("status", Array.isArray(params.status) ? params.status.join(",") : params.status);
+    }
     if (params?.year) qs.set("year", String(params.year));
     if (params?.q) qs.set("q", params.q);
     if (params?.sort) qs.set("sort", params.sort);
@@ -635,6 +638,8 @@ export interface ConcertListItem {
 }
 
 export interface ConcertDetail extends ConcertListItem {
+  /** The show's status for everyone (the viewer's own if signed in), or null if never logged. */
+  status: AttendanceStatus | null;
   flyerUrl: string | null;
   flyerHash: string | null;
   flyerInherited: boolean;

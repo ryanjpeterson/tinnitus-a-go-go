@@ -1,7 +1,8 @@
 /**
- * Shows — the concert log as ticket-style rows, grouped by month.
+ * Shows — the concert log as ticket-style rows, grouped by month, split into
+ * Upcoming (interested / attending) and Past (attended / missed / cancelled).
  *
- * All filter/sort/page state lives in the URL (?page=&sort=&status=&q=) so
+ * All filter/sort/page state lives in the URL (?view=&page=&sort=&status=&q=) so
  * the browser back button always restores the exact view you left.
  */
 
@@ -15,7 +16,7 @@ import { monthLabel } from "@/lib/format";
 import { billLine } from "@/lib/showTitle";
 import { Button } from "@/components/ui/button";
 import {
-  EmptyState, EventRow, List, ListGroupLabel, Loading, PageHeader, Pager, PillTabs, SearchField, SelectField,
+  EmptyState, EventRow, List, ListGroupLabel, Loading, PageHeader, Pager, PillTabs, SearchField, SelectField, Tabs,
 } from "@/components/ui/kit";
 import type { AttendanceStatus } from "@tagg/shared";
 
@@ -25,19 +26,44 @@ import type { AttendanceStatus } from "@tagg/shared";
 
 type StatusValue = AttendanceStatus | "all";
 type SortOrder = "newest" | "oldest";
+type View = "upcoming" | "past";
 
-const STATUS_OPTIONS: { value: StatusValue; label: string; activeClass: string }[] = [
-  { value: "all",        label: "All",        activeClass: "border-accent-lime bg-accent-lime text-bg" },
-  { value: "attended",   label: "Attended",   activeClass: "border-lime-700 bg-lime-950 text-accent-lime" },
-  { value: "attending",  label: "Attending",  activeClass: "border-yellow-700 bg-yellow-950 text-yellow-400" },
-  { value: "interested", label: "Interested", activeClass: "border-purple-800 bg-purple-950 text-purple-400" },
-  { value: "missed",     label: "Missed",     activeClass: "border-red-800 bg-red-950 text-red-400" },
+const VIEW_STATUSES: Record<View, AttendanceStatus[]> = {
+  upcoming: ["interested", "attending"],
+  past: ["attended", "missed", "cancelled"],
+};
+
+const VIEW_TABS: { value: View; label: string }[] = [
+  { value: "upcoming", label: "Upcoming" },
+  { value: "past", label: "Past" },
 ];
 
-const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
-  { value: "newest", label: "Newest first" },
-  { value: "oldest", label: "Oldest first" },
-];
+const ALL_OPTION = { value: "all" as StatusValue, label: "All", activeClass: "border-accent-lime bg-accent-lime text-bg" };
+const STATUS_OPTIONS: Record<View, { value: StatusValue; label: string; activeClass: string }[]> = {
+  upcoming: [
+    ALL_OPTION,
+    { value: "attending",  label: "Attending",  activeClass: "border-yellow-700 bg-yellow-950 text-yellow-400" },
+    { value: "interested", label: "Interested", activeClass: "border-purple-800 bg-purple-950 text-purple-400" },
+  ],
+  past: [
+    ALL_OPTION,
+    { value: "attended",  label: "Attended",  activeClass: "border-lime-700 bg-lime-950 text-accent-lime" },
+    { value: "missed",    label: "Missed",    activeClass: "border-red-800 bg-red-950 text-red-400" },
+    { value: "cancelled", label: "Cancelled", activeClass: "border-border bg-surface-2 text-text-base" },
+  ],
+};
+
+// Same two orders, worded for each tab.
+const SORT_OPTIONS: Record<View, { value: SortOrder; label: string }[]> = {
+  upcoming: [
+    { value: "oldest", label: "Soonest first" },
+    { value: "newest", label: "Furthest out first" },
+  ],
+  past: [
+    { value: "newest", label: "Newest first" },
+    { value: "oldest", label: "Oldest first" },
+  ],
+};
 
 const PAGE_SIZE = 24;
 
@@ -101,14 +127,23 @@ export function ConcertsPage() {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const sort: SortOrder = searchParams.get("sort") === "oldest" ? "oldest" : "newest";
-  const statusParam = searchParams.get("status");
-  const status: StatusValue = STATUS_OPTIONS.some((o) => o.value === statusParam) ? (statusParam as StatusValue) : "all";
-  const statusFilter = status === "all" ? undefined : status;
+  const statusParam = searchParams.get("status") as AttendanceStatus | null;
+  // ?view= picks the tab; an old ?status= link lands on the tab that holds it.
+  const viewParam = searchParams.get("view");
+  const view: View =
+    viewParam === "past" || viewParam === "upcoming" ? viewParam
+    : statusParam && VIEW_STATUSES.past.includes(statusParam) ? "past"
+    : "upcoming";
+  const status: StatusValue = STATUS_OPTIONS[view].some((o) => o.value === statusParam) ? (statusParam as StatusValue) : "all";
+  const statusFilter = status === "all" ? VIEW_STATUSES[view] : [status];
+  // Upcoming reads soonest-first, past newest-first, unless the sort is changed.
+  const sortParam = searchParams.get("sort");
+  const sort: SortOrder = sortParam === "oldest" || sortParam === "newest" ? sortParam : view === "upcoming" ? "oldest" : "newest";
   const apiSort = sort === "oldest" ? "date_asc" : "date_desc";
+  const setView = (v: View): void => setFilter({ view: v === "upcoming" ? undefined : v, status: undefined, sort: undefined });
 
   const concertsQuery = useQuery({
-    queryKey: ["concerts", { status: statusFilter, q, page, sort: apiSort }],
+    queryKey: ["concerts", { status: statusFilter.join(","), q, page, sort: apiSort }],
     queryFn: () => api.listConcerts({ status: statusFilter, q: q || undefined, page, limit: PAGE_SIZE, sort: apiSort }),
     staleTime: 15_000,
   });
@@ -152,24 +187,25 @@ export function ConcertsPage() {
         )}
       />
 
-      {/* Filters — stacked full-width controls on phones, pills on desktop */}
+      {/* Filters — Upcoming/Past tabs, then search, status and sort */}
       <div className="mb-5 space-y-3">
+        <Tabs value={view} options={VIEW_TABS} onChange={setView} />
         <SearchField value={inputQ} onChange={onSearch} placeholder="Search artist, venue, or festival" />
         <div className={isAdmin ? "grid grid-cols-2 gap-3 sm:hidden" : "sm:hidden"}>
           {isAdmin && (
-            <SelectField label="Status" value={status} options={STATUS_OPTIONS}
+            <SelectField label="Status" value={status} options={STATUS_OPTIONS[view]}
               onChange={(v) => setFilter({ status: v === "all" ? undefined : v })} />
           )}
-          <SelectField label="Sort" value={sort} options={SORT_OPTIONS}
-            onChange={(v) => setFilter({ sort: v === "newest" ? undefined : v })} />
+          <SelectField label="Sort" value={sort} options={SORT_OPTIONS[view]}
+            onChange={(v) => setFilter({ sort: v })} />
         </div>
         <div className="hidden items-center justify-between gap-3 sm:flex">
           {isAdmin ? (
-            <PillTabs value={status} options={STATUS_OPTIONS}
+            <PillTabs value={status} options={STATUS_OPTIONS[view]}
               onChange={(v) => setFilter({ status: v === "all" ? undefined : v })} />
           ) : <span />}
-          <SelectField label="Sort" value={sort} options={SORT_OPTIONS} className="w-44"
-            onChange={(v) => setFilter({ sort: v === "newest" ? undefined : v })} />
+          <SelectField label="Sort" value={sort} options={SORT_OPTIONS[view]} className="w-44"
+            onChange={(v) => setFilter({ sort: v })} />
         </div>
         {isAdmin && (
           <button onClick={() => void handleExport()} disabled={exporting}
@@ -192,10 +228,19 @@ export function ConcertsPage() {
           action={<Button variant="secondary" onClick={() => setPage(1)}>Back to page 1</Button>}
         />
       ) : concerts.length === 0 ? (
-        <EmptyState
-          title={statusFilter || q ? "No shows match." : "No shows yet."}
-          body={statusFilter || q ? "Try a different search or filter." : "Import your CSV or add your first show."}
-        />
+        q || status !== "all" ? (
+          <EmptyState title="No shows match." body="Try a different search or filter." />
+        ) : view === "upcoming" ? (
+          <EmptyState
+            title="Nothing coming up."
+            body="Shows you're interested in or going to will appear here."
+            action={isAdmin
+              ? <Button onClick={() => setAddOpen(true)}>+ Add show</Button>
+              : <Button variant="secondary" onClick={() => setView("past")}>See past shows</Button>}
+          />
+        ) : (
+          <EmptyState title="No past shows yet." body="Import your CSV or add your first show." />
+        )
       ) : (
         <>
           <List>

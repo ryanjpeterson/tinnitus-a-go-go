@@ -449,6 +449,31 @@ export function SelectField<T extends string>({ value, onChange, options, label,
   );
 }
 
+/** Two or three equal-width tabs (Upcoming / Past). Full width on phones. */
+export function Tabs<T extends string>({ value, onChange, options }: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string }[];
+}) {
+  return (
+    <div role="tablist" className="grid rounded-full border border-border bg-surface p-1 sm:inline-grid sm:min-w-[320px]"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button key={o.value} role="tab" aria-selected={active} onClick={() => onChange(o.value)}
+            className={cn(
+              "h-10 rounded-full px-4 text-[15px] font-semibold transition-colors sm:h-9 sm:text-sm",
+              active ? "bg-accent-lime text-bg" : "text-text-muted hover:text-text-base",
+            )}>
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Pill tabs for desktop filters; wraps rather than scrolling. */
 export function PillTabs<T extends string>({ value, onChange, options }: {
   value: T;

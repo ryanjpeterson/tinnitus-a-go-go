@@ -1634,7 +1634,8 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
             className="w-full field h-11"
           >
             {!attendance && <option value="" disabled>Not logged — pick a status</option>}
-            {(["attended","attending","interested","missed","cancelled","dismissed"] as AttendanceStatus[]).map(
+            {/* Dismissed isn't offered any more; it only appears for shows that already have it. */}
+            {([..."attending,interested,attended,missed,cancelled".split(","), ...(attendance?.status === "dismissed" ? ["dismissed"] : [])] as AttendanceStatus[]).map(
               (s) => <option key={s} value={s}>{STATUS_CHIP[s].label}</option>,
             )}
           </select>
@@ -2717,6 +2718,7 @@ export function ConcertDetailPage() {
   });
 
   const isFestivalDay = concert.type === "festival_day" && !!concert.eventSeries;
+  const attended = concert.status === "attended";
   const thisDay = festivalDays.find((d) => d.concertId === concert.id);
   const multiDay = festivalDays.length > 1;
 
@@ -2837,20 +2839,29 @@ export function ConcertDetailPage() {
             </section>
           )}
 
-          {/* Setlist (admin only) */}
-          {isAdmin && (
-            <SetlistSection concert={concert} savedSetlists={savedSetlists} />
-          )}
+          {/* Setlists and media only make sense for a show you were at. */}
+          {attended ? (
+            <>
+              {/* Setlist (admin only) */}
+              {isAdmin && (
+                <SetlistSection concert={concert} savedSetlists={savedSetlists} />
+              )}
 
-          {/* Photo gallery */}
-          <div className="card p-4 sm:p-5">
-            <PhotoGallery
-              concertId={concert.id}
-              concertDate={concert.date}
-              concertArtists={concert.artists}
-              isAdmin={isAdmin}
-            />
-          </div>
+              {/* Photo gallery */}
+              <div className="card p-4 sm:p-5">
+                <PhotoGallery
+                  concertId={concert.id}
+                  concertDate={concert.date}
+                  concertArtists={concert.artists}
+                  isAdmin={isAdmin}
+                />
+              </div>
+            </>
+          ) : isAdmin ? (
+            <p className="card p-4 text-sm text-text-muted sm:p-5">
+              Setlists and media open up once this show is marked <span className="font-semibold text-accent-lime">Attended</span>.
+            </p>
+          ) : null}
 
           {/* Delete show (admin only) */}
           {isAdmin && (

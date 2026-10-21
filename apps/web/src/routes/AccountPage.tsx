@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ServicesPanel } from "@/components/ServicesPanel";
 import { LinkCard, PageHeader } from "@/components/ui/kit";
+import { saveEverything } from "@/lib/offline";
 
 export function AccountPage() {
   const { user, signOut } = useAuth();
@@ -132,6 +133,8 @@ export function AccountPage() {
         </>
       )}
 
+      <OfflineCard />
+
       {/* Sign out — the only sign-out control on mobile, where the header has no room for one */}
       <div className="space-y-3">
         <Button variant="secondary" onClick={() => void signOut()} className="h-12 w-full rounded-full text-[15px] text-accent-pink">
@@ -139,6 +142,49 @@ export function AccountPage() {
         </Button>
         <p className="text-center text-sm text-text-subtle">Tinnitus A Go Go · v{__APP_VERSION__}</p>
       </div>
+    </div>
+  );
+}
+
+/** Save every page and image to the device so the whole log works offline. */
+function OfflineCard() {
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+  const running = progress !== null && result === null;
+
+  const run = async (): Promise<void> => {
+    setResult(null);
+    setProgress({ done: 0, total: 0 });
+    try {
+      const r = await saveEverything((done, total) => setProgress({ done, total }));
+      setResult(r.failed === 0 ? "Everything is saved on this device." : `Saved, except ${r.failed} item${r.failed === 1 ? "" : "s"} that didn't load.`);
+    } catch {
+      setResult("Couldn't finish — check your connection and try again.");
+    }
+  };
+
+  const pct = progress && progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+  return (
+    <div className="card space-y-3 p-4 sm:p-5">
+      <div>
+        <h2 className="h-section">Offline</h2>
+        <p className="meta mt-1">
+          Pages you open are kept on this device for 60 days. Save everything to have every show, artist, venue and
+          festival — with flyers and photos — available without a connection.
+        </p>
+      </div>
+      {running && (
+        <div>
+          <div className="h-2 overflow-hidden rounded-full bg-surface-2">
+            <div className="h-full rounded-full bg-accent-lime transition-all" style={{ width: `${pct}%` }} />
+          </div>
+          <p className="meta mt-1.5">{progress!.total > 0 ? `${progress!.done} / ${progress!.total}` : "Gathering the list…"}</p>
+        </div>
+      )}
+      {result && <p className="text-sm font-semibold text-accent-lime">{result}</p>}
+      <Button variant="secondary" disabled={running || !navigator.onLine} onClick={() => void run()} className="w-full sm:w-auto">
+        {running ? "Saving…" : "Save everything for offline"}
+      </Button>
     </div>
   );
 }

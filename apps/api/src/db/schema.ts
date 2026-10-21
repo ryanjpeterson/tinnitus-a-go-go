@@ -156,6 +156,10 @@ export const artists = pgTable(
     mbid: text("mbid").unique(), // MusicBrainz ID
     genre: text("genre"),
     imageKey: text("image_key"),
+    // Where an automatically found photo came from (Deezer / Wikimedia Commons).
+    imageSource: text("image_source"),
+    // Last time the enrichment worker looked this artist up.
+    enrichedAt: timestamp("enriched_at", { withTimezone: true }),
     bio: text("bio"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

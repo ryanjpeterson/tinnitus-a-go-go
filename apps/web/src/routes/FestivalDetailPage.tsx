@@ -156,7 +156,6 @@ export function FestivalDetailPage() {
   // Attendance editing
   const [editingAttendance, setEditingAttendance] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>("interested");
-  const [attendanceRating, setAttendanceRating] = useState("");
   const [attendanceNotes, setAttendanceNotes] = useState("");
   const [savingAttendance, setSavingAttendance] = useState(false);
 
@@ -261,7 +260,6 @@ export function FestivalDetailPage() {
 
   const startEditAttendance = () => {
     setAttendanceStatus(attendance?.status ?? "interested");
-    setAttendanceRating(attendance?.rating != null ? String(attendance.rating) : "");
     setAttendanceNotes(attendance?.personalNotes ?? "");
     setEditingAttendance(true);
   };
@@ -271,7 +269,6 @@ export function FestivalDetailPage() {
     try {
       await api.patchFestivalAttendance(festival.slug, {
         status: attendanceStatus,
-        rating: attendanceRating ? parseInt(attendanceRating, 10) : null,
         personalNotes: attendanceNotes.trim() || null,
       });
       await qc.invalidateQueries({ queryKey: ["festivals", slug] });
@@ -463,10 +460,10 @@ export function FestivalDetailPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Festivals aren't rated — just how big they were. */}
+      <div className="grid grid-cols-2 gap-3">
         <StatTile label="Artists" value={stats.totalArtists} accent="lime" />
         <StatTile label="Days" value={stats.totalDays} />
-        <StatTile label="Rating" value={attendance?.rating ? `${attendance.rating}/10` : "—"} />
       </div>
 
       {/* Attendance section (admin only) */}
@@ -502,18 +499,6 @@ export function FestivalDetailPage() {
                   {s.label}
                 </button>
               ))}
-            </div>
-            <div>
-              <label className="block mb-1 label">Rating (1-10)</label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={attendanceRating}
-                onChange={(e) => setAttendanceRating(e.target.value)}
-                placeholder="—"
-                className="w-24 field h-11"
-              />
             </div>
             <div>
               <label className="block mb-1 label">Notes</label>

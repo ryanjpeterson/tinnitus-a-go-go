@@ -11,6 +11,7 @@ import { inviteRoutes } from "./routes/invites.js";
 import { healthRoutes } from "./routes/health.js";
 import { adminImportRoutes } from "./routes/admin/imports.js";
 import { adminDataRoutes } from "./routes/admin/data.js";
+import { offlineRoutes, OFFLINE_INJECT_HEADER, OFFLINE_INJECT_SECRET } from "./routes/offline.js";
 import { concertRoutes } from "./routes/concerts.js";
 import { exportRoutes } from "./routes/export.js";
 import { photoRoutes } from "./routes/photos.js";
@@ -63,6 +64,9 @@ async function start(): Promise<void> {
   await app.register(rateLimit, {
     max: env.RATE_LIMIT_MAX,
     timeWindow: env.RATE_LIMIT_WINDOW,
+    // The offline bundle runs routes in-process; those carry a per-process secret
+    // and shouldn't count against the caller (the bundle request itself does).
+    allowList: (req) => req.headers[OFFLINE_INJECT_HEADER] === OFFLINE_INJECT_SECRET,
   });
 
   // Auth context on every request.
@@ -73,6 +77,7 @@ async function start(): Promise<void> {
   await app.register(inviteRoutes);
   await app.register(adminImportRoutes);
   await app.register(adminDataRoutes);
+  await app.register(offlineRoutes);
   await app.register(concertRoutes);
   await app.register(exportRoutes);
   await app.register(photoRoutes);

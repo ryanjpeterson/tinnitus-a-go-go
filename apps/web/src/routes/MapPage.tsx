@@ -5,12 +5,12 @@
  * when zoomed out and individual venue pins when zoomed in.
  */
 
-import { useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { APIProvider, Map, Marker, useMap } from "@vis.gl/react-google-maps";
 import { api, type VenueMapItem } from "@/lib/api";
-import { PageHeader } from "@/components/ui/kit";
+import { Chevron, EmptyState, Loading, PageHeader, SearchField } from "@/components/ui/kit";
 
 const API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) ?? "";
 
@@ -91,17 +91,11 @@ function VenuePopup({ venue, onClose }: { venue: VenueMapItem; onClose: () => vo
 }
 
 // Map content with markers
-function MapContent({ venues }: { venues: VenueMapItem[] }) {
-  const map = useMap();
-  const [selectedVenue, setSelectedVenue] = useState<VenueMapItem | null>(null);
-
-  const handleMarkerClick = useCallback((venue: VenueMapItem) => {
-    setSelectedVenue(venue);
-    if (map) {
-      map.panTo({ lat: venue.lat, lng: venue.lng });
-    }
-  }, [map]);
-
+function MapContent({ venues, selected, onSelect }: {
+  venues: VenueMapItem[];
+  selected: VenueMapItem | null;
+  onSelect: (v: VenueMapItem | null) => void;
+}) {
   return (
     <>
       {venues.map((venue) => (
@@ -109,14 +103,144 @@ function MapContent({ venues }: { venues: VenueMapItem[] }) {
           key={venue.id}
           position={{ lat: venue.lat, lng: venue.lng }}
           title={venue.name}
-          onClick={() => handleMarkerClick(venue)}
-          icon={selectedVenue?.id === venue.id ? PINK_MARKER_ICON_SELECTED : PINK_MARKER_ICON}
+          onClick={() => onSelect(venue)}
+          icon={selected?.id === venue.id ? PINK_MARKER_ICON_SELECTED : PINK_MARKER_ICON}
         />
       ))}
-      {selectedVenue && (
-        <VenuePopup venue={selectedVenue} onClose={() => setSelectedVenue(null)} />
-      )}
+      {selected && <VenuePopup venue={selected} onClose={() => onSelect(null)} />}
     </>
+  );
+}
+
+/** A request to move the map: fit a set of venues (a city, or everything) or zoom to one. */
+type Focus = { venues: VenueMapItem[]; seq: number };
+
+/** Moves the map whenever `focus` changes, leaving room for the panel on desktop. */
+function FocusController({ focus }: { focus: Focus | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || !focus || focus.venues.length === 0) return;
+    if (focus.venues.length === 1) {
+      const v = focus.venues[0]!;
+      map.panTo({ lat: v.lat, lng: v.lng });
+      map.setZoom(Math.max(map.getZoom() ?? 0, 15));
+      return;
+    }
+    const bounds = new google.maps.LatLngBounds();
+    for (const v of focus.venues) bounds.extend({ lat: v.lat, lng: v.lng });
+    const desktop = window.matchMedia("(min-width: 640px)").matches;
+    map.fitBounds(bounds, desktop ? { top: 60, right: 60, bottom: 60, left: 400 } : { top: 90, right: 30, bottom: 40, left: 30 });
+  }, [map, focus]);
+  return null;
+}
+
+interface CityGroup {
+  key: string;
+  label: string;
+  venues: VenueMapItem[];
+  shows: number;
+}
+
+function groupByCity(venues: VenueMapItem[]): CityGroup[] {
+  // globalThis.Map: the map library's <Map> component shadows the built-in here.
+  const groups = new globalThis.Map<string, CityGroup>();
+  for (const v of venues) {
+    const label = [v.city, v.region].filter(Boolean).join(", ") || "Unknown city";
+    const g = groups.get(label) ?? { key: label, label, venues: [], shows: 0 };
+    g.venues.push(v);
+    g.shows += v.showCount;
+    groups.set(label, g);
+  }
+  return [...groups.values()]
+    .map((g) => ({ ...g, venues: g.venues.sort((a, b) => b.showCount - a.showCount || a.name.localeCompare(b.name)) }))
+    .sort((a, b) => b.shows - a.shows || a.label.localeCompare(b.label));
+}
+
+/** Searchable venues-by-city list floating over the map. */
+function VenuePanel({ venues, selected, onCity, onVenue, onAll }: {
+  venues: VenueMapItem[];
+  selected: VenueMapItem | null;
+  onCity: (g: CityGroup) => void;
+  onVenue: (v: VenueMapItem) => void;
+  onAll: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const [openCity, setOpenCity] = useState<string | null>(null);
+  // Open on desktop, a small button on phones so the map stays visible.
+  const [open, setOpen] = useState(() => window.matchMedia("(min-width: 640px)").matches);
+
+  const query = q.trim().toLowerCase();
+  const groups = useMemo(() => {
+    const all = groupByCity(venues);
+    if (!query) return all;
+    return all
+      .map((g) => g.label.toLowerCase().includes(query)
+        ? g
+        : { ...g, venues: g.venues.filter((v) => v.name.toLowerCase().includes(query)) })
+      .filter((g) => g.venues.length > 0);
+  }, [venues, query]);
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}
+        className="pointer-events-auto absolute left-4 top-4 flex h-11 items-center gap-2 rounded-full border border-white/10 bg-bg/85 px-4 text-[15px] font-semibold shadow-xl backdrop-blur-md">
+        Venues <span className="text-text-subtle">{venues.length}</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="absolute inset-x-3 top-3 flex max-h-[60%] flex-col overflow-hidden rounded-2xl border border-white/10 bg-bg/90 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:bottom-6 sm:left-6 sm:top-6 sm:max-h-none sm:w-80">
+      <div className="space-y-3 border-b border-border p-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-display text-xl leading-none">Venues <span className="font-body text-sm font-medium text-text-subtle">{venues.length}</span></p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => { onAll(); setOpenCity(null); }} className="link-action px-2">All</button>
+            <button onClick={() => setOpen(false)} aria-label="Hide venues"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-text-muted hover:bg-surface-2">
+              <Chevron dir="down" className="rotate-180" />
+            </button>
+          </div>
+        </div>
+        <SearchField value={q} onChange={setQ} placeholder="Search venues or cities" />
+      </div>
+      <div className="flex-1 overflow-y-auto overscroll-contain">
+        {groups.length === 0 && <p className="p-4 text-sm text-text-subtle">No venues match.</p>}
+        {groups.map((g) => {
+          const expanded = query.length > 0 || openCity === g.key;
+          return (
+            <div key={g.key} className="border-b border-border last:border-b-0">
+              <button
+                onClick={() => { setOpenCity(expanded && !query ? null : g.key); onCity(g); }}
+                className="flex min-h-[52px] w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-2/70"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-semibold">{g.label}</span>
+                  <span className="block text-xs text-text-subtle">
+                    {g.venues.length} venue{g.venues.length === 1 ? "" : "s"} · {g.shows} show{g.shows === 1 ? "" : "s"}
+                  </span>
+                </span>
+                <Chevron dir={expanded ? "down" : "right"} className="text-text-subtle" />
+              </button>
+              {expanded && (
+                <div className="pb-1">
+                  {g.venues.map((v) => (
+                    <button key={v.id} onClick={() => onVenue(v)}
+                      className={`flex min-h-[44px] w-full items-center justify-between gap-3 py-2 pl-6 pr-3 text-left transition-colors hover:bg-surface-2/70 ${selected?.id === v.id ? "bg-rose-950/30" : ""}`}>
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${selected?.id === v.id ? "bg-accent-pink" : "bg-accent-pink/50"}`} />
+                        <span className="truncate text-sm">{v.name}</span>
+                      </span>
+                      <span className="shrink-0 text-xs text-text-subtle">{v.showCount}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -171,6 +295,9 @@ export function MapPage() {
 
   const venues = venuesQuery.data?.venues ?? [];
   const { center, zoom } = getBounds(venues);
+  const [selected, setSelected] = useState<VenueMapItem | null>(null);
+  const [focus, setFocus] = useState<Focus | null>(null);
+  const focusOn = (vs: VenueMapItem[]) => setFocus((f) => ({ venues: vs, seq: (f?.seq ?? 0) + 1 }));
 
   // No API key fallback
   if (!API_KEY) {
@@ -196,51 +323,50 @@ export function MapPage() {
     );
   }
 
+  if (venuesQuery.isLoading) return <Loading label="Loading map…" />;
+  if (venuesQuery.isError) return <EmptyState tone="error" title="Couldn't load venues." />;
+  if (venues.length === 0) {
+    return (
+      <div>
+        <PageHeader title="Map" />
+        <EmptyState title="No venues with a location yet." body="Add coordinates to a venue to see it on the map." />
+      </div>
+    );
+  }
+
+  // The map fills the screen edge to edge between the app bar and the tab bar
+  // (desktop: down to the bottom), breaking out of the page column and padding.
   return (
-    <div>
-      <PageHeader title="Map" count={venues.length} className="mb-4" />
-
-      {venuesQuery.isLoading ? (
-        <div className="card bg-surface-2 h-[calc(100dvh-15rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[360px] sm:h-[calc(100dvh-13rem)] flex items-center justify-center">
-          <p className="text-text-subtle text-sm animate-pulse">Loading map…</p>
-        </div>
-      ) : venuesQuery.isError ? (
-        <div className="card p-8 text-center">
-          <p className="text-accent-pink text-sm">Failed to load venues</p>
-        </div>
-      ) : venues.length === 0 ? (
-        <div className="card p-8 text-center">
-          <p className="text-text-muted text-sm">No venues with coordinates yet</p>
-          <p className="text-text-subtle text-sm mt-2">
-            Add lat/lng to your venues to see them on the map
-          </p>
-        </div>
-      ) : (
+    <div className="relative -mt-6 ml-[calc(50%-50vw)] w-screen -mb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:-mb-8 sm:-mt-8">
+      <div className="relative h-[calc(100dvh-3.5rem-4rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[360px] sm:h-[calc(100dvh-4rem-env(safe-area-inset-top))]">
         <APIProvider apiKey={API_KEY}>
-          <div className="card overflow-hidden h-[calc(100dvh-15rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[360px] sm:h-[calc(100dvh-13rem)] relative">
-            <Map
-              defaultCenter={center}
-              defaultZoom={zoom}
-              styles={DARK_STYLES}
-              disableDefaultUI={false}
-              zoomControl={true}
-              mapTypeControl={false}
-              streetViewControl={false}
-              fullscreenControl={true}
-              gestureHandling="greedy"
-              clickableIcons={false}
-            >
-              <MapContent venues={venues} />
-            </Map>
-          </div>
+          <Map
+            defaultCenter={center}
+            defaultZoom={zoom}
+            styles={DARK_STYLES}
+            disableDefaultUI={false}
+            zoomControl={true}
+            mapTypeControl={false}
+            streetViewControl={false}
+            fullscreenControl={false}
+            gestureHandling="greedy"
+            clickableIcons={false}
+          >
+            <MapContent venues={venues} selected={selected}
+              onSelect={(v) => { setSelected(v); if (v) focusOn([v]); }} />
+            <FocusController focus={focus} />
+          </Map>
         </APIProvider>
-      )}
 
-      {venues.length > 0 && (
-        <p className="mt-3 text-sm text-text-subtle">
-          Tap a pin to see the venue
-        </p>
-      )}
+        <h1 className="sr-only">Map</h1>
+        <VenuePanel
+          venues={venues}
+          selected={selected}
+          onCity={(g) => { setSelected(null); focusOn(g.venues); }}
+          onVenue={(v) => { setSelected(v); focusOn([v]); }}
+          onAll={() => { setSelected(null); focusOn(venues); }}
+        />
+      </div>
     </div>
   );
 }

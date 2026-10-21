@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { warmCache } from "@/lib/offline";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth-context";
 import { LoginPage } from "@/routes/LoginPage";
@@ -17,6 +19,9 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
+  // Fill the offline cache with the main lists once per session.
+  useEffect(() => { warmCache(); }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

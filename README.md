@@ -581,6 +581,7 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `GET`  | `/setlistfm/artist/:mbidOrName` | Search setlist.fm for an artist's recent setlists by MBID or name |
 | `GET`  | `/setlistfm/setlist/:id`      | Fetch a specific setlist by ID or full setlist.fm URL              |
 | `GET`  | `/users/me/export.csv`        | Full CSV export in the original import format, plus a `setlist` column (that artist's setlist for the show as JSON) |
+| `GET`  | `/offline/bundle?part=shows\|artists\|venues\|festivals` | Signed in. Every page's API response for that part (produced by running the normal routes in-process with the caller's cookie), keyed by URL, plus the image URLs they show — the app writes them into its offline cache |
 | `GET`  | `/users/me/export.json` · `/users/me/export.md` | The same log as JSON (every show with venue, status, notes, ticket, lineup and setlists) or as a readable Markdown log grouped by year |
 
 ### Admin (requires `is_admin = true`)
@@ -721,13 +722,15 @@ Applied migrations:
 | `0010_setlist_song_sets.sql` | `set_name` on `setlist_songs` (main set / "Encore" / named set) for the setlist.fm song cache |
 | `0011_data_cleanup.sql` | `merge_log` (each duplicate merge with an undo snapshot) and `duplicate_dismissals` ("not a duplicate" pairs) |
 | `0012_setlist_lookups.sql` | `setlist_lookups`: which (show, artist) pairs the automatic setlist finder has searched, with attempts and result |
+| `0013_artist_photos.sql` | `enriched_at` and `image_source` on artists (automatic photos; hourly enrichment moves through the list) |
 
-0005–0012 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
+0005–0013 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
 
 ```bash
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0010_setlist_song_sets.sql
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0011_data_cleanup.sql
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0012_setlist_lookups.sql
+docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0013_artist_photos.sql
 docker compose exec api npx tsx src/scripts/cache-setlists.ts
 ```
 

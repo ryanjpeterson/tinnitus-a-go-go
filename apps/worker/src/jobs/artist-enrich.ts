@@ -1,5 +1,13 @@
 /**
- * Artist enrichment job — fetches bio, genre, and image from Last.fm.
+ * Artist enrichment job.
+ *
+ *   Last.fm   bio, genre and MusicBrainz id
+ *   Photo     Deezer, then Wikimedia Commons via the MusicBrainz id (Last.fm only
+ *             returns placeholder images now)
+ *
+ * Everything found is stored: text in the artists row, the photo downloaded into
+ * MinIO, so pages never load these services directly. `enriched_at` is set on
+ * every run so the hourly scheduler moves on to other artists.
  */
 import type { Job } from "bullmq";
 import type { ArtistEnrichJobData, ArtistEnrichJobResult } from "@tagg/shared";
@@ -8,6 +16,8 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "../db.js";
 import { s3, bucket } from "../s3.js";
 import { env } from "../env.js";
+// Pure helper shared with the API (same relative-import arrangement as the schema).
+import { findArtistPhoto } from "../../../api/src/lib/artist-photo.js";
 
 const LASTFM_API_BASE = "https://ws.audioscrobbler.com/2.0/";
 
@@ -97,6 +107,37 @@ function getGenre(tags: Array<{ name: string }>): string | null {
   return tags.slice(0, 3).map((t) => t.name).join(", ") || null;
 }
 
+/** Download an image and store it as the artist's photo; returns the object key. */
+async function storeArtistImage(artistId: string, url: string, previousKey: string | null): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(15_000),
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; TinnitusBot/1.0)" },
+    });
+    if (!res.ok) return null;
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.length === 0 || buffer.length > 15 * 1024 * 1024) return null;
+
+    const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8;
+    const isPng = buffer[0] === 0x89 && buffer[1] === 0x50;
+    const isWebp = buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP";
+    if (!isJpeg && !isPng && !isWebp) return null;
+
+    const ext = isPng ? ".png" : isWebp ? ".webp" : ".jpg";
+    const contentType = isPng ? "image/png" : isWebp ? "image/webp" : "image/jpeg";
+    const objectKey = `artists/${artistId}/image${ext}`;
+    await s3.send(new PutObjectCommand({
+      Bucket: bucket, Key: objectKey, Body: buffer, ContentType: contentType, ContentLength: buffer.length,
+    }));
+    if (previousKey && previousKey !== objectKey) {
+      await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: previousKey })).catch(() => {});
+    }
+    return objectKey;
+  } catch {
+    return null;
+  }
+}
+
 export async function runArtistEnrich(
   job: Job<ArtistEnrichJobData>,
 ): Promise<ArtistEnrichJobResult> {
@@ -111,81 +152,49 @@ export async function runArtistEnrich(
     return { artistId, updated: [], error: "Artist not found" };
   }
 
-  // Fetch from Last.fm
+  // Fetch from Last.fm (may be missing — the photo lookup still runs)
   const info = await fetchLastfmArtist(artistName, mbid);
-  if (!info) {
-    return { artistId, updated: [], error: "Not found on Last.fm" };
-  }
 
-  const updates: Record<string, unknown> = {};
+  const updates: Record<string, unknown> = { enrichedAt: new Date() };
   const updated: string[] = [];
 
-  // Bio
-  const bio = cleanBio(info.bio?.summary ?? info.bio?.content ?? "");
-  if (bio && (overwrite || !artist.bio)) {
-    updates.bio = bio;
-    updated.push("bio");
-  }
-
-  // Genre
-  const genre = getGenre(info.tags?.tag ?? []);
-  if (genre && (overwrite || !artist.genre)) {
-    updates.genre = genre;
-    updated.push("genre");
-  }
-
-  // MBID
-  if (info.mbid && (overwrite || !artist.mbid)) {
-    updates.mbid = info.mbid;
-    updated.push("mbid");
-  }
-
-  // Image — Last.fm mostly returns placeholders now; keeping code for when we add Spotify fallback
-  const imageUrl = getBestImageUrl(info.image ?? []);
-  if (imageUrl && (overwrite || !artist.imageKey)) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 15_000);
-      const res = await fetch(imageUrl, {
-        signal: controller.signal,
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; TinnitusBot/1.0)" },
-      });
-      clearTimeout(timer);
-
-      if (res.ok) {
-        const arrayBuffer = await res.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-
-        const magicBytes = buffer.slice(0, 4);
-        const isJpeg = magicBytes[0] === 0xff && magicBytes[1] === 0xd8;
-        const isPng = magicBytes[0] === 0x89 && magicBytes[1] === 0x50;
-        const isWebp = magicBytes[0] === 0x52 && magicBytes[1] === 0x49;
-
-        if (isJpeg || isPng || isWebp) {
-          const ext = isPng ? ".png" : isWebp ? ".webp" : ".jpg";
-          const contentType = isPng ? "image/png" : isWebp ? "image/webp" : "image/jpeg";
-          const objectKey = `artists/${artistId}/image${ext}`;
-
-          await s3.send(
-            new PutObjectCommand({
-              Bucket: bucket,
-              Key: objectKey,
-              Body: buffer,
-              ContentType: contentType,
-              ContentLength: buffer.length,
-            }),
-          );
-
-          if (artist.imageKey && artist.imageKey !== objectKey) {
-            await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: artist.imageKey })).catch(() => {});
-          }
-
-          updates.imageKey = objectKey;
-          updated.push("image");
-        }
+  if (info) {
+    const bio = cleanBio(info.bio?.summary ?? info.bio?.content ?? "");
+    if (bio && (overwrite || !artist.bio)) {
+      updates.bio = bio;
+      updated.push("bio");
+    }
+    const genre = getGenre(info.tags?.tag ?? []);
+    if (genre && (overwrite || !artist.genre)) {
+      updates.genre = genre;
+      updated.push("genre");
+    }
+    if (info.mbid && (overwrite || !artist.mbid)) {
+      // mbid is unique — another artist row may already hold it (a duplicate to merge).
+      const holder = await db.query.artists.findFirst({ where: eq(schema.artists.mbid, info.mbid) });
+      if (!holder || holder.id === artistId) {
+        updates.mbid = info.mbid;
+        updated.push("mbid");
       }
-    } catch {
-      // Image download failed, continue without it
+    }
+  }
+
+  // Photo: Last.fm first if it ever returns a real one, then Deezer / Wikimedia.
+  if (overwrite || !artist.imageKey) {
+    const candidates: { url: string; source: string | null }[] = [];
+    const lastfmUrl = info ? getBestImageUrl(info.image ?? []) : null;
+    if (lastfmUrl) candidates.push({ url: lastfmUrl, source: null });
+    const found = await findArtistPhoto(artistName, (updates.mbid as string | undefined) ?? artist.mbid ?? mbid);
+    if (found) candidates.push(found);
+
+    for (const c of candidates) {
+      const stored = await storeArtistImage(artistId, c.url, artist.imageKey);
+      if (stored) {
+        updates.imageKey = stored;
+        updates.imageSource = c.source;
+        updated.push("image");
+        break;
+      }
     }
   }
 

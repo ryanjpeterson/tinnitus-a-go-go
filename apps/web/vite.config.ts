@@ -77,16 +77,40 @@ export default defineConfig({
             },
           },
           {
-            // Never cache auth responses — a stale /auth/me would keep showing
-            // a signed-out user as signed in.
-            urlPattern: /\/api\/(?!auth\/).*/i,
+            // Offline: every API response is kept so pages you've seen (or saved
+            // with "Save for offline") open without a connection. Network first,
+            // so online you always get fresh data; a slow network falls back to
+            // the saved copy after 4 s. Auth, admin and the offline bundle itself
+            // (it fills this cache) are never kept —
+            // a stale /auth/me would show a signed-out user as signed in.
+            urlPattern: /\/api\/(?!auth\/|admin\/|offline\/).*/i,
             handler: "NetworkFirst",
             options: {
               cacheName: "api-cache",
-              networkTimeoutSeconds: 10,
+              networkTimeoutSeconds: 4,
               expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 5, // 5 minutes
+                maxEntries: 3000,
+                maxAgeSeconds: 60 * 60 * 24 * 60, // 60 days
+                purgeOnQuotaError: true,
+              },
+              cacheableResponse: {
+                statuses: [200],
+              },
+            },
+          },
+          {
+            // Flyers, artist and venue photos: served from the device instantly
+            // (and offline), refreshed in the background — a replaced flyer keeps
+            // the same URL, so plain cache-first would show the old one for months.
+            // Videos are left out — too large to keep on a phone.
+            urlPattern: /\/tagg-media\/.*\.(?:jpe?g|png|webp|gif)(?:\?.*)?$/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "media-cache",
+              expiration: {
+                maxEntries: 3000,
+                maxAgeSeconds: 60 * 60 * 24 * 180, // 180 days
+                purgeOnQuotaError: true,
               },
               cacheableResponse: {
                 statuses: [0, 200],

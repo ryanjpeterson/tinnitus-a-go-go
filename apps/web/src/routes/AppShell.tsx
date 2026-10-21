@@ -137,6 +137,8 @@ export function AppShell() {
         </div>
       </header>
 
+      <OfflineBanner />
+
       <main className="mx-auto max-w-5xl px-4 pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-8">
         <Routes>
           {/* Handle legacy /app/* and /concerts routes with redirects */}
@@ -248,4 +250,22 @@ function BottomNavIcon({ name }: { name: string }) {
     default:
       return null;
   }
+}
+
+/** Shown while the device is offline: pages come from what's been saved on it. */
+function OfflineBanner() {
+  const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
+  useEffect(() => {
+    const on = () => setOffline(false);
+    const off = () => setOffline(true);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
+  if (!offline) return null;
+  return (
+    <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 border-b border-yellow-800/60 bg-yellow-950/95 px-4 py-2 text-center text-sm font-semibold text-yellow-200 backdrop-blur sm:top-[calc(4rem+env(safe-area-inset-top))]">
+      Offline — showing what's saved on this device. Changes need a connection.
+    </div>
+  );
 }

@@ -19,7 +19,7 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 // Blank fields on the kept record that the removed record may fill in.
 const FILLABLE: Record<EntityType, string[]> = {
   venue: ["city", "region", "country", "lat", "lng", "capacity", "image_key"],
-  artist: ["mbid", "genre", "image_key", "bio"],
+  artist: ["mbid", "genre", "image_key", "image_source", "bio"],
 };
 
 interface VenueSnapshot {
@@ -59,7 +59,7 @@ function fillPlan(type: EntityType, keep: Record<string, unknown>, remove: Recor
 
 const LABEL: Record<string, string> = {
   city: "city", region: "region", country: "country", lat: "coordinates", lng: "coordinates",
-  capacity: "capacity", image_key: "photo", mbid: "MusicBrainz id", genre: "genre", bio: "bio",
+  capacity: "capacity", image_key: "photo", image_source: "photo", mbid: "MusicBrainz id", genre: "genre", bio: "bio",
 };
 
 export async function previewMerge(type: EntityType, keepId: string, removeId: string): Promise<MergePreview> {

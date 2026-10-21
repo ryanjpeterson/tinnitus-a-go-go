@@ -21,6 +21,7 @@
     "../api/src/db/schema.ts",
     // Pure helpers shared with the API (no env/db imports)
     "../api/src/lib/setlistfm-core.ts",
-    "../api/src/lib/names.ts"
+    "../api/src/lib/names.ts",
+    "../api/src/lib/artist-photo.ts"
   ]
 }

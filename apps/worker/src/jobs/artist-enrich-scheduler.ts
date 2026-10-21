@@ -34,10 +34,12 @@ export async function runArtistEnrichScheduler(): Promise<{ queued: number }> {
       `.as("missing_count"),
     })
     .from(schema.artists)
-    .where(
-      sql`${schema.artists.bio} IS NULL OR ${schema.artists.imageKey} IS NULL`
-    )
-    .orderBy(sql`missing_count DESC`, schema.artists.createdAt)
+    // Missing something, and not looked up in the last 30 days — never-tried
+    // artists first, so each hourly batch reaches new artists instead of
+    // retrying the same ones (sources rarely change within a month).
+    .where(sql`(${schema.artists.bio} IS NULL OR ${schema.artists.imageKey} IS NULL)
+      AND (${schema.artists.enrichedAt} IS NULL OR ${schema.artists.enrichedAt} < now() - interval '30 days')`)
+    .orderBy(sql`${schema.artists.enrichedAt} ASC NULLS FIRST`, sql`missing_count DESC`, schema.artists.createdAt)
     .limit(BATCH_SIZE);
 
   if (artists.length === 0) {
@@ -56,8 +58,10 @@ export async function runArtistEnrichScheduler(): Promise<{ queued: number }> {
     },
     opts: {
       jobId: `enrich-${a.id}`,
-      // Don't add duplicate jobs for same artist
+      // Don't add duplicate jobs for same artist; removed when done so it can be queued again later.
       attempts: 2,
+      removeOnComplete: true,
+      removeOnFail: { age: 86_400 },
     },
   }));
 

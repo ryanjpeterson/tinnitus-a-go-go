@@ -7,6 +7,18 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Added — Offline app, artist photos, venue map panel
+
+- **Works offline** — the installed app keeps every API response it loads for 60 days (network first, falling back to the saved copy after 4 s on a slow connection) and every flyer and photo for 180 days (shown instantly from the device, refreshed in the background). On launch it quietly pre-loads the main lists (Stats, Past and Upcoming shows, Artists, Venues, Festivals, Map, Year in review). **Account → Offline → Save everything for offline** stores every show, artist, venue and festival page with its images. A banner says when you're offline. Auth and admin responses are never cached, and signing out still clears the saved data.
+- **Offline bundle API** — `GET /offline/bundle?part=…` returns all pages of one kind in a single request (four requests for the whole log instead of ~1,700, which the per-IP rate limit would have stretched to a quarter of an hour). Pages are produced by running the normal routes in-process, so they're identical to what the app fetches.
+- **Artist photos fill in automatically** — the hourly enrichment job now finds a photo for every artist without one: Deezer (exact name match, the listing with the most fans) and, failing that, the Wikimedia Commons image linked from the artist's MusicBrainz id. Photos are downloaded into storage, never hot-linked; `image_source` keeps where each came from. Bios, genres and MusicBrainz ids from Last.fm were already stored on each artist.
+- **Hourly enrichment moves through the list** — it used to re-queue the same 50 artists every hour (Last.fm never returns photos, so they always looked unfinished). Each artist now records `enriched_at` and is retried only after 30 days, never-tried artists first. Requires migration `0013_artist_photos.sql`.
+- **Map is full screen** — edge to edge between the app bar and tab bar, with a **Venues panel** in place of the title box: venues grouped by city (busiest first), searchable by venue or city. Tapping a city zooms the map to fit just its venues and lists them; tapping a venue zooms in and opens its card; **All** zooms back out. On phones the panel starts as a small "Venues" button.
+
+### Changed
+
+- **Festivals have no rating** — removed from the festival page's stats and attendance editor.
+
 ### Changed — Full-width banners, tap-to-view flyers, nicer cards
 
 - **Full-width banner** on show, artist, venue and festival pages (and Year in review): the blurred image now runs edge to edge with no frame or rounded corners and fades into the page, while its text lines up with the page column. A top bar holds the back button on the left and the **status flag on the right** (shown to everyone on show pages). Year in review uses the same banner over the year's first flyer, with the previous/next year arrows top-right.

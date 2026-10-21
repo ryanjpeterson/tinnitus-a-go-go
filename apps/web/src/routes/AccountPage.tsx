@@ -124,7 +124,7 @@ export function AccountPage() {
           <div className="space-y-3">
             <h2 className="h-section px-0.5">Admin</h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              <LinkCard to="/admin/imports" eyebrow="Data" title="CSV imports" sub="Upload and track imports" />
+              <LinkCard to="/admin/imports" eyebrow="Data" title="Import & export" sub="CSV import · CSV, JSON or Markdown export" />
               <LinkCard to="/admin/data" eyebrow="Data" title="Data cleanup" sub="Merge duplicates, fix gaps" />
             </div>
           </div>

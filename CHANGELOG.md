@@ -7,6 +7,11 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Changed — Export moved to admin, now CSV, JSON or Markdown
+
+- **Import & export** — the admin Imports page (Account → Import & export) now has an **Export** section next to the CSV import, with three downloads: **CSV** (same columns as the import file plus `setlist`; can be imported again), **JSON** (every show with venue, status, rating, notes, ticket, lineup and setlists) and **Markdown** (a readable log grouped by year, newest first, with each setlist under its show). The Export button is gone from the Shows page.
+- **API** — new `GET /users/me/export.json` and `GET /users/me/export.md` alongside `export.csv`; all three are built from one export model.
+
 ### Added — Automatic setlist finder
 
 - **Worker finds setlists on its own**, like artist enrichment: every hour it takes up to 30 artists on attended, past shows that have no setlist (newest shows first), searches setlist.fm by artist and date, and links a result only when the artist name and the venue's city match and the setlist has songs. Songs are stored straight away, so they show on the show page, artist page, Year in review and the CSV export. A setlist already linked to another show is left alone.

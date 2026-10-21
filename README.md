@@ -581,6 +581,7 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `GET`  | `/setlistfm/artist/:mbidOrName` | Search setlist.fm for an artist's recent setlists by MBID or name |
 | `GET`  | `/setlistfm/setlist/:id`      | Fetch a specific setlist by ID or full setlist.fm URL              |
 | `GET`  | `/users/me/export.csv`        | Full CSV export in the original import format, plus a `setlist` column (that artist's setlist for the show as JSON) |
+| `GET`  | `/users/me/export.json` · `/users/me/export.md` | The same log as JSON (every show with venue, status, notes, ticket, lineup and setlists) or as a readable Markdown log grouped by year |
 
 ### Admin (requires `is_admin = true`)
 

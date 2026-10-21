@@ -127,8 +127,6 @@ export function ConcertsPage() {
   const isAdmin = user?.isAdmin ?? false;
   const { searchParams, page, q, inputQ, onSearch, setFilter, setPage } = useListParams();
   const [addOpen, setAddOpen] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
 
   const statusParam = searchParams.get("status") as AttendanceStatus | null;
   // ?view= picks the tab; an old ?status= link lands on the tab that holds it.
@@ -155,40 +153,15 @@ export function ConcertsPage() {
 
   const { concerts = [], total = 0, totalPages = 0 } = concertsQuery.data ?? {};
 
-  const handleExport = async (): Promise<void> => {
-    setExporting(true);
-    setExportError(null);
-    try {
-      const blob = await api.exportCsv();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `concerts-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      // Safari starts the download asynchronously; revoking immediately can cancel it.
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    } catch {
-      setExportError("Export failed.");
-    } finally {
-      setExporting(false);
-    }
-  };
-
   return (
     <div>
       <PageHeader
         title="Shows"
         count={total}
         actions={isAdmin && (
-          <>
-            <Button variant="secondary" size="md" onClick={() => void handleExport()} disabled={exporting}
-              className="hidden rounded-full sm:inline-flex">
-              {exporting ? "Exporting…" : "Export CSV"}
-            </Button>
-            <Button size="md" onClick={() => setAddOpen(true)} className="rounded-full">
-              + Add show
-            </Button>
-          </>
+          <Button size="md" onClick={() => setAddOpen(true)} className="rounded-full">
+            + Add show
+          </Button>
         )}
       />
 
@@ -212,13 +185,6 @@ export function ConcertsPage() {
           <SelectField label="Sort" value={sort} options={SORT_OPTIONS[view]} className="w-44"
             onChange={(v) => setFilter({ sort: v })} />
         </div>
-        {isAdmin && (
-          <button onClick={() => void handleExport()} disabled={exporting}
-            className="text-sm font-semibold text-text-muted hover:text-accent-lime sm:hidden">
-            {exporting ? "Exporting…" : "Export CSV ↓"}
-          </button>
-        )}
-        {exportError && <p className="text-sm text-accent-pink">{exportError}</p>}
       </div>
 
       {concertsQuery.isLoading ? (

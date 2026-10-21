@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, type ImportRow } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { EmptyState, List, PageHeader, Section } from "@/components/ui/kit";
+import type { ExportFormat } from "@/lib/api";
 
 const STATUS_COLORS: Record<ImportRow["status"], string> = {
   queued: "text-text-muted",
@@ -62,7 +63,11 @@ export function ImportsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Admin" title="Imports" />
+      <PageHeader eyebrow="Admin" title="Import & export" />
+
+      <ExportSection />
+
+      <h2 className="h-section px-0.5">Import</h2>
       <p className="meta -mt-3">
         Upload a <span className="font-semibold text-text-base">Concerts - Shows.csv</span>. Rows are grouped by date and
         venue, artists and venues are matched or created, and past shows are marked attended.
@@ -146,5 +151,58 @@ export function ImportsPage() {
         )}
       </section>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Export
+// ─────────────────────────────────────────────────────────────────────────────
+
+const EXPORTS: { format: ExportFormat; label: string; sub: string }[] = [
+  { format: "csv", label: "CSV", sub: "Same columns as the import file, plus setlists — can be imported again" },
+  { format: "json", label: "JSON", sub: "Every show with venue, status, notes, ticket, lineup and setlists" },
+  { format: "md", label: "Markdown", sub: "A readable log grouped by year, with setlists" },
+];
+
+function ExportSection() {
+  const [busy, setBusy] = useState<ExportFormat | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const download = async (format: ExportFormat): Promise<void> => {
+    setBusy(format);
+    setError(null);
+    try {
+      const blob = await api.exportLog(format);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `concerts-${new Date().toISOString().slice(0, 10)}.${format}`;
+      a.click();
+      // Safari starts the download asynchronously; revoking immediately can cancel it.
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch {
+      setError("Export failed — try again.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <section className="space-y-3">
+      <h2 className="h-section px-0.5">Export</h2>
+      <List>
+        {EXPORTS.map((e) => (
+          <button key={e.format} type="button" onClick={() => void download(e.format)} disabled={busy !== null}
+            className="flex min-h-[64px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-2/70 disabled:opacity-60">
+            <span className="min-w-0">
+              <span className="block text-[15px] font-semibold">{e.label}</span>
+              <span className="meta block">{e.sub}</span>
+            </span>
+            <span className="shrink-0 text-sm font-semibold text-accent-lime">{busy === e.format ? "Preparing…" : "Download"}</span>
+          </button>
+        ))}
+      </List>
+      {error && <p className="text-sm text-accent-pink">{error}</p>}
+    </section>
   );
 }

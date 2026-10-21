@@ -190,8 +190,9 @@ export const api = {
     }),
   deleteConcert: (id: string) =>
     request<void>(`/concerts/${id}`, { method: "DELETE" }),
-  exportCsv: () =>
-    fetch("/api/users/me/export.csv", { credentials: "include" }).then((r) => {
+  /** Download the log as CSV (re-importable), JSON or Markdown. */
+  exportLog: (format: ExportFormat) =>
+    fetch(`/api/users/me/export.${format}`, { credentials: "include" }).then((r) => {
       if (!r.ok) throw new Error("Export failed");
       return r.blob();
     }),
@@ -907,6 +908,8 @@ export interface VenueDetailResponse {
     lastVisit: string | null;
   };
 }
+
+export type ExportFormat = "csv" | "json" | "md";
 
 // ─── Admin data cleanup ───────────────────────────────────────────────────────
 

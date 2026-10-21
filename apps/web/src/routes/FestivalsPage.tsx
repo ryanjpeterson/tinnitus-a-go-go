@@ -67,7 +67,7 @@ function NewFestivalCard({ festival }: { festival: FestivalListItem }) {
       aspect="portrait"
       contain
       sub={fmtDateRange(festival.startDate, festival.endDate) || venue || undefined}
-      meta={[venue && festival.startDate ? venue : null, plural(festival.artistCount, "artist")].filter(Boolean).join(" · ")}
+      meta={[venue && festival.startDate ? venue : null, festival.dayCount > 1 ? plural(festival.dayCount, "day") : null, plural(festival.artistCount, "artist")].filter(Boolean).join(" · ")}
       badge={festival.attendance ? <StatusBadge status={festival.attendance.status} /> : undefined}
     />
   );

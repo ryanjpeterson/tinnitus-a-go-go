@@ -38,7 +38,6 @@ export async function runHealthChecks(): Promise<HealthCheck[]> {
     rows(sql`
       select a.id, a.name, a.slug from artists a
       where not exists (select 1 from concert_artists ca where ca.artist_id = a.id)
-        and not exists (select 1 from festival_sets fs where fs.artist_id = a.id)
         and not exists (select 1 from setlists s where s.artist_id = a.id)
         and not exists (select 1 from photo_artists pa where pa.artist_id = a.id)
       order by a.name`),
@@ -140,8 +139,7 @@ export async function applyFix(check: string, value?: string, to?: string): Prom
       const r = await db.execute(sql`
         delete from artists a
         where not exists (select 1 from concert_artists ca where ca.artist_id = a.id)
-          and not exists (select 1 from festival_sets fs where fs.artist_id = a.id)
-          and not exists (select 1 from setlists s where s.artist_id = a.id)
+            and not exists (select 1 from setlists s where s.artist_id = a.id)
           and not exists (select 1 from photo_artists pa where pa.artist_id = a.id)
         returning id`);
       return [...r].length;

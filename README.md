@@ -572,6 +572,14 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | ------ | ----------------- | -------------------------------------------------------------- |
 | `GET`  | `/series`         | Paginated festival/series list. Query: `page`, `limit`         |
 | `GET`  | `/series/:slug`   | Series detail with day-by-day concert list and stats           |
+| `GET`    | `/festivals`                   | Festival list with day and artist counts and your attendance (summarised from the days) |
+| `GET`    | `/festivals/:slug`             | Festival detail built from its day shows: lineup (`sets`, `setsByDate`), each day's show and your status (`concertsByDate`), attendance summary, stats |
+| `POST`   | `/festivals`                   | Create a festival and its day shows (one per lineup date, or per festival date when no lineup is given) |
+| `PUT`    | `/festivals/:slug/sets`        | Replace the lineup across the days: dates pick the day, new dates add days, emptied days are removed unless they hold photos or setlists |
+| `PATCH`  | `/festivals/:slug/attendance`  | Set your attendance on every day at once. Body: `status` |
+| `DELETE` | `/festivals/:slug`             | Delete the festival; its days stay as ordinary shows |
+
+A festival is a container of day shows (`concerts.type = 'festival_day'`). Each day holds its own lineup and attendance; nothing about lineup or attendance is stored on the festival itself.
 
 ### Integrations & export
 
@@ -680,11 +688,11 @@ docker compose exec api pnpm db:migrate
 | `invites` | Invite codes (hashed); tracks who issued and who used |
 | `concerts` | Canonical show record: date, type, venue FK, series FK, flyer, flyer hash, headliner hint |
 | `concert_attendees` | Per-user junction: status, rating, notes, ticket price, timestamps |
-| `concert_artists` | Lineup: artist FK, role (`headliner` / `co_headliner` / `support`), set_order, appearance_notes. `headliner` and `co_headliner` are mutually exclusive in any one lineup |
+| `concert_artists` | Lineup: artist FK, role (`headliner` / `co_headliner` / `support`), set_order, appearance_notes, stage_name (festival days). `headliner` and `co_headliner` are mutually exclusive in any one lineup |
 | `artists` | Canonical artist: name, slug, genre, bio, MusicBrainz ID, image key |
 | `venues` | Canonical venue: name, slug, city, region, country, lat/lng, capacity, image key |
 | `venue_aliases` | Historical names for a venue (Air Canada Centre → Scotiabank Arena). Linked to `canonical_venue_id`; alias slugs redirect to canonical at the API level |
-| `event_series` | Festival / tour series: name, slug, year |
+| `event_series` | Festival: name, slug, year, venue, dates, flyer. A container — its lineup and attendance live on its day shows (`concerts` with `type = 'festival_day'`) |
 | `photos` | Concert photos/videos: MinIO key, kind, dimensions, set_order, content_hash, processing variants |
 | `photo_artists` | Junction: which artists appear in which photos (`photo_id`, `artist_id`) |
 | `site_copy` | CMS key/value store for editable UI copy (key PK, value, description, section, updated_at) |
@@ -723,14 +731,16 @@ Applied migrations:
 | `0011_data_cleanup.sql` | `merge_log` (each duplicate merge with an undo snapshot) and `duplicate_dismissals` ("not a duplicate" pairs) |
 | `0012_setlist_lookups.sql` | `setlist_lookups`: which (show, artist) pairs the automatic setlist finder has searched, with attempts and result |
 | `0013_artist_photos.sql` | `enriched_at` and `image_source` on artists (automatic photos; hourly enrichment moves through the list) |
+| `0014_festival_days_single_source.sql` | Festival days become the only source for festival lineups and attendance: `stage_name` on `concert_artists`; anything only `festival_sets` / `festival_attendees` held is copied onto the days, then both tables are dropped |
 
-0005–0013 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
+0005–0014 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
 
 ```bash
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0010_setlist_song_sets.sql
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0011_data_cleanup.sql
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0012_setlist_lookups.sql
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0013_artist_photos.sql
+docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0014_festival_days_single_source.sql
 docker compose exec api npx tsx src/scripts/cache-setlists.ts
 ```
 

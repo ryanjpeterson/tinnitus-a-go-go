@@ -456,15 +456,9 @@ export const api = {
     request<void>(`/festivals/${slug}`, { method: "DELETE" }),
   patchFestivalAttendance: (
     slug: string,
-    body: {
-      status?: AttendanceStatus;
-      rating?: number | null;
-      personalNotes?: string | null;
-      ticketPricePaid?: number | null;
-      ticketPriceCurrency?: string | null;
-    },
+    body: { status: AttendanceStatus },
   ) =>
-    request<{ ok: true }>(`/festivals/${slug}/attendance`, {
+    request<{ ok: true; days: number }>(`/festivals/${slug}/attendance`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
@@ -479,7 +473,7 @@ export const api = {
       appearanceNotes?: string | null;
     }>,
   ) =>
-    request<{ ok: true; count: number }>(`/festivals/${slug}/sets`, {
+    request<{ ok: true; count: number; days: number }>(`/festivals/${slug}/sets`, {
       method: "PUT",
       body: JSON.stringify({ sets }),
     }),
@@ -1037,14 +1031,11 @@ export interface FestivalVenue {
   lng?: number | null;
 }
 
+/** A festival's attendance, summarised from its days (attended if any day was). */
 export interface FestivalAttendance {
   status: AttendanceStatus;
-  rating: number | null;
-  personalNotes?: string | null;
-  ticketPricePaid?: number | null;
-  ticketPriceCurrency?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
+  daysAttended: number;
+  totalDays: number;
 }
 
 export interface FestivalListItem {
@@ -1057,10 +1048,8 @@ export interface FestivalListItem {
   flyerUrl: string | null;
   venue: FestivalVenue | null;
   artistCount: number;
-  attendance?: {
-    status: AttendanceStatus;
-    rating: number | null;
-  };
+  dayCount: number;
+  attendance: FestivalAttendance | null;
 }
 
 export interface FestivalListResponse {
@@ -1080,6 +1069,8 @@ export interface FestivalSetArtist {
 
 export interface FestivalSet {
   id: string;
+  /** The day show this set belongs to. */
+  concertId: string;
   performanceDate: string | null;
   stageName: string | null;
   setOrder: number | null;
@@ -1107,7 +1098,8 @@ export interface FestivalDetailResponse {
   festival: FestivalDetail;
   sets: FestivalSet[];
   setsByDate: Record<string, FestivalSet[]>;
-  concertsByDate: Record<string, { id: string; slug: string | null }>;
+  /** Every day of the festival, in date order — the day's show and your attendance. */
+  concertsByDate: Record<string, { id: string; slug: string; status: AttendanceStatus | null }>;
   attendance: FestivalAttendance | null;
   stats: {
     totalArtists: number;

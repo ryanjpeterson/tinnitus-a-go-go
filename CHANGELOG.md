@@ -7,6 +7,16 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Changed — Festivals are made of their days
+
+- **One source for festival lineups and attendance.** A festival is now a container of day shows: each day is a show (like any multi-artist show) with its own lineup, attendance, photos and setlists, and the festival page is built from its days. Previously the lineup and attendance were stored twice — once on the festival (`festival_sets`, `festival_attendees`) and once on the day shows — and editing one never updated the other.
+- **Festival page** — the full lineup, "All days" and "Day N" views now come from the day shows; each day shows your status for it (and links to that day's show); a **Days attended** stat (e.g. 2/3) appears on multi-day festivals; and artists show their stage when one is set. The admin **Attendance** card sets every day at once (open a day to change just that one) — it replaces the old festival attendance form, which never showed saved values.
+- **Editing a festival lineup edits its days** — each artist's date picks the day; a new date adds that day as a show (starting with your attendance for the festival), and a day left with no artists is removed unless it has photos or setlists.
+- **Creating a festival creates its days** — one per date in the lineup, or one per date of the festival when no lineup is given yet, each with the attendance you chose.
+- **Deleting a festival keeps its days** as ordinary shows, with their attendance, photos and setlists.
+- **Festivals list** — cards show the number of days and your attendance status, worked out from the days.
+- Stage moves onto the day's lineup row (`concert_artists.stage_name`). Requires migration `0014_festival_days_single_source.sql`, which carries anything only the old tables held onto the days before dropping them.
+
 ### Fixed
 
 - **Artist thumbnails on the Artists list didn't load** — the list sent the photo's storage key rather than its URL, so the image link was broken while the artist page (which gets the URL) showed the photo. `GET /artists` now includes `imageUrl` and the list uses it.

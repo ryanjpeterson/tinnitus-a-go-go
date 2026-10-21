@@ -2,18 +2,18 @@
  * Festival routes — CRUD for festivals as first-class entities.
  *
  *   GET    /festivals                    list the calling user's festivals (paginated)
- *   GET    /festivals/:slug              festival detail with sets and attendance
- *   POST   /festivals                    create a festival + attendance
+ *   GET    /festivals/:slug              festival detail: its days, lineup and attendance
+ *   POST   /festivals                    create a festival and its days
  *   PATCH  /festivals/:slug              update festival info
- *   DELETE /festivals/:slug              remove user's attendance from festival
+ *   DELETE /festivals/:slug              delete the festival (its days stay, as shows)
  *   POST   /festivals/:slug/flyer        upload flyer image
  *   POST   /festivals/:slug/flyer/url    upload flyer from URL
  *   DELETE /festivals/:slug/flyer        remove flyer
- *   PUT    /festivals/:slug/sets         replace lineup (sets)
- *   PATCH  /festivals/:slug/attendance   update attendance details
+ *   PUT    /festivals/:slug/sets         replace the lineup across its days
+ *   PATCH  /festivals/:slug/attendance   set attendance on every day at once
  *
- * All routes require an authenticated session (requireUser preHandler).
- * Festival records are shared; attendee rows are per-user.
+ * A festival is a container of day shows (concerts.type = 'festival_day'); the
+ * days hold the lineup and attendance (see lib/festival-days.ts).
  */
 
 import { createHash } from "node:crypto";
@@ -24,7 +24,8 @@ import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { db, schema } from "../db/client.js";
 import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
-import { requireUser, requireAdmin } from "../auth/middleware.js";
+import { requireAdmin } from "../auth/middleware.js";
+import { dateRange, ensureFestivalDay, festivalAttendance, loadFestivalDays } from "../lib/festival-days.js";
 import { slugify } from "@tagg/shared";
 
 /** Direct public URL for a MinIO object */
@@ -113,34 +114,27 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
 
     const total = countRows[0]?.total ?? 0;
 
-    // Get artist counts for each festival
-    const festivalIds = rows.map((r) => r.id);
-    const artistCounts = festivalIds.length > 0
-      ? await db
-          .select({
-            festivalId: schema.festivalSets.festivalId,
-            count: sql<number>`count(distinct ${schema.festivalSets.artistId})::int`,
-          })
-          .from(schema.festivalSets)
-          .where(inArray(schema.festivalSets.festivalId, festivalIds))
-          .groupBy(schema.festivalSets.festivalId)
-      : [];
+    // Artist counts and the caller's attendance, from each festival's days
+    const days = await loadFestivalDays(rows.map((r) => r.id), req.user?.id ?? null);
 
-    const artistCountMap = new Map(artistCounts.map((r) => [r.festivalId, r.count]));
-
-    const festivals = rows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      slug: r.slug,
-      year: r.year,
-      startDate: r.startDate,
-      endDate: r.endDate,
-      flyerUrl: r.flyerKey ? mediaUrl(r.flyerKey) : null,
-      venue: r.venueId
-        ? { id: r.venueId, slug: r.venueSlug!, name: r.venueName!, city: r.venueCity, region: r.venueRegion }
-        : null,
-      artistCount: artistCountMap.get(r.id) ?? 0,
-    }));
+    const festivals = rows.map((r) => {
+      const own = days.filter((d) => d.festivalId === r.id);
+      return {
+        id: r.id,
+        name: r.name,
+        slug: r.slug,
+        year: r.year,
+        startDate: r.startDate,
+        endDate: r.endDate,
+        flyerUrl: r.flyerKey ? mediaUrl(r.flyerKey) : null,
+        venue: r.venueId
+          ? { id: r.venueId, slug: r.venueSlug!, name: r.venueName!, city: r.venueCity, region: r.venueRegion }
+          : null,
+        artistCount: new Set(own.flatMap((d) => d.artists.map((a) => a.id))).size,
+        dayCount: own.length,
+        attendance: festivalAttendance(own),
+      };
+    });
 
     return reply.send({
       festivals,
@@ -168,77 +162,27 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(404).send({ error: "Festival not found." });
     }
 
-    // Get sets with artist info
-    const setsRows = await db
-      .select({
-        id: schema.festivalSets.id,
-        performanceDate: schema.festivalSets.performanceDate,
-        stageName: schema.festivalSets.stageName,
-        setOrder: schema.festivalSets.setOrder,
-        appearanceNotes: schema.festivalSets.appearanceNotes,
-        artistId: schema.artists.id,
-        artistName: schema.artists.name,
-        artistSlug: schema.artists.slug,
-        artistImageKey: schema.artists.imageKey,
-      })
-      .from(schema.festivalSets)
-      .innerJoin(schema.artists, eq(schema.festivalSets.artistId, schema.artists.id))
-      .where(eq(schema.festivalSets.festivalId, festival.id))
-      .orderBy(schema.festivalSets.performanceDate, schema.festivalSets.setOrder);
+    // Lineup and attendance come from the festival's day shows.
+    const days = await loadFestivalDays([festival.id], req.user?.id ?? null);
 
-    const sets = setsRows.map((s) => ({
-      id: s.id,
-      performanceDate: s.performanceDate,
-      stageName: s.stageName,
-      setOrder: s.setOrder,
-      appearanceNotes: s.appearanceNotes,
-      artist: {
-        id: s.artistId,
-        name: s.artistName,
-        slug: s.artistSlug,
-        imageUrl: s.artistImageKey ? mediaUrl(s.artistImageKey) : null,
-      },
-    }));
+    const sets = days.flatMap((d) =>
+      d.artists.map((a) => ({
+        id: `${d.id}:${a.id}`,
+        concertId: d.id,
+        performanceDate: d.date,
+        stageName: a.stageName,
+        setOrder: a.setOrder,
+        appearanceNotes: a.appearanceNotes,
+        artist: { id: a.id, name: a.name, slug: a.slug, imageUrl: a.imageKey ? mediaUrl(a.imageKey) : null },
+      })),
+    );
 
-    // Group sets by date for easier frontend rendering
-    const setsByDate = new Map<string, typeof sets>();
-    for (const set of sets) {
-      const dateKey = set.performanceDate ?? "unknown";
-      const list = setsByDate.get(dateKey) ?? [];
-      list.push(set);
-      setsByDate.set(dateKey, list);
-    }
-
-    // Find concert IDs for each date (from legacy festival_day concerts)
-    const concertsByDate = new Map<string, { id: string; slug: string | null }>();
-    const dateKeys = Array.from(setsByDate.keys()).filter((d) => d !== "unknown");
-    if (dateKeys.length > 0) {
-      const concertRows = await db
-        .select({
-          id: schema.concerts.id,
-          date: schema.concerts.date,
-          venueSlug: schema.venues.slug,
-          seriesSlug: schema.eventSeries.slug,
-        })
-        .from(schema.concerts)
-        .leftJoin(schema.venues, eq(schema.concerts.venueId, schema.venues.id))
-        .leftJoin(schema.eventSeries, eq(schema.concerts.eventSeriesId, schema.eventSeries.id))
-        .where(
-          and(
-            eq(schema.concerts.eventSeriesId, festival.id),
-            eq(schema.concerts.type, "festival_day"),
-            inArray(schema.concerts.date, dateKeys),
-          ),
-        );
-      for (const row of concertRows) {
-        // Generate a readable slug from series-date
-        const slug = row.seriesSlug
-          ? `${row.seriesSlug}-${row.date}`
-          : row.venueSlug
-          ? `${row.venueSlug}-${row.date}`
-          : null;
-        concertsByDate.set(row.date, { id: row.id, slug });
-      }
+    // One entry per day, in date order — including days with no artists yet.
+    const setsByDate: Record<string, typeof sets> = {};
+    const concertsByDate: Record<string, { id: string; slug: string; status: string | null }> = {};
+    for (const d of days) {
+      setsByDate[d.date] = sets.filter((s) => s.concertId === d.id);
+      concertsByDate[d.date] = { id: d.id, slug: `${festival.slug}-${d.date}`, status: d.status };
     }
 
     return reply.send({
@@ -269,11 +213,12 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
         updatedAt: festival.updatedAt,
       },
       sets,
-      setsByDate: Object.fromEntries(setsByDate),
-      concertsByDate: Object.fromEntries(concertsByDate),
+      setsByDate,
+      concertsByDate,
+      attendance: festivalAttendance(days),
       stats: {
         totalArtists: new Set(sets.map((s) => s.artist.id)).size,
-        totalDays: setsByDate.size,
+        totalDays: days.length,
       },
     });
   });
@@ -374,51 +319,62 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(500).send({ error: "Failed to create festival." });
     }
 
-    // Create attendance record
-    await db
-      .insert(schema.festivalAttendees)
-      .values({
-        userId,
-        festivalId: festival.id,
-        status: body.status,
-        personalNotes: body.personalNotes ?? null,
-        ticketPricePaid: body.ticketPricePaid ?? null,
-        ticketPriceCurrency: body.ticketPriceCurrency ?? null,
-      })
-      .onConflictDoUpdate({
-        target: [schema.festivalAttendees.userId, schema.festivalAttendees.festivalId],
-        set: {
-          status: body.status,
-          personalNotes: body.personalNotes ?? null,
-          ticketPricePaid: body.ticketPricePaid ?? null,
-          ticketPriceCurrency: body.ticketPriceCurrency ?? null,
-          updatedAt: new Date(),
-        },
-      });
-
-    // Add initial lineup if provided
-    if (body.artists && body.artists.length > 0) {
-      for (let i = 0; i < body.artists.length; i++) {
-        const a = body.artists[i]!;
-        const artistSlug = slugify(a.name);
-        const [artist] = await db
-          .insert(schema.artists)
-          .values({ name: a.name, slug: artistSlug })
-          .onConflictDoUpdate({ target: schema.artists.slug, set: { name: a.name } })
-          .returning({ id: schema.artists.id });
-
-        if (artist) {
-          await db.insert(schema.festivalSets).values({
-            festivalId: festival.id,
-            artistId: artist.id,
-            performanceDate: a.performanceDate ?? null,
-            stageName: a.stageName ?? null,
-            setOrder: a.setOrder ?? i,
-            appearanceNotes: a.appearanceNotes ?? null,
-          });
-        }
-      }
+    // Days: one per date the lineup names (undated artists play the first
+    // day); with no lineup yet, one per date of the festival, so attendance
+    // has somewhere to live and artists can be added later.
+    const artists = body.artists ?? [];
+    const firstDay = body.startDate ?? artists.find((a) => a.performanceDate)?.performanceDate;
+    if (artists.length > 0 && !firstDay && artists.some((a) => !a.performanceDate)) {
+      return reply.code(400).send({ error: "Give the festival a start date, or a date for every artist." });
     }
+    const byDate = new Map<string, typeof artists>();
+    for (const a of artists) {
+      const date = a.performanceDate ?? firstDay!;
+      byDate.set(date, [...(byDate.get(date) ?? []), a]);
+    }
+    if (byDate.size === 0 && body.startDate) {
+      for (const date of dateRange(body.startDate, body.endDate)) byDate.set(date, []);
+    }
+
+    await db.transaction(async (tx) => {
+      let first = true;
+      for (const date of [...byDate.keys()].sort()) {
+        const day = await ensureFestivalDay(tx, { id: festival.id, venueId }, date, userId);
+        const dayArtists = byDate.get(date)!;
+        for (const [i, a] of dayArtists.entries()) {
+          const [artist] = await tx
+            .insert(schema.artists)
+            .values({ name: a.name, slug: slugify(a.name) })
+            .onConflictDoUpdate({ target: schema.artists.slug, set: { name: a.name } })
+            .returning({ id: schema.artists.id });
+          if (!artist) continue;
+          await tx
+            .insert(schema.concertArtists)
+            .values({
+              concertId: day.id,
+              artistId: artist.id,
+              role: i === 0 ? "headliner" : "support",
+              setOrder: i,
+              stageName: a.stageName ?? null,
+              appearanceNotes: a.appearanceNotes ?? null,
+            })
+            .onConflictDoNothing();
+        }
+        // Attendance on every day; notes and ticket price once, on the first.
+        await tx
+          .insert(schema.concertAttendees)
+          .values({
+            userId,
+            concertId: day.id,
+            status: body.status,
+            personalNotes: first ? body.personalNotes ?? null : null,
+            ticketPricePaid: first ? body.ticketPricePaid ?? null : null,
+            ticketPriceCurrency: first ? body.ticketPriceCurrency ?? null : null,
+          })
+          .onConflictDoNothing();
+        first = false;
+      }
+    });
 
     return reply.code(201).send({ festivalId: festival.id, slug: festivalSlug });
   });
@@ -519,24 +475,22 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(404).send({ error: "Festival not found." });
     }
 
-    // Delete attendees, sets, and the festival itself
-    await db.delete(schema.festivalAttendees).where(eq(schema.festivalAttendees.festivalId, festival.id));
-    await db.delete(schema.festivalSets).where(eq(schema.festivalSets.festivalId, festival.id));
-    await db.delete(schema.eventSeries).where(eq(schema.eventSeries.id, festival.id));
+    // Its days stay — with their attendance, photos and setlists — as ordinary shows.
+    await db.transaction(async (tx) => {
+      await tx
+        .update(schema.concerts)
+        .set({ type: "concert", eventSeriesId: null, updatedAt: new Date() })
+        .where(eq(schema.concerts.eventSeriesId, festival.id));
+      await tx.delete(schema.eventSeries).where(eq(schema.eventSeries.id, festival.id));
+    });
 
     return reply.code(204).send();
   });
 
   // ── PATCH /festivals/:slug/attendance ──────────────────────────────────────
-  // Update user's attendance details
+  // Set the caller's attendance on every day of the festival at once.
 
-  const attendanceBody = z.object({
-    status: z.enum(attendanceStatuses).optional(),
-    rating: z.number().int().min(1).max(10).nullable().optional(),
-    personalNotes: z.string().max(4096).nullable().optional(),
-    ticketPricePaid: z.number().int().min(0).nullable().optional(),
-    ticketPriceCurrency: z.string().length(3).nullable().optional(),
-  }).refine((d) => Object.keys(d).length > 0, "Provide at least one field to update.");
+  const attendanceBody = z.object({ status: z.enum(attendanceStatuses) });
 
   app.patch("/festivals/:slug/attendance", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
@@ -545,43 +499,31 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "Invalid input.", details: parsed.error.flatten() });
     }
 
-    const userId = req.user!.id;
-    const body = parsed.data;
+    const festival = await db.query.eventSeries.findFirst({ where: eq(schema.eventSeries.slug, slug) });
+    if (!festival) return reply.code(404).send({ error: "Festival not found." });
 
-    const festival = await db.query.eventSeries.findFirst({
-      where: eq(schema.eventSeries.slug, slug),
-    });
-    if (!festival) {
-      return reply.code(404).send({ error: "Festival not found." });
-    }
+    const days = await db
+      .select({ id: schema.concerts.id })
+      .from(schema.concerts)
+      .where(and(eq(schema.concerts.eventSeriesId, festival.id), eq(schema.concerts.type, "festival_day")));
+    if (days.length === 0) return reply.code(409).send({ error: "This festival has no days yet — add its lineup first." });
 
-    const updates: Record<string, unknown> = { updatedAt: new Date() };
-    if (body.status !== undefined) updates.status = body.status;
-    if (body.rating !== undefined) updates.rating = body.rating;
-    if (body.personalNotes !== undefined) updates.personalNotes = body.personalNotes;
-    if (body.ticketPricePaid !== undefined) updates.ticketPricePaid = body.ticketPricePaid;
-    if (body.ticketPriceCurrency !== undefined) updates.ticketPriceCurrency = body.ticketPriceCurrency;
+    const { status } = parsed.data;
+    await db
+      .insert(schema.concertAttendees)
+      .values(days.map((d) => ({ userId: req.user!.id, concertId: d.id, status })))
+      .onConflictDoUpdate({
+        target: [schema.concertAttendees.userId, schema.concertAttendees.concertId],
+        set: { status, updatedAt: new Date() },
+      });
 
-    const result = await db
-      .update(schema.festivalAttendees)
-      .set(updates)
-      .where(
-        and(
-          eq(schema.festivalAttendees.userId, userId),
-          eq(schema.festivalAttendees.festivalId, festival.id),
-        ),
-      )
-      .returning();
-
-    if (result.length === 0) {
-      return reply.code(404).send({ error: "Not attending this festival." });
-    }
-
-    return reply.send({ ok: true });
+    return reply.send({ ok: true, days: days.length });
   });
 
   // ── PUT /festivals/:slug/sets ──────────────────────────────────────────────
-  // Replace the entire lineup
+  // Replace the lineup. Each entry's date says which day it plays; a date with
+  // no day yet gets one, and a day left with no artists is removed unless it
+  // holds photos or setlists.
 
   const putSetsBody = z.object({
     sets: z
@@ -595,7 +537,7 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
           appearanceNotes: z.string().max(1024).nullable().optional(),
         }).refine((d) => d.artistId || d.artistName, "Each entry needs artistId or artistName"),
       )
-      .max(200),
+      .max(300),
   });
 
   app.put("/festivals/:slug/sets", { preHandler: [requireAdmin] }, async (req, reply) => {
@@ -613,11 +555,19 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const { sets } = parsed.data;
+    const userId = req.user!.id;
+    const existingDays = await loadFestivalDays([festival.id], userId);
+
+    // Undated entries play the first day.
+    const firstDay = festival.startDate ?? existingDays[0]?.date ?? null;
+    if (!firstDay && sets.some((s) => !s.performanceDate)) {
+      return reply.code(400).send({ error: "Give each artist a date, or set the festival's start date." });
+    }
 
     // Validate explicit artistIds
     const byIdArtists = sets.filter((s) => s.artistId);
     if (byIdArtists.length > 0) {
-      const ids = byIdArtists.map((a) => a.artistId!);
+      const ids = [...new Set(byIdArtists.map((a) => a.artistId!))];
       const found = await db
         .select({ id: schema.artists.id })
         .from(schema.artists)
@@ -628,42 +578,64 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
     }
 
     // Resolve all artist IDs (upsert by name)
-    const resolvedIds = new Map<number, string>();
-    for (let i = 0; i < sets.length; i++) {
-      const s = sets[i]!;
-      if (s.artistId) {
-        resolvedIds.set(i, s.artistId);
-      } else if (s.artistName) {
-        const artistSlug = slugify(s.artistName);
+    const resolved: { s: (typeof sets)[number]; artistId: string; date: string }[] = [];
+    for (const s of sets) {
+      let artistId = s.artistId;
+      if (!artistId && s.artistName) {
         const [artist] = await db
           .insert(schema.artists)
-          .values({ name: s.artistName, slug: artistSlug })
+          .values({ name: s.artistName, slug: slugify(s.artistName) })
           .onConflictDoUpdate({ target: schema.artists.slug, set: { name: s.artistName } })
           .returning({ id: schema.artists.id });
-        if (artist) resolvedIds.set(i, artist.id);
+        artistId = artist?.id;
       }
+      if (artistId) resolved.push({ s, artistId, date: s.performanceDate ?? firstDay! });
     }
 
-    // Replace atomically
+    const byDate = new Map<string, typeof resolved>();
+    for (const r of resolved) {
+      const list = byDate.get(r.date) ?? [];
+      // An artist plays a day once.
+      if (!list.some((x) => x.artistId === r.artistId)) list.push(r);
+      byDate.set(r.date, list);
+    }
+
+    // A new day starts with the caller's attendance for the festival as a whole.
+    const carried = festivalAttendance(existingDays)?.status;
+
     await db.transaction(async (tx) => {
-      await tx.delete(schema.festivalSets).where(eq(schema.festivalSets.festivalId, festival.id));
-      const rows = sets
-        .map((s, i) => ({ s, i }))
-        .filter(({ i }) => resolvedIds.has(i))
-        .map(({ s, i }) => ({
-          festivalId: festival.id,
-          artistId: resolvedIds.get(i)!,
-          performanceDate: s.performanceDate ?? null,
-          stageName: s.stageName ?? null,
-          setOrder: s.setOrder ?? i,
-          appearanceNotes: s.appearanceNotes ?? null,
-        }));
-      if (rows.length > 0) {
-        await tx.insert(schema.festivalSets).values(rows);
+      for (const [date, entries] of byDate) {
+        const day = await ensureFestivalDay(tx, festival, date, userId);
+        const roles = new Map(
+          (existingDays.find((d) => d.id === day.id)?.artists ?? []).map((a) => [a.id, a.role]),
+        );
+        await tx.delete(schema.concertArtists).where(eq(schema.concertArtists.concertId, day.id));
+        await tx.insert(schema.concertArtists).values(
+          entries.map(({ s, artistId }, i) => ({
+            concertId: day.id,
+            artistId,
+            role: (roles.get(artistId) ?? (i === 0 ? "headliner" : "support")) as typeof schema.concertArtists.$inferInsert.role,
+            setOrder: i,
+            stageName: s.stageName ?? null,
+            appearanceNotes: s.appearanceNotes ?? null,
+          })),
+        );
+        if (day.created && carried) {
+          await tx.insert(schema.concertAttendees).values({ userId, concertId: day.id, status: carried }).onConflictDoNothing();
+        }
+      }
+
+      // Days no longer in the lineup.
+      for (const d of existingDays.filter((d) => !byDate.has(d.date))) {
+        await tx.delete(schema.concertArtists).where(eq(schema.concertArtists.concertId, d.id));
+        await tx.execute(sql`
+          delete from concerts c where c.id = ${d.id}
+            and not exists (select 1 from photos p where p.concert_id = c.id)
+            and not exists (select 1 from setlists s where s.concert_id = c.id)`);
       }
     });
 
-    return reply.send({ ok: true, count: resolvedIds.size });
+    return reply.send({ ok: true, count: resolved.length, days: byDate.size });
   });
 
   // ── POST /festivals/:slug/flyer ────────────────────────────────────────────

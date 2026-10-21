@@ -1,5 +1,9 @@
 /**
- * FestivalDetailPage — festival detail with venue, flyer, lineup/sets, and attendance.
+ * FestivalDetailPage — a festival and the days it's made of.
+ *
+ * Each day is a show (with its own lineup, attendance, photos and setlists);
+ * this page gathers them: the whole lineup, each day's lineup, and which days
+ * you went to. Editing the lineup here edits the days.
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -30,19 +34,10 @@ function fmtDateShort(iso: string | null): string {
   });
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  attended: "border-lime-700 bg-lime-950 text-accent-lime",
-  attending: "border-yellow-600 bg-yellow-950 text-yellow-400",
-  interested: "border-purple-700 bg-purple-950 text-purple-400",
-  missed: "border-red-700 bg-red-950 text-red-400",
-  cancelled: "border-gray-600 bg-gray-800 text-gray-400",
-  dismissed: "border-gray-600 bg-gray-800 text-gray-500",
-};
-
 const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
+  { value: "attended",   label: "Attended",   active: "border-lime-700    bg-lime-950    text-accent-lime"  },
   { value: "attending",  label: "Attending",  active: "border-yellow-600  bg-yellow-950  text-yellow-400"  },
   { value: "interested", label: "Interested", active: "border-purple-700  bg-purple-950  text-purple-400"  },
-  { value: "attended",   label: "Attended",   active: "border-lime-700    bg-lime-950    text-accent-lime"  },
   { value: "missed",     label: "Missed",     active: "border-red-700     bg-red-950     text-red-400"      },
 ];
 
@@ -153,11 +148,8 @@ export function FestivalDetailPage() {
   }>>([]);
   const [savingLineup, setSavingLineup] = useState(false);
 
-  // Attendance editing
-  const [editingAttendance, setEditingAttendance] = useState(false);
-  const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>("interested");
-  const [attendanceNotes, setAttendanceNotes] = useState("");
-  const [savingAttendance, setSavingAttendance] = useState(false);
+  // Attendance: set every day at once (single days are set on their show page)
+  const [savingAttendance, setSavingAttendance] = useState<AttendanceStatus | null>(null);
 
   // Flyer upload
   const flyerFileRef = useRef<HTMLInputElement>(null);
@@ -249,7 +241,10 @@ export function FestivalDetailPage() {
           setOrder: i,
         })),
       );
-      await qc.invalidateQueries({ queryKey: ["festivals", slug] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["festivals"] }),
+        qc.invalidateQueries({ queryKey: ["concerts"] }),
+      ]);
       setEditingLineup(false);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to save lineup.");
@@ -258,25 +253,19 @@ export function FestivalDetailPage() {
     }
   };
 
-  const startEditAttendance = () => {
-    setAttendanceStatus(attendance?.status ?? "interested");
-    setAttendanceNotes(attendance?.personalNotes ?? "");
-    setEditingAttendance(true);
-  };
-
-  const saveAttendance = async () => {
-    setSavingAttendance(true);
+  const setEveryDay = async (status: AttendanceStatus) => {
+    setSavingAttendance(status);
     try {
-      await api.patchFestivalAttendance(festival.slug, {
-        status: attendanceStatus,
-        personalNotes: attendanceNotes.trim() || null,
-      });
-      await qc.invalidateQueries({ queryKey: ["festivals", slug] });
-      setEditingAttendance(false);
+      await api.patchFestivalAttendance(festival.slug, { status });
+      // Days are shows: their lists and pages change too.
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["festivals"] }),
+        qc.invalidateQueries({ queryKey: ["concerts"] }),
+      ]);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to save.");
     } finally {
-      setSavingAttendance(false);
+      setSavingAttendance(null);
     }
   };
 
@@ -321,18 +310,19 @@ export function FestivalDetailPage() {
     }
   };
 
-  const handleRemoveAttendance = async () => {
-    if (!window.confirm("Remove yourself from this festival?")) return;
+  const handleDeleteFestival = async () => {
+    if (!window.confirm(`Delete ${festival.name}? Its days stay, as ordinary shows.`)) return;
     try {
       await api.deleteFestival(festival.slug);
-      await qc.invalidateQueries({ queryKey: ["festivals"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["festivals"] }),
+        qc.invalidateQueries({ queryKey: ["concerts"] }),
+      ]);
       navigate("/festivals");
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to remove.");
     }
   };
-
-  const statusColor = attendance ? STATUS_COLORS[attendance.status] ?? "" : "";
 
   const flyerBusy = uploadingFlyer || flyerUrlImporting;
 
@@ -460,90 +450,44 @@ export function FestivalDetailPage() {
       )}
 
       {/* Stats */}
-      {/* Festivals aren't rated — just how big they were. */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Festivals aren't rated — just how big they were, and how much of it you saw. */}
+      <div className={clsx("grid gap-3", attendance && stats.totalDays > 1 ? "grid-cols-3" : "grid-cols-2")}>
         <StatTile label="Artists" value={stats.totalArtists} accent="lime" />
         <StatTile label="Days" value={stats.totalDays} />
+        {attendance && stats.totalDays > 1 && (
+          <StatTile label="Days attended" value={`${attendance.daysAttended}/${attendance.totalDays}`} />
+        )}
       </div>
 
-      {/* Attendance section (admin only) */}
-      {isAdmin && (
-        <div className="card p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-3">
+      {/* Attendance lives on each day; this sets them all at once (admin only) */}
+      {isAdmin && stats.totalDays > 0 && (
+        <div className="card space-y-3 p-4 sm:p-5">
+          <div>
             <h2 className="h-section">Attendance</h2>
-            {!editingAttendance && attendance && (
-              <button
-                onClick={startEditAttendance}
-                className="link-action"
-              >
-                Edit
-              </button>
-            )}
+            <p className="meta mt-1">
+              {stats.totalDays > 1 ? "Set every day at once, or open a day to set just that one." : "Set your attendance for this festival."}
+            </p>
           </div>
-
-          {editingAttendance ? (
-          <div className="space-y-3">
-            <div className="flex gap-1 flex-wrap">
-              {STATUSES.map((s) => (
+          <div className="flex flex-wrap gap-2">
+            {STATUSES.map((st) => {
+              // Highlighted when every day already has this status.
+              const all = Object.values(concertsByDate).every((d) => d.status === st.value);
+              return (
                 <button
-                  key={s.value}
+                  key={st.value}
                   type="button"
-                  onClick={() => setAttendanceStatus(s.value)}
+                  disabled={savingAttendance !== null}
+                  onClick={() => void setEveryDay(st.value)}
                   className={clsx(
-                    "min-w-[72px] px-3 py-1 rounded border text-xs  transition-colors text-center",
-                    attendanceStatus === s.value
-                      ? s.active
-                      : "border-border text-text-muted hover:border-accent-lime",
+                    "h-10 min-w-[96px] rounded-full border px-4 text-sm font-semibold transition-colors disabled:opacity-60",
+                    all ? st.active : "border-border text-text-muted hover:border-accent-lime",
                   )}
                 >
-                  {s.label}
+                  {savingAttendance === st.value ? "Saving…" : st.label}
                 </button>
-              ))}
-            </div>
-            <div>
-              <label className="block mb-1 label">Notes</label>
-              <textarea
-                rows={3}
-                value={attendanceNotes}
-                onChange={(e) => setAttendanceNotes(e.target.value)}
-                placeholder="Your thoughts…"
-                className="w-full resize-none field py-2.5"
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => void saveAttendance()}
-                disabled={savingAttendance}
-                className="btn btn-sm btn-primary"
-              >
-                {savingAttendance ? "Saving…" : "Save"}
-              </button>
-              <button
-                onClick={() => setEditingAttendance(false)}
-                disabled={savingAttendance}
-                className="btn btn-sm btn-secondary"
-              >
-                Cancel
-              </button>
-            </div>
+              );
+            })}
           </div>
-        ) : attendance ? (
-          <div>
-            <span className={`inline-block px-2 py-0.5 rounded border text-xs  ${statusColor}`}>
-              {attendance.status}
-            </span>
-            {attendance.personalNotes && (
-              <p className="text-sm text-text-base mt-2">{attendance.personalNotes}</p>
-            )}
-            {attendance.ticketPricePaid != null && (
-              <p className="text-sm text-text-muted mt-2">
-                Paid: ${(attendance.ticketPricePaid / 100).toFixed(2)} {attendance.ticketPriceCurrency}
-              </p>
-            )}
-          </div>
-          ) : (
-            <p className="text-sm text-text-subtle">Not tracked yet</p>
-          )}
         </div>
       )}
 
@@ -571,6 +515,7 @@ export function FestivalDetailPage() {
 
         {isAdmin && editingLineup ? (
           <div className="space-y-3">
+            <p className="meta">Each date is a festival day. A new date adds that day; a day left with no artists is removed.</p>
             {lineupSets.map((set, i) => (
               <div key={i} className="flex items-center gap-2">
                 <ArtistAutocomplete
@@ -620,7 +565,7 @@ export function FestivalDetailPage() {
               </button>
             </div>
           </div>
-        ) : sets.length > 0 ? (
+        ) : dayEntries.length > 0 ? (
           <div className="space-y-3">
             {dayEntries.length > 1 && (
               <>
@@ -659,11 +604,7 @@ export function FestivalDetailPage() {
               if (lineupView === "lineup") return null;
               if (lineupView !== "days" && lineupView !== String(dayIdx + 1)) return null;
               const concert = concertsByDate[date];
-              const concertUrl = concert?.slug
-                ? `/shows/${concert.slug}`
-                : concert?.id
-                ? `/shows/${concert.id}`
-                : null;
+              const concertUrl = concert ? `/shows/${concert.slug}` : null;
 
               return (
                 <div
@@ -678,7 +619,9 @@ export function FestivalDetailPage() {
                         Day {dayIdx + 1}
                         <span className="block text-sm font-normal text-text-subtle">Open this day</span>
                       </span>
-                      <span className="text-sm text-text-subtle">{dateSets.length} artist{dateSets.length !== 1 ? "s" : ""}</span>
+                      {concert?.status
+                        ? <StatusBadge status={concert.status} />
+                        : <span className="text-sm text-text-subtle">{dateSets.length} artist{dateSets.length !== 1 ? "s" : ""}</span>}
                       <Chevron className="text-text-subtle group-hover:text-accent-lime" />
                     </Link>
                   ) : (
@@ -702,8 +645,10 @@ export function FestivalDetailPage() {
                         )}
                       >
                         {set.artist.name}
+                        {set.stageName && <span className="ml-1.5 text-text-subtle">· {set.stageName}</span>}
                       </Link>
                     ))}
+                    {dateSets.length === 0 && <p className="text-sm text-text-subtle">No artists added for this day yet.</p>}
                   </div>
                 </div>
               );
@@ -718,7 +663,7 @@ export function FestivalDetailPage() {
       {isAdmin && (
         <div className="border-t border-border pt-6 mt-8">
           <button
-            onClick={() => void handleRemoveAttendance()}
+            onClick={() => void handleDeleteFestival()}
             className="text-sm font-semibold text-text-subtle hover:text-accent-pink transition-colors"
           >
             Delete festival

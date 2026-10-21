@@ -32,7 +32,8 @@ interface VenueSnapshot {
 interface ArtistSnapshot {
   removed: Record<string, unknown>;
   filled: string[];
-  moved: { concertIds: string[]; photoIds: string[]; festivalSets: string[]; setlists: string[] };
+  // festivalSets: only in merges made before migration 0014 retired that table.
+  moved: { concertIds: string[]; photoIds: string[]; festivalSets?: string[]; setlists: string[] };
   // Rows dropped because the kept artist was already on that show/photo.
   conflicts: { concertArtists: Record<string, unknown>[]; photoArtists: Record<string, unknown>[] };
 }
@@ -78,7 +79,6 @@ export async function previewMerge(type: EntityType, keepId: string, removeId: s
         ]
       : [
           { label: "shows", count: await count(sql`select count(*)::int n from concert_artists where artist_id = ${removeId}`) },
-          { label: "festival sets", count: await count(sql`select count(*)::int n from festival_sets where artist_id = ${removeId}`) },
           { label: "setlists", count: await count(sql`select count(*)::int n from setlists where artist_id = ${removeId}`) },
           { label: "photo tags", count: await count(sql`select count(*)::int n from photo_artists where artist_id = ${removeId}`) },
         ];
@@ -146,13 +146,12 @@ export async function mergeRecords(type: EntityType, keepId: string, removeId: s
       `))].map((r) => r.j);
       const concertIds = [...(await tx.execute<{ concert_id: string }>(sql`update concert_artists set artist_id = ${keepId} where artist_id = ${removeId} returning concert_id`))].map((r) => r.concert_id);
       const photoIds = [...(await tx.execute<{ photo_id: string }>(sql`update photo_artists set artist_id = ${keepId} where artist_id = ${removeId} returning photo_id`))].map((r) => r.photo_id);
-      const festivalSets = ids(await tx.execute<{ id: string }>(sql`update festival_sets set artist_id = ${keepId} where artist_id = ${removeId} returning id`));
       const setlists = ids(await tx.execute<{ id: string }>(sql`update setlists set artist_id = ${keepId} where artist_id = ${removeId} returning id`));
       await tx.execute(sql`delete from artists where id = ${removeId}`);
       await setColumns(tx, "artists", keepId, Object.fromEntries(filled.map((c) => [c, removed[c]])));
       snapshot = {
         removed, filled,
-        moved: { concertIds, photoIds, festivalSets, setlists },
+        moved: { concertIds, photoIds, setlists },
         conflicts: { concertArtists: caConflicts, photoArtists: paConflicts },
       };
     }
@@ -192,7 +191,6 @@ export async function undoMerge(logId: string): Promise<void> {
       for (const pid of snap.moved.photoIds) {
         await tx.execute(sql`update photo_artists set artist_id = ${removeId} where photo_id = ${pid} and artist_id = ${keepId}`);
       }
-      for (const id of snap.moved.festivalSets) await tx.execute(sql`update festival_sets set artist_id = ${removeId} where id = ${id}`);
       for (const id of snap.moved.setlists) await tx.execute(sql`update setlists set artist_id = ${removeId} where id = ${id}`);
       if (snap.conflicts.concertArtists.length > 0) {
         await tx.execute(sql`insert into concert_artists select * from jsonb_populate_recordset(null::concert_artists, ${JSON.stringify(snap.conflicts.concertArtists)}::jsonb) on conflict do nothing`);

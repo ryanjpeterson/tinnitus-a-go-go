@@ -34,8 +34,8 @@ const VIEW_STATUSES: Record<View, AttendanceStatus[]> = {
 };
 
 const VIEW_TABS: { value: View; label: string }[] = [
-  { value: "upcoming", label: "Upcoming" },
   { value: "past", label: "Past" },
+  { value: "upcoming", label: "Upcoming" },
 ];
 
 const ALL_OPTION = { value: "all" as StatusValue, label: "All", activeClass: "border-accent-lime bg-accent-lime text-bg" };
@@ -132,15 +132,15 @@ export function ConcertsPage() {
   const viewParam = searchParams.get("view");
   const view: View =
     viewParam === "past" || viewParam === "upcoming" ? viewParam
-    : statusParam && VIEW_STATUSES.past.includes(statusParam) ? "past"
-    : "upcoming";
+    : statusParam && VIEW_STATUSES.upcoming.includes(statusParam) ? "upcoming"
+    : "past"; // Past is the default tab
   const status: StatusValue = STATUS_OPTIONS[view].some((o) => o.value === statusParam) ? (statusParam as StatusValue) : "all";
   const statusFilter = status === "all" ? VIEW_STATUSES[view] : [status];
   // Upcoming reads soonest-first, past newest-first, unless the sort is changed.
   const sortParam = searchParams.get("sort");
   const sort: SortOrder = sortParam === "oldest" || sortParam === "newest" ? sortParam : view === "upcoming" ? "oldest" : "newest";
   const apiSort = sort === "oldest" ? "date_asc" : "date_desc";
-  const setView = (v: View): void => setFilter({ view: v === "upcoming" ? undefined : v, status: undefined, sort: undefined });
+  const setView = (v: View): void => setFilter({ view: v === "past" ? undefined : v, status: undefined, sort: undefined });
 
   const concertsQuery = useQuery({
     queryKey: ["concerts", { status: statusFilter.join(","), q, page, sort: apiSort }],

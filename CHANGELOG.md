@@ -9,7 +9,7 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ### Changed — Upcoming / Past shows, media only for attended shows
 
-- **Shows has two tabs** — **Upcoming** (interested and attending, soonest first) and **Past** (attended, missed and cancelled, newest first). The status filter offers only that tab's statuses; the sort is worded per tab ("Soonest first"). The tab lives in the URL (`?view=past`), and old `?status=attended` links open on the right tab. An empty Upcoming tab offers "+ Add show" (admin) or "See past shows".
+- **Shows has two tabs** — **Past** (attended, missed and cancelled, newest first; the default) and **Upcoming** (interested and attending, soonest first). The status filter offers only that tab's statuses; the sort is worded per tab ("Soonest first"). The tab lives in the URL (`?view=upcoming`), and old `?status=attending` links open on the right tab. An empty Upcoming tab offers "+ Add show" (admin) or "See past shows".
 - **Setlists and media only for attended shows** — a show page shows the setlist section and the photo/video gallery only when the show is marked **Attended**; admins see a one-line note saying they open up once it is. Visitors see the same rule: the show detail API now returns `status` (the signed-in user's, otherwise the logged status) for everyone.
 - **No more "Dismissed"** — it's no longer offered in the attendance picker or filters (shows that already have it keep it).
 - **API** — `GET /concerts?status=` accepts a comma-separated list (`interested,attending`).

@@ -580,7 +580,7 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `GET`  | `/setlistfm/search`           | Proxy to setlist.fm API. Query: `artist`, `date`. Returns empty results gracefully when key absent |
 | `GET`  | `/setlistfm/artist/:mbidOrName` | Search setlist.fm for an artist's recent setlists by MBID or name |
 | `GET`  | `/setlistfm/setlist/:id`      | Fetch a specific setlist by ID or full setlist.fm URL              |
-| `GET`  | `/users/me/export.csv`        | Full CSV export in the original import format                      |
+| `GET`  | `/users/me/export.csv`        | Full CSV export in the original import format, plus a `setlist` column (that artist's setlist for the show as JSON) |
 
 ### Admin (requires `is_admin = true`)
 

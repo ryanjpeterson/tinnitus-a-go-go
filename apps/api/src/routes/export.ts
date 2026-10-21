@@ -3,7 +3,12 @@
  *
  *   GET /users/me/export.csv
  *
- * Columns: type,eventName,date,artist,venue,city,lat,lng,cost,notes
+ * Columns: type,eventName,date,artist,venue,city,lat,lng,cost,notes,setlist
+ *
+ * `setlist` is that artist's setlist for that show as a JSON string —
+ * {"setlistfm":"<id>","sets":[{"name":"Set 1:","songs":["…"]},{"name":"Encore","songs":[…]}]}
+ * — or empty. The importer reads columns by name, so the extra column is ignored
+ * when a file is imported again.
  *
  * One row per (concert × artist), sorted by date ASC then by setOrder ASC within
  * a concert, so a Foo Fighters show with opener Always shows as two rows together.
@@ -16,6 +21,7 @@ import type { FastifyInstance } from "fastify";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { requireUser } from "../auth/middleware.js";
+import { ensureCached, loadCachedSets } from "../lib/setlist-cache.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Date formatting helpers
@@ -105,7 +111,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
     if (attendeeRows.length === 0) {
       reply.header("Content-Type", "text/csv; charset=utf-8");
       reply.header("Content-Disposition", 'attachment; filename="concerts.csv"');
-      return reply.send("type,eventName,date,artist,venue,city,lat,lng,cost,notes\n");
+      return reply.send("type,eventName,date,artist,venue,city,lat,lng,cost,notes,setlist\n");
     }
 
     // Step 2: fetch all artists for these concerts.
@@ -113,6 +119,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
     const artistRows = await db
       .select({
         concertId: schema.concertArtists.concertId,
+        artistId: schema.concertArtists.artistId,
         artistName: schema.artists.name,
         role: schema.concertArtists.role,
         setOrder: schema.concertArtists.setOrder,
@@ -131,8 +138,31 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
       artistsByConcert.set(a.concertId, list);
     }
 
-    // Step 3: build CSV lines.
-    const lines: string[] = ["type,eventName,date,artist,venue,city,lat,lng,cost,notes"];
+    // Step 3: cached setlists, keyed by concert + artist.
+    const setlistRows = await db
+      .select({
+        id: schema.setlists.id,
+        concertId: schema.setlists.concertId,
+        artistId: schema.setlists.artistId,
+        setlistfmId: schema.setlists.setlistfmId,
+        fetchedAt: schema.setlists.fetchedAt,
+      })
+      .from(schema.setlists)
+      .where(inArray(schema.setlists.concertId, concertIds));
+    await ensureCached(setlistRows, req.log);
+    const cachedSets = await loadCachedSets(setlistRows.map((r) => r.id));
+    const setlistJson = new Map<string, string>();
+    for (const r of setlistRows) {
+      const sets = cachedSets.get(r.id) ?? [];
+      if (!r.artistId || sets.length === 0) continue;
+      setlistJson.set(`${r.concertId}|${r.artistId}`, JSON.stringify({
+        setlistfm: r.setlistfmId,
+        sets: sets.map((st) => ({ name: st.name, songs: st.songs })),
+      }));
+    }
+
+    // Step 4: build CSV lines.
+    const lines: string[] = ["type,eventName,date,artist,venue,city,lat,lng,cost,notes,setlist"];
 
     for (const concert of attendeeRows) {
       const dateFormatted = formatExportDate(concert.concertDate);
@@ -161,6 +191,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
               ? (concert.ticketPricePaid / 100).toFixed(2)
               : "",
             "",
+            "",
           ]),
         );
       } else {
@@ -180,6 +211,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
                 ? (concert.ticketPricePaid / 100).toFixed(2)
                 : "",
               artist.appearanceNotes ?? "",
+              setlistJson.get(`${concert.concertId}|${artist.artistId}`) ?? "",
             ]),
           );
         }

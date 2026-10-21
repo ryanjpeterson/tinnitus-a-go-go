@@ -7,6 +7,11 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Fixed — Loaded setlists now save; setlists in the CSV export
+
+- **"Load" saves the setlist** — finding a setlist with **Load** on a show page now links it to the show and stores its songs, the same as pasting a setlist.fm URL. Before, Load only displayed the result, so it was gone after a refresh. Edit / Remove are available straight away.
+- **CSV export has a `setlist` column** — each show × artist row carries that artist's setlist as a JSON string, `{"setlistfm":"<id>","sets":[{"name":"Set 1:","songs":[…]},{"name":"Encore","songs":[…]}]}`, or is empty. Re-importing an exported file still works: the importer reads columns by name and ignores the extra one.
+
 ### Added — Data cleanup (admin)
 
 - **Data cleanup page** (`/admin/data`, linked from Account) with three tabs:

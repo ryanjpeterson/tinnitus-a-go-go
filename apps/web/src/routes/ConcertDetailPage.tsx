@@ -2371,11 +2371,24 @@ function SetlistSection({ concert, savedSetlists, isAdmin }: {
         });
         return;
       }
+      const found = res.results[0] ?? null;
+      // Save the match straight away: the server links it to this show and
+      // caches its songs, so it's still there after a refresh.
+      if (found) {
+        try {
+          await api.saveSetlistLink(concert.id, artist.id, found.id);
+          await qc.invalidateQueries({ queryKey: ["concerts", concert.id] });
+        } catch {
+          updateState(artist.id, { loaded: true, loading: false, result: found, expanded: true, error: "Found, but couldn't save it." });
+          return;
+        }
+      }
       updateState(artist.id, {
         loaded: true,
         loading: false,
-        result: res.results[0] ?? null,
+        result: found,
         expanded: true,
+        manualUrl: found ? `https://www.setlist.fm/setlist/x/${found.id}.html` : null,
       });
     } catch {
       updateState(artist.id, { loading: false, error: "Could not reach setlist.fm." });
@@ -2409,7 +2422,7 @@ function SetlistSection({ concert, savedSetlists, isAdmin }: {
           expanded: true,
           showUrlInput: false,
           urlInput: "",
-          manualUrl: null,
+          manualUrl: trimmedUrl, // linked — keeps Edit / Remove available
         });
         return;
       }

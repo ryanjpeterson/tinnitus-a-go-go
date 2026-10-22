@@ -266,7 +266,9 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │   │   │   ├── artists.ts        artist list, detail, PATCH, image upload, tagged photos, setlists
 │   │   │   │   ├── venues.ts         venue list, detail, PATCH, cover photo, aliases
 │   │   │   │   ├── parseurl.ts       POST /concerts/parse-url — JSON-LD → OG → Claude
-│   │   │   │   ├── series.ts         festival/series list + detail
+│   │   │   │   ├── search.ts         search index (artists, venues, festivals, shows, songs)
+│   │   │   │   ├── calendar.ts       private calendar feed (.ics) + token
+│   │   │   │   ├── push.ts           push subscribe / unsubscribe / test
 │   │   │   │   ├── export.ts         CSV export
 │   │   │   │   ├── stats.ts          GET /concerts/deep-stats — 12 parallel queries:
 │   │   │   │   │                     by-status, by-year, by-month, by-DOW, heatmap,
@@ -448,7 +450,8 @@ All defined in [.env.example](./.env.example). Highlights:
 | `LASTFM_API_KEY`           | Optional — enables Last.fm artist enrichment (bio, genre, MBID)   |
 | `GOOGLE_MAPS_API_KEY`      | Optional — enables embedded maps; OSM link shown when absent      |
 | `VITE_GOOGLE_MAPS_API_KEY` | Frontend Maps key (passed to `@vis.gl/react-google-maps`)         |
-| `APP_URL`                  | Public app base URL (used in email links)                         |
+| `APP_URL`                  | Public app base URL (used in email links and calendar-feed links) |
+| `PUSH_TIMEZONE`            | Time zone for push reminders (default `America/Toronto`)          |
 | `TAGG_BACKUP_DIR`          | Backup destination path for `scripts/backup.sh` (prod only)      |
 
 ---
@@ -536,6 +539,8 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `DELETE` | `/photos/:id`                  | Delete photo from MinIO and DB (uploader or admin only)      |
 | `PUT`    | `/photos/:id/artists`          | Replace all artist tags on a photo. Body: `{ artistIds: string[] }` |
 | `GET`    | `/photos/:id/artists`          | List artists currently tagged in a photo                     |
+| `PATCH`  | `/photos/:id`                  | Mark a photo as a ticket stub or back. Body: `{ kind: "ticket" \| "photo" }` |
+| `GET`    | `/photos/tickets`              | Every ticket stub with its show (the ticket wall)             |
 
 ### Artists
 
@@ -570,8 +575,6 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 
 | Method | Path              | Description                                                    |
 | ------ | ----------------- | -------------------------------------------------------------- |
-| `GET`  | `/series`         | Paginated festival/series list. Query: `page`, `limit`         |
-| `GET`  | `/series/:slug`   | Series detail with day-by-day concert list and stats           |
 | `GET`    | `/festivals`                   | Festival list with day and artist counts and your attendance (summarised from the days) |
 | `GET`    | `/festivals/:slug`             | Festival detail built from its day shows: lineup (`sets`, `setsByDate`), each day's show and your status (`concertsByDate`), attendance summary, stats |
 | `POST`   | `/festivals`                   | Create a festival and its day shows (one per lineup date, or per festival date when no lineup is given) |
@@ -580,6 +583,21 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `DELETE` | `/festivals/:slug`             | Delete the festival; its days stay as ordinary shows |
 
 A festival is a container of day shows (`concerts.type = 'festival_day'`). Each day holds its own lineup and attendance; nothing about lineup or attendance is stored on the festival itself.
+
+### Search, calendar & notifications
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `GET`  | `/search/index` | Everything searchable in one compact response — artists, venues, festivals, shows, and setlist songs (as `[song, artist, show index]`). The app filters it on the device, so search works offline |
+| `GET`  | `/calendar/token` | Signed in. Your private calendar-feed token (created on first request) |
+| `POST` | `/calendar/token/reset` | Signed in. New token; the old feed link stops working |
+| `GET`  | `/calendar/:token.ics` | The feed (no sign-in; the token is the key): shows you're attending or interested in, plus the last year attended, as all-day events |
+| `GET`  | `/push/key` | VAPID public key (the key pair is generated on first use and stored in `app_secrets`) |
+| `POST` | `/push/subscribe` | Signed in. Save this device's Web Push subscription |
+| `POST` | `/push/unsubscribe` | Signed in. Remove it |
+| `POST` | `/push/test` | Signed in. Send a test notification to your devices |
+
+Reminders run inside the API every 15 minutes between 10:00 and 22:00 (`PUSH_TIMEZONE`): **Tonight: …** on the day of a show you're attending, and **How was …?** the morning after a show still marked attending. Each is sent once (`push_sent`).
 
 ### Integrations & export
 
@@ -681,24 +699,27 @@ docker compose exec api pnpm db:migrate
 
 | Table | Purpose |
 | ----- | ------- |
-| `users` | Accounts with username, email, argon2id hash, `is_admin` |
+| `users` | Accounts with username, email, argon2id hash, `is_admin`, `calendar_token` (private feed URL) |
 | `sessions` | Server-side sessions; stores SHA-256 of token |
 | `auth_events` | Audit log: login, logout, password change |
 | `email_verification_tokens` | Single-use tokens from signup email |
 | `invites` | Invite codes (hashed); tracks who issued and who used |
 | `concerts` | Canonical show record: date, venue FK, series FK, flyer, flyer hash. Maintained by the database: `type` (`festival_day` exactly when it belongs to a festival), `headliner_hint` (from the lineup), and a unique readable `slug` (festival or headliner + date). One show per festival per date |
-| `concert_attendees` | Per-user junction: status, rating, notes, ticket price, timestamps |
+| `concert_attendees` | Per-user junction: status (`interested` / `attending` / `attended` / `missed` / `cancelled`), notes, ticket price, timestamps |
 | `concert_artists` | Lineup: artist FK, role (`headliner` / `co_headliner` / `support`, default `support`), set_order, appearance_notes, stage_name (festival days). At most one headliner, never alongside co-headliners (enforced by the database). `headliner` and `co_headliner` are mutually exclusive in any one lineup |
 | `artists` | Canonical artist: name, slug, genre, bio, MusicBrainz ID, image key |
 | `venues` | Canonical venue: name, slug, city, region, country, lat/lng, capacity, image key |
 | `venue_aliases` | Historical names for a venue (Air Canada Centre → Scotiabank Arena). Linked to `canonical_venue_id`; alias slugs redirect to canonical at the API level |
-| `event_series` | Festival: name, slug, year, venue, dates, flyer. A container — its lineup and attendance live on its day shows (`concerts` with `type = 'festival_day'`) |
-| `photos` | Concert photos/videos: MinIO key, kind, dimensions, set_order, content_hash, processing variants |
+| `event_series` | Festival: name, slug, year, `brand` (the festival across years, e.g. "Bluesfest" — filled from the name when empty), venue, dates, flyer. A container — its lineup and attendance live on its day shows (`concerts` with `type = 'festival_day'`) |
+| `photos` | Concert photos/videos: MinIO key, kind (`photo`, `ticket`, `video`, …), dimensions, set_order, content_hash, processing variants |
 | `photo_artists` | Junction: which artists appear in which photos (`photo_id`, `artist_id`) |
 | `site_copy` | CMS key/value store for editable UI copy (key PK, value, description, section, updated_at) |
 | `setlists` | Saved setlist.fm links per artist per concert: concert FK, artist FK, setlistfm_id (full URL or ID) |
 | `setlist_songs` | Individual songs in a setlist: position, song_name, is_cover, cover_artist, notes |
 | `imports` | CSV import job queue: status, row counts, error samples |
+| `push_subscriptions` | Web Push subscriptions per device (endpoint, keys) |
+| `push_sent` | Reminders already sent (user, show, kind) so each goes out once |
+| `app_secrets` | Server-generated secrets, e.g. the VAPID key pair for Web Push |
 
 ---
 
@@ -731,10 +752,11 @@ Applied migrations:
 | `0011_data_cleanup.sql` | `merge_log` (each duplicate merge with an undo snapshot) and `duplicate_dismissals` ("not a duplicate" pairs) |
 | `0012_setlist_lookups.sql` | `setlist_lookups`: which (show, artist) pairs the automatic setlist finder has searched, with attempts and result |
 | `0013_artist_photos.sql` | `enriched_at` and `image_source` on artists (automatic photos; hourly enrichment moves through the list) |
+| `0016_brands_calendar_push_cleanup.sql` | `event_series.brand` (+ trigger) and consistent festival names (Ottawa Bluesfest → Bluesfest, year added where missing); `users.calendar_token`; `push_subscriptions`, `push_sent`, `app_secrets`; removes unused `event_series.image_key`, `concert_attendees.rating` / `rsvp_at`, `tags` / `concert_tags`, and the `dismissed` status (any rows become `missed`) |
 | `0015_show_integrity_and_slugs.sql` | Database-enforced show rules: `type` derived from the festival link (+ check), one show per festival per date, festival dates/venue/year widened to cover its days, one headliner per lineup (no headliner + co-headliner mix), `headliner_hint` maintained from the lineup, readable unique `slug` on every show |
 | `0014_festival_days_single_source.sql` | Festival days become the only source for festival lineups and attendance: `stage_name` on `concert_artists`; anything only `festival_sets` / `festival_attendees` held is copied onto the days, then both tables are dropped |
 
-0005–0015 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
+0005–0016 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
 
 ```bash
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0010_setlist_song_sets.sql
@@ -743,6 +765,7 @@ docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0012_setl
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0013_artist_photos.sql
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0014_festival_days_single_source.sql
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0015_show_integrity_and_slugs.sql
+docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0016_brands_calendar_push_cleanup.sql
 docker compose exec api npx tsx src/scripts/cache-setlists.ts
 ```
 
@@ -761,6 +784,34 @@ This is a friends project served from a personal Mac — no VPS. Tailscale handl
 5. Set `CORS_ORIGINS` to the Tailscale hostname
 6. Set `MINIO_PUBLIC_URL` to the externally-reachable MinIO address (used in media URLs)
 7. Optionally add `GOOGLE_MAPS_API_KEY` / `VITE_GOOGLE_MAPS_API_KEY`, `SETLISTFM_API_KEY`, `ANTHROPIC_API_KEY` in `.env`
+
+### Installed app: HTTPS and the production build
+
+The app on your phone's Home Screen only gets **offline mode** and **notifications** when two things are true — without them it still works, but only with a connection:
+
+1. **It's served as a production build** (nginx), not the Vite dev server — only the build has a service worker. Add `docker-compose.https.yml` to the compose command:
+
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.tailscale.yml -f docker-compose.https.yml up -d --build
+   ```
+
+   Leave the file off to go back to the dev server.
+
+2. **It's opened over HTTPS.** Browsers only run service workers (and Web Push) on `https://` or `localhost` — not on `http://100.x.x.x:4444`. Tailscale provides HTTPS inside your tailnet (no public exposure needed):
+
+   1. In the Tailscale admin console → **DNS**, make sure **MagicDNS** and **HTTPS Certificates** are enabled.
+   2. On the Mac mini: `tailscale serve --bg 4444` — the app is now at `https://macmini.<your-tailnet>.ts.net` for devices on your tailnet (`tailscale serve status` shows the exact URL).
+   3. In `.env` on the Mac mini, use that URL:
+
+      ```env
+      APP_URL=https://macmini.<your-tailnet>.ts.net
+      MINIO_PUBLIC_URL=https://macmini.<your-tailnet>.ts.net
+      CORS_ORIGINS=https://macmini.<your-tailnet>.ts.net,http://100.123.243.36:4444
+      ```
+
+      `MINIO_PUBLIC_URL` must be the app's own address — media is served through it at `/tagg-media/`, and an `http://` media URL on an `https://` page would be blocked. With an `https://` `APP_URL` the session cookie becomes secure-only, so sign in through the HTTPS address from then on.
+   4. Restart: the compose command above.
+   5. On the iPhone: open the HTTPS address in Safari, **Share → Add to Home Screen** (replace the old icon), open it from the Home Screen, then **Account → Notifications → Turn on** and **Save everything for offline**.
 
 ### Tailscale Funnel (public internet access)
 
@@ -845,8 +896,8 @@ crontab -e
 ## Feature overview
 
 ### Concert log
-- Create, edit, and delete shows with date, venue, lineup, attendance status, personal rating, notes, ticket price, source URL
-- Attendance statuses: `attended`, `attending`, `interested`, `missed`, `cancelled`, `dismissed`
+- Create, edit, and delete shows with date, venue, lineup, attendance status, notes, ticket price, source URL
+- Attendance statuses: `attended`, `attending`, `interested`, `missed`, `cancelled`
 - Lineup roles: `headliner`, `co_headliner`, `support` — `headliner` and `co_headliner` are mutually exclusive (cannot coexist in one lineup)
 - Concert type: standard show vs. festival day (festival days link to a named series + year)
 - **Festival flyer inheritance** — `festival_day` concerts without their own flyer automatically display the festival's flyer; `flyerInherited` flag distinguishes inherited vs. direct flyers
@@ -871,7 +922,7 @@ crontab -e
 - **Compact map** — 160 px Google Maps snippet in the header when venue has lat/lng
 - **Concert info editor** — inline edit: date, type, venue (with autocomplete), event/festival name, notes, source URL
 - **Lineup editor** — add/remove/reorder artists per role tier; fuzzy artist search; free-text new artist creation; `enforceTopBilling()` cascades role changes to prevent mixing `headliner` + `co_headliner`; ★ indicator shown for both headliner and co_headliner roles
-- **Attendance editor** — status, rating (1–10), personal notes, ticket price
+- **Attendance editor** — status, personal notes, ticket price
 - **Photo gallery** — drag-and-drop or click upload; **sequential upload**: each file uploads, then polls BullMQ until `processing = false` before the next begins — photo appears in gallery immediately, no server overload; silent duplicate skip on batch drag (SHA-256 dedup, no error shown); reorder with ← → controls; delete with confirm overlay; Swiper lightbox (`PhotoCarousel`)
 - **"⊕ Tag artists" mode** — pick an artist from the lineup, tap photos to select (lime checkmark overlay), click "Tag N photos" to assign; existing tags shown as initials badges; click a badge to untag; multi-pass support
 - **Per-artist setlists** — each artist in the lineup has their own setlist lookup; "Load" button searches setlist.fm by artist name + concert date; "URL" button allows manual paste of a setlist.fm link (works even when API key is missing); saved links persist to DB and show Edit/Remove buttons; links display with "(linked)" indicator when song data isn't fetched

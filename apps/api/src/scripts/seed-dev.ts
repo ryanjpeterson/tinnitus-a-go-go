@@ -74,7 +74,7 @@ async function main() {
   await client`TRUNCATE
     setlist_songs, setlists,
     photo_artists, photos,
-    concert_tags, tags,
+    push_sent, push_subscriptions,
     concert_attendees, concert_artists,
     concerts,
     venue_aliases, venues,

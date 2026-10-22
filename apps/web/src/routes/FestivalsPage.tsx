@@ -3,14 +3,11 @@
  *
  * All filter/page state lives in the URL (?page=) so the browser back
  * button always restores the exact view you left.
- *
- * Uses the new festivals API if available (after migration),
- * otherwise falls back to the legacy series API.
  */
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, type FestivalListItem, type SeriesListItem } from "@/lib/api";
+import { api, type FestivalListItem } from "@/lib/api";
 import { useListParams } from "@/lib/useListParams";
 import { useAuth } from "@/lib/auth-context";
 import { plural } from "@/lib/format";
@@ -73,51 +70,21 @@ function NewFestivalCard({ festival }: { festival: FestivalListItem }) {
   );
 }
 
-// Legacy-style festival card (when using old series API)
-function LegacyFestivalCard({ series }: { series: SeriesListItem }) {
-  return (
-    <MediaCard
-      to={`/festivals/${series.slug}`}
-      name={series.name}
-      aspect="portrait"
-      meta={`${plural(series.dayCount, "day")} · ${plural(series.artistCount, "artist")}`}
-    />
-  );
-}
-
 export function FestivalsPage() {
   const { page, setPage } = useListParams();
   const { user } = useAuth();
   const [addOpen, setAddOpen] = useState(false);
 
-  // Try new festivals API first
   const festivalsQuery = useQuery({
     queryKey: ["festivals", { page }],
     queryFn: () => api.listFestivals({ page, limit: PAGE_SIZE }),
     staleTime: 30_000,
-    retry: false, // Don't retry if it fails (migration might not be run)
   });
 
-  // Fall back to legacy series API if new one fails
-  const seriesQuery = useQuery({
-    queryKey: ["series", { page }],
-    queryFn: () => api.listSeries({ page, limit: PAGE_SIZE }),
-    staleTime: 30_000,
-    enabled: festivalsQuery.isError, // Only run if festivals query fails
-  });
-
-  const isLoading = festivalsQuery.isLoading || (festivalsQuery.isError && seriesQuery.isLoading);
-  const useNewApi = festivalsQuery.isSuccess && !festivalsQuery.isError;
-
-  const newFestivals = festivalsQuery.data?.festivals ?? [];
-  const legacySeries = seriesQuery.data?.series ?? [];
-
-  const total = useNewApi ? (festivalsQuery.data?.total ?? 0) : (seriesQuery.data?.total ?? 0);
-  const totalPages = useNewApi ? (festivalsQuery.data?.totalPages ?? 0) : (seriesQuery.data?.totalPages ?? 0);
-  const isEmpty = useNewApi ? newFestivals.length === 0 : legacySeries.length === 0;
-
-  // Only admins can add, and only once the new API is available
-  const canAddNew = useNewApi && (user?.isAdmin ?? false);
+  const festivals = festivalsQuery.data?.festivals ?? [];
+  const total = festivalsQuery.data?.total ?? 0;
+  const totalPages = festivalsQuery.data?.totalPages ?? 0;
+  const canAddNew = user?.isAdmin ?? false;
 
   return (
     <div>
@@ -131,16 +98,11 @@ export function FestivalsPage() {
         )}
       />
 
-      {/* Migration notice when using legacy API */}
-      {!useNewApi && !isLoading && (
-        <div className="card mb-4 border-yellow-700 bg-yellow-950/30 p-4 text-sm text-yellow-400">
-          Run the database migration to enable full festival management features.
-        </div>
-      )}
-
-      {isLoading ? (
+      {festivalsQuery.isLoading ? (
         <Loading />
-      ) : isEmpty ? (
+      ) : festivalsQuery.isError && festivals.length === 0 ? (
+        <EmptyState tone="error" title="Couldn't load festivals." body="Pull down to try again." />
+      ) : festivals.length === 0 ? (
         <EmptyState
           title="No festivals yet."
           action={canAddNew && <Button onClick={() => setAddOpen(true)}>Add your first festival</Button>}
@@ -148,9 +110,7 @@ export function FestivalsPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {useNewApi
-              ? newFestivals.map((f) => <NewFestivalCard key={f.id} festival={f} />)
-              : legacySeries.map((s) => <LegacyFestivalCard key={s.id} series={s} />)}
+            {festivals.map((f) => <NewFestivalCard key={f.id} festival={f} />)}
           </div>
           <Pager page={page} totalPages={totalPages} total={total} pageSize={PAGE_SIZE} onPage={setPage} />
         </>

@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useListParams } from "@/lib/useListParams";
 import { plural } from "@/lib/format";
-import { EmptyState, Loading, MediaCard, PageHeader, Pager, SearchField } from "@/components/ui/kit";
+import { EmptyState, Loading, MediaCard, PageHeader, Pager, SearchField, VenueViewSwitch } from "@/components/ui/kit";
 
 const PAGE_SIZE = 30;
 
@@ -26,7 +26,7 @@ export function VenuesPage() {
 
   return (
     <div>
-      <PageHeader title="Venues" count={total} />
+      <PageHeader title="Venues" count={total} actions={<VenueViewSwitch view="list" />} />
       <div className="mb-5">
         <SearchField value={inputQ} onChange={onSearch} placeholder="Search venues or cities" />
       </div>

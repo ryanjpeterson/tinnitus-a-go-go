@@ -14,7 +14,7 @@ import { api, type FestivalSet, type ArtistListItem } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { Chevron, DateBlock, EmptyState, Hero, Loading, PillTabs, SelectField, StatTile, StatusBadge } from "@/components/ui/kit";
+import { Chevron, DateBlock, EmptyState, Hero, Loading, PillTabs, SelectField, ShareButton, StatTile, StatusBadge } from "@/components/ui/kit";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
@@ -134,6 +134,7 @@ export function FestivalDetailPage() {
 
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editBrand, setEditBrand] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
   const [saving, setSaving] = useState(false);
@@ -167,10 +168,11 @@ export function FestivalDetailPage() {
     );
   }
 
-  const { festival, sets, setsByDate, concertsByDate, attendance, stats } = q.data;
+  const { festival, sets, setsByDate, concertsByDate, attendance, stats, otherYears = [] } = q.data;
 
   const startEdit = () => {
     setEditName(festival.name);
+    setEditBrand(festival.brand ?? "");
     setEditStartDate(festival.startDate ?? "");
     setEditEndDate(festival.endDate ?? "");
     setSaveError(null);
@@ -185,6 +187,7 @@ export function FestivalDetailPage() {
     try {
       const res = await api.patchFestival(festival.slug, {
         name: editName.trim() || undefined,
+        brand: editBrand.trim() || null,
         startDate: editStartDate || null,
         endDate: editEndDate || null,
       });
@@ -395,6 +398,20 @@ export function FestivalDetailPage() {
                 <Button variant="ghost" className="rounded-full">Event page ↗</Button>
               </a>
             )}
+            <ShareButton card={() => ({
+              imageUrl: festival.flyerUrl,
+              eyebrow: dateRange ?? "Festival",
+              title: festival.name,
+              lines: [festival.venue ? [festival.venue.name, festival.venue.city].filter(Boolean).join(", ") : null]
+                .filter((l): l is string => !!l),
+              stats: [
+                { label: "Artists", value: String(stats.totalArtists) },
+                ...(attendance && stats.totalDays > 1
+                  ? [{ label: "Days there", value: `${attendance.daysAttended}/${stats.totalDays}` }]
+                  : [{ label: "Days", value: String(stats.totalDays) }]),
+              ],
+              fileName: festival.slug,
+            })} />
           </>
         }
       >
@@ -431,6 +448,12 @@ export function FestivalDetailPage() {
           <label className="block">
             <span className="mb-1.5 block text-sm font-semibold text-text-muted">Name</span>
             <input value={editName} onChange={(e) => setEditName(e.target.value)} className="field h-12 w-full sm:h-11" />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-semibold text-text-muted">Festival across years</span>
+            <input value={editBrand} onChange={(e) => setEditBrand(e.target.value)} placeholder="e.g. Bluesfest"
+              className="field h-12 w-full sm:h-11" />
+            <span className="mt-1 block text-xs text-text-subtle">Festivals with the same name here are linked as other years. Leave empty to use the name without its year.</span>
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
@@ -661,6 +684,28 @@ export function FestivalDetailPage() {
           <p className="text-sm text-text-subtle">No artists added yet.</p>
         )}
       </div>
+
+      {/* The same festival in other years */}
+      {otherYears.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="h-section px-0.5">
+            {festival.brand ? `More ${festival.brand}` : "Other years"}
+            <span className="ml-2 font-body text-sm font-medium text-text-subtle">{otherYears.length + 1} years</span>
+          </h2>
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+            {otherYears.map((o) => (
+              <Link key={o.slug} to={`/festivals/${o.slug}`} className="group">
+                <div className="aspect-[3/4] overflow-hidden rounded-xl border border-border bg-surface-2 transition-colors group-hover:border-accent-lime">
+                  {o.flyerUrl
+                    ? <img src={o.flyerUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    : <div className="flex h-full items-center justify-center font-display text-2xl text-text-subtle">{o.year ?? "?"}</div>}
+                </div>
+                <p className="mt-1.5 truncate text-sm font-semibold group-hover:text-accent-lime">{o.year ?? o.name}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Danger zone (admin only) */}
       {isAdmin && (

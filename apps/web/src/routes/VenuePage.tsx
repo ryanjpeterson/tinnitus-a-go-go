@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { fmtDate, plural } from "@/lib/format";
 import { showSubtitle, showTitle } from "@/lib/showTitle";
 import { Button } from "@/components/ui/button";
-import { EmptyState, EventRow, Hero, List, Loading, StatTile } from "@/components/ui/kit";
+import { EmptyState, EventRow, Hero, List, Loading, RankedList, Section, StatTile } from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Venue edit form
@@ -308,7 +308,7 @@ export function VenuePage() {
     );
   }
 
-  const { venue, concerts, stats } = q.data;
+  const { venue, concerts, stats, artistsSeen = [] } = q.data;
 
   // Reached through an old or merged name: show the venue under its current URL.
   if (slug && venue.slug !== slug) return <Navigate to={`/venues/${venue.slug}`} replace />;
@@ -443,7 +443,7 @@ export function VenuePage() {
             {concerts.map((c) => (
               <EventRow
                 key={c.id}
-                to={`/shows/${c.id}`}
+                to={`/shows/${c.slug || c.id}`}
                 date={c.date}
                 title={showTitle(c.info, c.headlinerName ?? c.headlinerHint ?? c.eventSeries?.name)}
                 subtitle={showSubtitle(c.info) ?? (c.info?.type !== "festival_day" ? c.eventSeries?.name : undefined)}
@@ -453,6 +453,14 @@ export function VenuePage() {
           </List>
         )}
       </section>
+
+      {artistsSeen.length > 0 && (
+        <Section title="Artists seen here" count={artistsSeen.length} flush>
+          <RankedList unit="show" items={artistsSeen.slice(0, 20).map((a) => ({
+            id: a.slug, name: a.name, sub: `last ${a.last.slice(0, 4)}`, count: a.times, href: `/artists/${a.slug}`,
+          }))} />
+        </Section>
+      )}
 
       {hasCoords && (
         <section className="space-y-3">

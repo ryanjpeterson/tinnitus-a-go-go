@@ -107,6 +107,7 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
     const concertRows = await db
       .select({
         concertId: schema.concerts.id,
+        slug: schema.concerts.slug,
         date: schema.concerts.date,
         type: schema.concerts.type,
         venueName: schema.venues.name,
@@ -131,6 +132,7 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
     const VISIBLE = new Set(["attended", "attending", "interested"]);
     const concerts = concertRows.filter((r) => r.attendanceStatus && VISIBLE.has(r.attendanceStatus)).map((r) => ({
       id: r.concertId,
+      slug: r.slug,
       date: r.date,
       type: r.type,
       role: r.role,
@@ -153,6 +155,28 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
       (c) => c.attendance?.status === "interested" || c.attendance?.status === "attending"
     );
 
+    // Longest stretch between two attended shows (attended is newest first).
+    let longestGap: { days: number; from: string; to: string } | null = null;
+    for (let i = 0; i + 1 < attendedConcerts.length; i++) {
+      const to = attendedConcerts[i]!.date;
+      const from = attendedConcerts[i + 1]!.date;
+      const days = Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
+      if (!longestGap || days > longestGap.days) longestGap = { days, from, to };
+    }
+
+    // Songs heard live most often, from setlists of attended shows.
+    const topSongs = [...(await db.execute<{ song: string; times: number; last: string }>(sql`
+      select ss.song_name as song, count(distinct sl.concert_id)::int as times, max(c.date)::text as last
+      from setlist_songs ss
+      join setlists sl on sl.id = ss.setlist_id
+      join concerts c on c.id = sl.concert_id
+      join concert_attendees att on att.concert_id = c.id and att.status = 'attended'
+      where sl.artist_id = ${artist.id}
+      group by ss.song_name
+      order by times desc, last desc, song
+      limit 10
+    `))];
+
     return reply.send({
       artist: {
         id: artist.id,
@@ -170,6 +194,8 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
         attended: attendedConcerts.length,
         firstSeen: firstAttended?.date ?? null,
         lastSeen: lastAttended?.date ?? null,
+        longestGap,
+        topSongs,
         // Upcoming/planned show info for "Playing at X on Y" display
         upcomingShow: upcomingShow
           ? {

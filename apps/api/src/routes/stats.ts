@@ -136,17 +136,25 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
           limit 15
         `),
 
-        // 7. On this day — today's month/day in previous years (attended only)
+        // 7. On this day — attended shows within 3 days of today's date in
+        //    earlier years (the exact day first), so Home has something most weeks.
         db.execute<{
           concert_id: string;
+          slug: string;
           date: string;
+          days_off: number;
+          flyer_key: string | null;
           headliner_hint: string | null;
           series_name: string | null;
           venue_name: string | null;
         }>(sql`
           select
             c.id            as concert_id,
+            c.slug,
             c.date::text    as date,
+            (c.date + make_interval(years => (extract(year from cast(${localDate} as date)) - extract(year from c.date))::int))::date
+              - cast(${localDate} as date) as days_off,
+            coalesce(c.flyer_key, es.flyer_key) as flyer_key,
             coalesce(
               (select a.name from concert_artists caa
                join artists a on a.id = caa.artist_id
@@ -167,10 +175,12 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
           join concert_attendees ca on ca.concert_id = c.id and ca.status = 'attended'
           left join venues v on v.id = c.venue_id
           left join event_series es on es.id = c.event_series_id
-          where extract(month from c.date) = extract(month from cast(${localDate} as date))
-            and extract(day   from c.date) = extract(day   from cast(${localDate} as date))
-            and extract(year  from c.date) < extract(year  from cast(${localDate} as date))
-          order by c.date desc
+          where extract(year from c.date) < extract(year from cast(${localDate} as date))
+            and abs((c.date + make_interval(years => (extract(year from cast(${localDate} as date)) - extract(year from c.date))::int))::date
+                    - cast(${localDate} as date)) <= 3
+          order by abs((c.date + make_interval(years => (extract(year from cast(${localDate} as date)) - extract(year from c.date))::int))::date
+                    - cast(${localDate} as date)), c.date desc
+          limit 6
         `),
 
         // 8. Milestones — 1st, 5th, 10th, 25th, 50th, 100th, 200th, 500th attended show
@@ -311,7 +321,6 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
         totalArtists:   Number(overview?.unique_artists ?? 0),
         totalVenues:    Number(overview?.unique_venues  ?? 0),
         yearsActive:    overview?.years_active ?? 0,
-        avgRating:      null,
         firstShow: overview?.first_id
           ? { concertId: overview.first_id, date: overview.first_date!, headlinerHint: overview.first_hint, info: infoFor(overview.first_id) }
           : null,
@@ -335,7 +344,6 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
           name:      r.name,
           slug:      r.slug,
           count:     r.count,
-          avgRating: null,
           firstSeen: r.first_seen,
           lastSeen:  r.last_seen,
         })),
@@ -348,19 +356,20 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
           city:      r.city,
           slug:      r.slug,
           count:     r.count,
-          avgRating: null,
         })),
 
-        // Distribution
-        ratingDist: [],
 
         // Fun
         onThisDay: ([...onThisDayRows] as Array<{
-          concert_id: string; date: string; headliner_hint: string | null;
-          series_name: string | null; venue_name: string | null;
+          concert_id: string; slug: string; date: string; days_off: number; flyer_key: string | null;
+          headliner_hint: string | null; series_name: string | null; venue_name: string | null;
         }>).map((r) => ({
           concertId:     r.concert_id,
+          slug:          r.slug,
           date:          r.date,
+          // 0 = this very day; otherwise days from today's date (negative = earlier in the week)
+          daysOff:       r.days_off,
+          flyerUrl:      r.flyer_key ? mediaUrl(r.flyer_key) : null,
           headlinerHint: r.headliner_hint,
           seriesName:    r.series_name,
           status:        "attended",

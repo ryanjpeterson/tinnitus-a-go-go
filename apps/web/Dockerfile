@@ -23,6 +23,13 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["pnpm", "dev"]
 
 FROM deps AS build
+# Vite bakes VITE_* variables into the bundle at build time.
+ARG VITE_GOOGLE_MAPS_API_KEY=""
+ARG VITE_MINIO_CONSOLE_URL=""
+ARG VITE_MAILPIT_URL=""
+ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY \
+    VITE_MINIO_CONSOLE_URL=$VITE_MINIO_CONSOLE_URL \
+    VITE_MAILPIT_URL=$VITE_MAILPIT_URL
 COPY apps/web apps/web
 COPY packages/shared packages/shared
 RUN pnpm --filter @tagg/web build

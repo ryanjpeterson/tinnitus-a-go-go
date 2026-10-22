@@ -13,8 +13,9 @@ import { VenueMap } from "@/components/VenueMap";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
 import type { CarouselItem } from "@/components/PhotoCarousel";
 import { useAuth } from "@/lib/auth-context";
-import { Chevron, EmptyState, EventRow, Hero, List, Loading, StatusBadge } from "@/components/ui/kit";
+import { Chevron, EmptyState, EventRow, Hero, List, Loading, ShareButton, StatusBadge } from "@/components/ui/kit";
 import { billLine } from "@/lib/showTitle";
+import { useSwipe } from "@/lib/gestures";
 import { initials } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 
@@ -36,7 +37,6 @@ const STATUS_CHIP: Record<AttendanceStatus, { label: string; classes: string }> 
   interested:{ label: "Interested",classes: "bg-purple-950 text-purple-400 border-purple-800" },
   missed:    { label: "Missed",    classes: "bg-red-950 text-red-400 border-red-800"          },
   cancelled: { label: "Cancelled", classes: "bg-surface-2 text-text-subtle border-border"     },
-  dismissed: { label: "Dismissed", classes: "bg-surface-2 text-text-subtle border-border"     },
 };
 
 const ROLE_LABEL: Record<string, string> = {
@@ -486,6 +486,18 @@ function PhotoGallery({
     }
   };
 
+  const handleToggleTicket = async (photoId: string, kind: "photo" | "ticket"): Promise<void> => {
+    try {
+      await api.setPhotoKind(photoId, kind);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["concerts", concertId, "photos"] }),
+        qc.invalidateQueries({ queryKey: ["tickets"] }),
+      ]);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Couldn't update the photo.");
+    }
+  };
+
   const handleDelete = async (photoId: string): Promise<void> => {
     setDeleting(true);
     try {
@@ -902,8 +914,26 @@ function PhotoGallery({
                   </div>
                 )}
 
-                {/* Hover trash icon (normal mode only) */}
-                {!reordering && !tagging && confirmDeleteId !== p.id && !p.processing && (
+                {/* Ticket stub: a badge for everyone; admins tap it to toggle */}
+                {p.kind !== "video" && !p.processing && !reordering && !tagging && (isAdmin || p.kind === "ticket") && (
+                  <button
+                    onClick={isAdmin ? () => void handleToggleTicket(p.id, p.kind === "ticket" ? "photo" : "ticket") : undefined}
+                    disabled={!isAdmin}
+                    className={clsx(
+                      "absolute bottom-1 left-1 z-10 flex h-7 items-center rounded-full px-1.5 text-sm transition-opacity",
+                      p.kind === "ticket"
+                        ? "bg-accent-lime text-bg opacity-100"
+                        : "bg-black/60 text-white opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-70",
+                    )}
+                    title={p.kind === "ticket" ? (isAdmin ? "Ticket stub — tap to make it a photo" : "Ticket stub") : "Mark as ticket stub"}
+                    aria-label={p.kind === "ticket" ? "Ticket stub" : "Mark as ticket stub"}
+                  >
+                    🎟
+                  </button>
+                )}
+
+                {/* Hover trash icon (normal mode, admin only) */}
+                {isAdmin && !reordering && !tagging && confirmDeleteId !== p.id && !p.processing && (
                   <button
                     onClick={() => setConfirmDeleteId(p.id)}
                     className="absolute top-1 right-1 w-6 h-6 rounded bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent-pink z-10"
@@ -1520,8 +1550,7 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
             className="w-full field h-11"
           >
             {!attendance && <option value="" disabled>Not logged — pick a status</option>}
-            {/* Dismissed isn't offered any more; it only appears for shows that already have it. */}
-            {([..."attending,interested,attended,missed,cancelled".split(","), ...(attendance?.status === "dismissed" ? ["dismissed"] : [])] as AttendanceStatus[]).map(
+            {(["attending", "interested", "attended", "missed", "cancelled"] as AttendanceStatus[]).map(
               (s) => <option key={s} value={s}>{STATUS_CHIP[s].label}</option>,
             )}
           </select>
@@ -2634,6 +2663,15 @@ export function ConcertDetailPage() {
     navigate(`/shows/${loadedSlug}${window.location.hash}`, { replace: true });
   }, [loadedSlug, id, qc, navigate, concertQuery.data]);
 
+  // Festival days: swipe left/right for the next/previous day.
+  const days = concertQuery.data?.festivalDays ?? [];
+  const dayIdx = days.findIndex((d) => d.concertId === concertQuery.data?.concert.id);
+  const goDay = (d: (typeof days)[number] | undefined) => { if (d) navigate(`/shows/${d.slug ?? d.concertId}`, { replace: true }); };
+  useSwipe({
+    onLeft: dayIdx >= 0 ? () => goDay(days[dayIdx + 1]) : undefined,
+    onRight: dayIdx >= 0 ? () => goDay(days[dayIdx - 1]) : undefined,
+  });
+
   if (concertQuery.isLoading) return <Loading />;
   if (concertQuery.isError || !concertQuery.data) {
     return (
@@ -2693,6 +2731,20 @@ export function ConcertDetailPage() {
               </a>
             )}
             {isAdmin && <FlyerControls key={concert.id} concert={concert} />}
+            <ShareButton card={() => ({
+              imageUrl: concert.flyerUrl,
+              eyebrow: [
+                concert.status === "attended" || concert.attendance?.status === "attended" ? "I was there" : "See you there",
+                new Date(`${concert.date}T00:00:00Z`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }),
+              ].join(" · "),
+              title,
+              lines: [
+                isFestivalDay && thisDay && (festivalLength ?? 0) > 1 ? `Day ${thisDay.number} of ${festivalLength}` : null,
+                isFestivalDay ? sortedArtists.map((a) => a.name).slice(0, 6).join(" · ") : null,
+                [concert.venue?.name, concert.venue?.city].filter(Boolean).join(", ") || null,
+              ].filter((l): l is string => !!l),
+              fileName: concert.slug,
+            })} />
           </>
         }
       >

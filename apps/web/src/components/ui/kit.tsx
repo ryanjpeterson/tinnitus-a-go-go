@@ -24,11 +24,10 @@ export const STATUS: Record<AttendanceStatus, { label: string; text: string; chi
   interested: { label: "Interested", text: "text-purple-400",  chip: "bg-purple-950 text-purple-400 border-purple-800", border: "border-purple-700", tint: "bg-purple-950" , dot: "bg-purple-400" },
   missed:     { label: "Missed",     text: "text-red-400",     chip: "bg-red-950 text-red-400 border-red-800",          border: "border-red-700",    tint: "bg-red-950" , dot: "bg-red-400" },
   cancelled:  { label: "Cancelled",  text: "text-text-subtle", chip: "bg-surface-2 text-text-subtle border-border",      border: "border-border",     tint: "bg-surface-2" , dot: "bg-text-subtle" },
-  dismissed:  { label: "Dismissed",  text: "text-text-subtle", chip: "bg-surface-2 text-text-subtle border-border",      border: "border-border",     tint: "bg-surface-2" , dot: "bg-text-subtle" },
 };
 
 export function StatusBadge({ status, className }: { status: AttendanceStatus; className?: string }) {
-  const s = STATUS[status] ?? STATUS.dismissed;
+  const s = STATUS[status] ?? STATUS.cancelled;
   return (
     <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold", s.chip, className)}>
       {s.label}
@@ -655,8 +654,32 @@ export function Sheet({ title, subtitle, onClose, children, wide = false }: {
 // States
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Placeholder shaped like a page — a title and a list of rows — while it loads. */
 export function Loading({ label = "Loading…" }: { label?: string }) {
-  return <div className="py-20 text-center text-sm font-medium text-text-subtle animate-pulse">{label}</div>;
+  return (
+    <div role="status" aria-label={label} className="animate-pulse space-y-5 py-2">
+      <span className="sr-only">{label}</span>
+      <div className="space-y-2.5">
+        <div className="h-3 w-24 rounded-full bg-surface-2" />
+        <div className="h-8 w-56 max-w-[70%] rounded-lg bg-surface-2" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="h-24 rounded-2xl bg-surface" />
+        <div className="h-24 rounded-2xl bg-surface" />
+      </div>
+      <div className="card divide-y divide-border overflow-hidden">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex items-center gap-3 px-4 py-3">
+            <div className="h-12 w-12 shrink-0 rounded-xl bg-surface-2" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="h-3.5 rounded-full bg-surface-2" style={{ width: `${70 - i * 8}%` }} />
+              <div className="h-3 w-1/3 rounded-full bg-surface-2/70" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function EmptyState({ title, body, action, tone = "muted" }: {
@@ -671,5 +694,58 @@ export function EmptyState({ title, body, action, tone = "muted" }: {
       {body && <p className="mx-auto mt-1 max-w-sm text-sm text-text-muted">{body}</p>}
       {action && <div className="mt-5 flex justify-center">{action}</div>}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Venues List | Map switch — the Venues tab has two views
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function VenueViewSwitch({ view, floating = false }: { view: "list" | "map"; floating?: boolean }) {
+  const item = (to: string, label: string, active: boolean) => (
+    <Link to={to} replace aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex h-9 items-center rounded-full px-4 text-sm font-semibold transition-colors",
+        active ? "bg-accent-lime text-bg" : "text-text-muted hover:text-text-base",
+      )}>
+      {label}
+    </Link>
+  );
+  return (
+    <div className={cn(
+      "flex rounded-full border p-0.5",
+      floating ? "border-white/10 bg-bg/85 shadow-xl backdrop-blur-md" : "border-border bg-surface",
+    )}>
+      {item("/venues", "List", view === "list")}
+      {item("/map", "Map", view === "map")}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Share — makes a story-sized image and opens the share sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function ShareButton({ card, className }: { card: () => import("@/lib/shareCard").ShareCard; className?: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          const { shareCard } = await import("@/lib/shareCard");
+          await shareCard(card());
+        } finally {
+          setBusy(false);
+        }
+      }}
+      className={cn("inline-flex h-10 items-center gap-2 rounded-full border border-border bg-surface-2 px-4 text-sm font-semibold transition-colors hover:border-accent-lime disabled:opacity-60", className)}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 3v12M7 8l5-5 5 5" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+      </svg>
+      {busy ? "Making image…" : "Share"}
+    </button>
   );
 }

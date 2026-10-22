@@ -7,6 +7,34 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Added — Search, notifications, calendar feed, share images, ticket wall
+
+- **Home tab, and Venues gets a map** — the tab bar is now Home · Shows · Artists · Festivals · Venues. The Map lives inside Venues behind a **List | Map** switch; both keep the Venues tab lit.
+- **Search everything** — the magnifier in the top bar (or `/`) searches shows, artists, festivals, venues and every song in your setlists ("All My Life — heard 3×"). It filters a compact index on the device, so results are instant and it works offline. Recent searches are remembered.
+- **Add a show from anywhere** — a lime **+** in the top bar (admins), on phones too.
+- **On this day, with the flyer** — Home leads with the show's flyer card. When nothing happened on today's exact date it shows **This week, years ago** instead, so it appears most weeks.
+- **Notifications** (Account → Notifications) — **Tonight: …** on the day of a show you're attending, and **How was …?** the morning after a show still marked attending, to mark it attended. Each is sent once. Uses Web Push with a key pair the server generates itself — no paid service or key. On iPhone it needs the Home Screen app over HTTPS (see below).
+- **Calendar feed** (Account → Calendar) — a private subscribe link that keeps your Calendar app up to date with shows you're attending or interested in (and the last year attended). "New link" revokes the old one.
+- **Share images** — **Share** on show, festival and Year in Review pages makes a story-sized (1080×1920) image from the flyer, title, date, venue and stats, and opens the share sheet (downloads on desktop).
+- **Deeper stats** — artist pages show how many times you've seen them and the longest gap between sightings, plus **Songs heard most** from your setlists; venue pages list **Artists seen here**.
+- **Ticket stubs** — tap 🎟 on a show's photo to mark it as a ticket stub; **Home → Ticket stubs** shows them all, oldest show first.
+- **Native touches** — pull down at the top of any page to refresh; swipe left/right on a festival day to go to the next/previous day; pages load with content-shaped placeholders instead of "Loading…".
+- **Edit while offline** — attendance changes (status, notes, ticket price, and the festival "every day" switch) made without a connection show straight away, wait on the device, and sync when you're back. The offline banner shows how many are waiting.
+- **Festival brands** — each festival has a brand (e.g. "Bluesfest") linking its years: festival pages show **More Bluesfest** with the other years' flyers. The brand is filled from the name and editable on the festival.
+
+### Fixed
+
+- **Map pins were drawn about 10 px north of their venues** (marker images anchor at the bottom by default) — they're now centred on the venue. Venues at the same spot (renamed venues like Air Canada Centre / Scotiabank Arena) share one pin with a count, and the card lists every venue there. The map's zoom buttons moved clear of the tab bar.
+- **Offline mode and notifications never reached the installed app** — the Mac mini serves the Vite dev server, which has no service worker, over plain HTTP, where browsers don't allow one. New `docker-compose.https.yml` serves the production build (nginx, now with large-upload support, gzip and correct service-worker caching), and the README's **Installed app: HTTPS and the production build** walks through turning on Tailscale HTTPS.
+- Opening **/account** directly no longer bounces to sign-in while the session is still loading.
+- The photo trash button only shows for admins.
+
+### Changed
+
+- **Festival names made consistent** — "Ottawa Bluesfest 2022/2023" are now "Bluesfest 2022/2023" like the later years; Punk in Drublic and Riot Fest get their years. URLs are unchanged.
+- **Removed unused pieces** — the old `/series` API and the Festivals page's fallback to it, the never-used rating and RSVP-time fields, the empty tags tables, and the "dismissed" status (any such rows become "missed"). Requires migration `0016_brands_calendar_push_cleanup.sql`.
+- New API dependency `web-push`.
+
 ### Changed — Floating tab bar, festival days counted from the dates
 
 - **Phone tab bar is a floating dock** — a rounded, frosted bar lifted above the home indicator, with a soft shadow. The current tab gets a tinted pill and a filled icon, taps shrink slightly for feedback, and tapping the tab you're already on scrolls back to the top. Pages fade out beneath it; the follow-up count shows as a number badge on Shows. The map now runs to the bottom of the screen under the dock, with the venue card lifted above it.

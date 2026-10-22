@@ -97,7 +97,7 @@ export function festivalDayNumber(festival: { startDate: string | null }, date: 
   return Math.round((utc(date) - utc(festival.startDate)) / dayMs) + 1;
 }
 
-const PRECEDENCE: Status[] = ["attended", "attending", "interested", "missed", "cancelled", "dismissed"];
+const PRECEDENCE: Status[] = ["attended", "attending", "interested", "missed", "cancelled"];
 
 /**
  * A festival's attendance, summarised from its days: attended if any day was

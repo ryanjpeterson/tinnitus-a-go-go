@@ -17,13 +17,16 @@ import { exportRoutes } from "./routes/export.js";
 import { photoRoutes } from "./routes/photos.js";
 import { artistRoutes } from "./routes/artists.js";
 import { venueRoutes } from "./routes/venues.js";
-import { seriesRoutes } from "./routes/series.js";
 import { festivalRoutes } from "./routes/festivals.js";
 import { setlistfmRoutes } from "./routes/setlistfm.js";
 import { parseUrlRoutes } from "./routes/parseurl.js";
 import { publicRoutes } from "./routes/public.js";
 import { copyRoutes } from "./routes/copy.js";
 import { statsRoutes } from "./routes/stats.js";
+import { searchRoutes } from "./routes/search.js";
+import { calendarRoutes } from "./routes/calendar.js";
+import { pushRoutes } from "./routes/push.js";
+import { startPushReminders } from "./lib/push-reminders.js";
 
 const app = Fastify({
   logger:
@@ -95,13 +98,15 @@ async function start(): Promise<void> {
   await app.register(photoRoutes);
   await app.register(artistRoutes);
   await app.register(venueRoutes);
-  await app.register(seriesRoutes);
   await app.register(festivalRoutes);
   await app.register(setlistfmRoutes);
   await app.register(parseUrlRoutes);
   await app.register(publicRoutes);
   await app.register(copyRoutes);
   await app.register(statsRoutes);
+  await app.register(searchRoutes);
+  await app.register(calendarRoutes);
+  await app.register(pushRoutes);
 
   // 404 handler
   app.setNotFoundHandler((_req, reply) => {
@@ -109,6 +114,7 @@ async function start(): Promise<void> {
   });
 
   await app.listen({ port: env.PORT, host: env.HOST });
+  startPushReminders(app.log);
   app.log.info(`Tinnitus A Go Go API listening on http://${env.HOST}:${env.PORT}`);
 }
 

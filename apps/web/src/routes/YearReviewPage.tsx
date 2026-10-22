@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, type YearReviewResponse } from "@/lib/api";
 import {
   Banner, Chevron, EmptyState, LinkCard, Loading, RankedList, Section, SelectField, StatGrid, StatTile, type RankedItem,
+  ShareButton,
 } from "@/components/ui/kit";
 import { MiniVBars } from "./StatsPage";
 import { dayLabel, showTitle } from "@/lib/showTitle";
@@ -217,6 +218,23 @@ export function YearReviewPage() {
           <h1 className="font-display text-7xl leading-[0.9] text-accent-lime sm:text-9xl">{year}</h1>
         </div>
         {d.years.length > 1 && <YearPicker years={d.years} current={year} />}
+        {d.totalShows > 0 && (
+          <ShareButton card={() => ({
+            imageUrl: d.shows.find((s) => s.flyerUrl)?.flyerUrl,
+            eyebrow: `Year in review${isCurrentYear ? " · so far" : ""}`,
+            title: `My ${year} in live music`,
+            lines: [
+              d.topArtists[0] && d.topArtists[0].count > 1 ? `Most seen: ${d.topArtists[0].name} (${d.topArtists[0].count}×)` : null,
+              d.newArtistCount > 0 ? `${d.newArtistCount} artists for the first time` : null,
+            ].filter((l): l is string => !!l),
+            stats: [
+              { label: "Shows", value: String(d.totalShows) },
+              { label: "Artists", value: String(d.uniqueArtists) },
+              { label: "Venues", value: String(d.uniqueVenues) },
+            ],
+            fileName: `year-in-review-${year}`,
+          })} />
+        )}
       </div>
     </Banner>
   );

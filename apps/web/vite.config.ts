@@ -44,6 +44,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+        // Push notification handlers (public/push-sw.js).
+        importScripts: ["push-sw.js"],
         // Opening /api/... or media directly (e.g. the services panel's health
         // link) must hit the server, not get the SPA shell from the precache.
         navigateFallbackDenylist: [/^\/api\//, /^\/tagg-media\//],
@@ -83,7 +85,8 @@ export default defineConfig({
             // the saved copy after 4 s. Auth, admin and the offline bundle itself
             // (it fills this cache) are never kept —
             // a stale /auth/me would show a signed-out user as signed in.
-            urlPattern: /\/api\/(?!auth\/|admin\/|offline\/).*/i,
+            // Calendar feeds and push setup are never cached either.
+            urlPattern: /\/api\/(?!auth\/|admin\/|offline\/|calendar\/|push\/).*/i,
             handler: "NetworkFirst",
             options: {
               cacheName: "api-cache",

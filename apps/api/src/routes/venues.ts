@@ -161,6 +161,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
         date: schema.concerts.date,
         type: schema.concerts.type,
         headlinerHint: schema.concerts.headlinerHint,
+        slug: schema.concerts.slug,
         seriesName: schema.eventSeries.name,
         status: sql<string>`(
           select ca.status::text from concert_attendees ca
@@ -219,6 +220,7 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
         date: r.date,
         type: r.type,
         headlinerHint: r.headlinerHint,
+        slug: r.slug,
         // Prefer real headliner artist name; fall back to headliner_hint
         headlinerName: headliner?.name ?? r.headlinerHint ?? null,
         headlinerSlug: headliner?.slug ?? null,
@@ -234,7 +236,20 @@ export async function venueRoutes(app: FastifyInstance): Promise<void> {
       orderBy: (t, { asc }) => [asc(t.activeFrom), asc(t.name)],
     });
 
+    // Every artist you've seen here, most often first (attended shows only).
+    const artistsSeen = [...(await db.execute<{ name: string; slug: string; image_key: string | null; times: number; last: string }>(sql`
+      select a.name, a.slug, a.image_key, count(distinct c.id)::int as times, max(c.date)::text as last
+      from concerts c
+      join concert_attendees att on att.concert_id = c.id and att.status = 'attended'
+      join concert_artists ca on ca.concert_id = c.id
+      join artists a on a.id = ca.artist_id
+      where c.venue_id = ${venue.id}
+      group by a.id
+      order by times desc, last desc, a.name
+    `))].map((r) => ({ name: r.name, slug: r.slug, imageUrl: r.image_key ? mediaUrl(r.image_key) : null, times: r.times, last: r.last }));
+
     return reply.send({
+      artistsSeen,
       venue: {
         id: venue.id,
         name: venue.name,

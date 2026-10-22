@@ -23,6 +23,8 @@ function mainLists(): Promise<unknown>[] {
     api.listFestivals({ page: 1, limit: 60 }),
     api.listVenuesForMap(),
     api.listReviewYears(),
+    api.getSearchIndex(),
+    api.listTickets(),
   ];
 }
 

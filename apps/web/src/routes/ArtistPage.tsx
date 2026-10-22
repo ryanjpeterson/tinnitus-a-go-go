@@ -411,6 +411,12 @@ export function ArtistPage() {
               {stats.lastSeen && stats.lastSeen !== stats.firstSeen && <> · last {fmtDate(stats.lastSeen)}</>}
             </p>
           )}
+          {stats.attended > 1 && (
+            <p>
+              Seen {plural(stats.attended, "time")}
+              {stats.longestGap && stats.longestGap.days > 60 && <> · longest gap {gapLabel(stats.longestGap.days)} ({stats.longestGap.from.slice(0, 4)}–{stats.longestGap.to.slice(0, 4)})</>}
+            </p>
+          )}
           {stats.upcomingShow && (
             <p className="text-yellow-400">
               Next: {stats.upcomingShow.eventSeries?.name ?? stats.upcomingShow.venue?.name ?? "TBD"} · {fmtDate(stats.upcomingShow.date)}
@@ -443,7 +449,7 @@ export function ArtistPage() {
             {concerts.map((c) => {
               // Link to festival page for festival_day concerts, otherwise to concert page
               const isFestival = c.type === "festival_day" && !!c.eventSeries;
-              const href = isFestival && c.eventSeries?.slug ? `/festivals/${c.eventSeries.slug}#set-${slug}` : `/shows/${c.id}`;
+              const href = isFestival && c.eventSeries?.slug ? `/festivals/${c.eventSeries.slug}#set-${slug}` : `/shows/${c.slug || c.id}`;
               return (
                 <EventRow
                   key={c.id}
@@ -459,6 +465,21 @@ export function ArtistPage() {
           </List>
         )}
       </section>
+
+      {/* Songs heard most (from setlists of attended shows) */}
+      {stats.topSongs.length > 0 && (
+        <Section title="Songs heard most" count={stats.topSongs.length} flush>
+          <ol className="divide-y divide-border">
+            {stats.topSongs.map((s, i) => (
+              <li key={s.song} className="flex min-h-[52px] items-center gap-3 px-4 py-2">
+                <span className={`w-6 shrink-0 text-right font-display text-lg ${i === 0 ? "text-accent-lime" : "text-text-subtle"}`}>{i + 1}</span>
+                <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{s.song}</span>
+                <span className="shrink-0 text-sm text-text-muted">{s.times}×<span className="ml-1.5 text-text-subtle">last {s.last.slice(0, 4)}</span></span>
+              </li>
+            ))}
+          </ol>
+        </Section>
+      )}
 
       {/* Setlists */}
       {(setlistsQ.data?.total ?? 0) > 0 && (
@@ -560,4 +581,14 @@ export function ArtistPage() {
       )}
     </div>
   );
+}
+
+/** "8 months", "3 years". */
+function gapLabel(days: number): string {
+  if (days < 365) {
+    const m = Math.max(1, Math.round(days / 30));
+    return `${m} month${m === 1 ? "" : "s"}`;
+  }
+  const y = Math.round(days / 365);
+  return `${y} year${y === 1 ? "" : "s"}`;
 }

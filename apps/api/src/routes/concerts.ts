@@ -46,7 +46,6 @@ const attendanceStatuses = [
   "attended",
   "missed",
   "cancelled",
-  "dismissed",
 ] as const;
 
 const concertArtistRoles = [
@@ -248,14 +247,13 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       .select({
         concertId: schema.concertAttendees.concertId,
         status: schema.concertAttendees.status,
-        rating: schema.concertAttendees.rating,
       })
       .from(schema.concertAttendees)
       .where(inArray(schema.concertAttendees.concertId, concertIds));
 
-    const attendanceByConcert = new Map<string, { status: string; rating: number | null }>();
+    const attendanceByConcert = new Map<string, { status: string }>();
     for (const row of attendanceRows) {
-      attendanceByConcert.set(row.concertId, { status: row.status, rating: row.rating });
+      attendanceByConcert.set(row.concertId, { status: row.status });
     }
 
     const concerts = concertRows.map((r) => {
@@ -396,11 +394,9 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         seriesSlug: schema.eventSeries.slug,
         seriesYear: schema.eventSeries.year,
         status: schema.concertAttendees.status,
-        rating: schema.concertAttendees.rating,
         personalNotes: schema.concertAttendees.personalNotes,
         ticketPricePaid: schema.concertAttendees.ticketPricePaid,
         ticketPriceCurrency: schema.concertAttendees.ticketPriceCurrency,
-        rsvpAt: schema.concertAttendees.rsvpAt,
         attendedConfirmedAt: schema.concertAttendees.attendedConfirmedAt,
       })
       .from(schema.concertAttendees)
@@ -452,11 +448,9 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         : null,
       attendance: {
         status: r.status,
-        rating: r.rating,
         personalNotes: r.personalNotes,
         ticketPricePaid: r.ticketPricePaid,
         ticketPriceCurrency: r.ticketPriceCurrency,
-        rsvpAt: r.rsvpAt,
         attendedConfirmedAt: r.attendedConfirmedAt,
       },
       artists: (artistsByConcert.get(r.concertId) ?? []).map((a) => ({
@@ -636,11 +630,9 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
     const attendance = attendanceRow
       ? {
           status: attendanceRow.status,
-          rating: attendanceRow.rating,
           personalNotes: attendanceRow.personalNotes,
           ticketPricePaid: attendanceRow.ticketPricePaid,
           ticketPriceCurrency: attendanceRow.ticketPriceCurrency,
-          rsvpAt: attendanceRow.rsvpAt,
           attendedConfirmedAt: attendanceRow.attendedConfirmedAt,
         }
       : undefined;
@@ -826,7 +818,6 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       userId,
       concertId: concert.id,
       status,
-      rsvpAt: status !== "attended" ? new Date() : null,
       attendedConfirmedAt: status === "attended" ? new Date() : null,
       personalNotes: body.personalNotes ?? null,
       ticketPricePaid: body.ticketPricePaid ?? null,
@@ -842,7 +833,6 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
   const patchBody = z.object({
     // ── Attendance (per-user) fields ──────────────────────────────────────────
     status: z.enum(attendanceStatuses).optional(),
-    rating: z.number().int().min(1).max(10).nullable().optional(),
     personalNotes: z.string().max(4096).nullable().optional(),
     ticketPricePaid: z.number().int().min(0).nullable().optional(),
     ticketPriceCurrency: z.string().length(3).nullable().optional(),
@@ -907,7 +897,6 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
         attendeeUpdates.attendedConfirmedAt = new Date();
       }
     }
-    if (body.rating !== undefined) attendeeUpdates.rating = body.rating;
     if (body.personalNotes !== undefined) attendeeUpdates.personalNotes = body.personalNotes;
     if (body.ticketPricePaid !== undefined) attendeeUpdates.ticketPricePaid = body.ticketPricePaid;
     if (body.ticketPriceCurrency !== undefined) attendeeUpdates.ticketPriceCurrency = body.ticketPriceCurrency;
@@ -1014,7 +1003,6 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
           id: z.string().uuid(),
           // ── Attendance (per-user) ─────────────────────────────────────────
           status: z.enum(attendanceStatuses).optional(),
-          rating: z.number().int().min(1).max(10).nullable().optional(),
           personalNotes: z.string().max(4096).nullable().optional(),
           ticketPricePaid: z.number().int().min(0).nullable().optional(),
           ticketPriceCurrency: z.string().length(3).nullable().optional(),
@@ -1061,7 +1049,6 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
             attendancePatch.attendedConfirmedAt = new Date();
           }
         }
-        if (u.rating !== undefined) attendancePatch.rating = u.rating;
         if (u.personalNotes !== undefined) attendancePatch.personalNotes = u.personalNotes;
         if (u.ticketPricePaid !== undefined) attendancePatch.ticketPricePaid = u.ticketPricePaid;
         if (u.ticketPriceCurrency !== undefined) attendancePatch.ticketPriceCurrency = u.ticketPriceCurrency;

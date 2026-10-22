@@ -1,4 +1,5 @@
 import type { UserPublic, AttendanceStatus } from "@tagg/shared";
+import { enqueue, queueable } from "./outbox";
 
 export class ApiError extends Error {
   status: number;
@@ -26,11 +27,22 @@ async function request<T>(
         ...(hasBody ? { "Content-Type": "application/json" } : {}),
         ...(rest.headers as Record<string, string> | undefined),
       };
-  const res = await fetch(`/api${path}`, {
-    credentials: "include",
-    headers,
-    ...rest,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, {
+      credentials: "include",
+      headers,
+      ...rest,
+    });
+  } catch (err) {
+    // No connection: attendance edits wait on the device (see lib/outbox.ts).
+    const method = (rest.method ?? "GET").toUpperCase();
+    if (queueable(path, method, rest.body)) {
+      await enqueue(path, method, rest.body as string);
+      return { ok: true, queued: true } as T;
+    }
+    throw err;
+  }
   if (!res.ok) {
     let body: unknown = null;
     try {
@@ -98,7 +110,6 @@ export const api = {
     body: {
       // Attendance (per-user)
       status?: AttendanceStatus;
-      rating?: number | null;
       personalNotes?: string | null;
       ticketPricePaid?: number | null;
       ticketPriceCurrency?: string | null;
@@ -120,7 +131,6 @@ export const api = {
       id: string;
       // attendance
       status?: AttendanceStatus;
-      rating?: number | null;
       personalNotes?: string | null;
       ticketPricePaid?: number | null;
       ticketPriceCurrency?: string | null;
@@ -137,6 +147,23 @@ export const api = {
     request<PublicConcertListResponse>("/public/concerts"),
   getPublicConcert: (id: string) =>
     request<{ concert: PublicConcertDetail }>(`/public/concerts/${id}`),
+  // Calendar feed (private subscribe link)
+  getCalendarToken: () => request<{ token: string }>("/calendar/token"),
+  resetCalendarToken: () => request<{ token: string }>("/calendar/token/reset", { method: "POST" }),
+  // Push notifications
+  getPushKey: () => request<{ publicKey: string }>("/push/key"),
+  subscribePush: (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+    request<{ ok: true }>("/push/subscribe", { method: "POST", body: JSON.stringify(sub) }),
+  unsubscribePush: (endpoint: string) =>
+    request<{ ok: true }>("/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
+  testPush: () => request<{ ok: true; delivered: number }>("/push/test", { method: "POST" }),
+  /** Mark a photo as a ticket stub (or back to a photo). */
+  setPhotoKind: (photoId: string, kind: "photo" | "ticket") =>
+    request<{ ok: true }>(`/photos/${photoId}`, { method: "PATCH", body: JSON.stringify({ kind }) }),
+  /** Every ticket stub, oldest show first. */
+  listTickets: () => request<{ tickets: TicketStub[] }>("/photos/tickets"),
+  /** Everything searchable, filtered on the device (kept offline by the service worker). */
+  getSearchIndex: () => request<SearchIndex>("/search/index"),
   getDeepStats: (localDate?: string) =>
     request<DeepStatsResponse>(
       `/concerts/deep-stats${localDate ? `?localDate=${encodeURIComponent(localDate)}` : ""}`,
@@ -374,14 +401,6 @@ export const api = {
     request<ParsedEvent>("/concerts/parse-url", { method: "POST", body: JSON.stringify({ url }) }),
 
   // Series (legacy - for backward compatibility with tour names)
-  listSeries: (params?: { page?: number; limit?: number }) => {
-    const qs = new URLSearchParams();
-    if (params?.page) qs.set("page", String(params.page));
-    if (params?.limit) qs.set("limit", String(params.limit));
-    const query = qs.toString() ? `?${qs.toString()}` : "";
-    return request<SeriesListResponse>(`/series${query}`);
-  },
-  getSeries: (slug: string) => request<SeriesDetailResponse>(`/series/${slug}`),
   patchSeries: (slug: string, body: { name?: string; year?: number | null }) =>
     request<{ series: { id: string; name: string; slug: string; year: number | null } }>(
       `/series/${slug}`,
@@ -446,6 +465,7 @@ export const api = {
       venueRegion?: string | null;
       eventNotes?: string | null;
       sourceUrl?: string | null;
+      brand?: string | null;
     },
   ) =>
     request<{ festival: { id: string; name: string; slug: string; year: number | null } }>(
@@ -629,11 +649,9 @@ export interface ConcertSeries {
 
 export interface ConcertAttendance {
   status: AttendanceStatus;
-  rating: number | null;
   personalNotes: string | null;
   ticketPricePaid: number | null;
   ticketPriceCurrency: string | null;
-  rsvpAt: string | null;
   attendedConfirmedAt: string | null;
 }
 
@@ -797,19 +815,24 @@ export interface ArtistDetailResponse {
   };
   concerts: Array<{
     id: string;
+    slug: string;
     date: string;
     type: string;
     role: string;
     appearanceNotes: string | null;
     venue: { name: string; city: string | null; region: string | null } | null;
     eventSeries: { name: string; slug: string | null } | null;
-    attendance?: { status: AttendanceStatus; rating: number | null };
+    attendance?: { status: AttendanceStatus };
   }>;
   stats: {
     total: number;
     attended: number;
     firstSeen: string | null;
     lastSeen: string | null;
+    /** Longest stretch between two attended shows. */
+    longestGap: { days: number; from: string; to: string } | null;
+    /** Songs heard live most often (distinct shows), from setlists of attended shows. */
+    topSongs: { song: string; times: number; last: string }[];
     upcomingShow: {
       date: string;
       venue: { name: string; city: string | null; region: string | null } | null;
@@ -878,6 +901,8 @@ export interface VenueAlias {
 }
 
 export interface VenueDetailResponse {
+  /** Every artist seen here (attended shows), most often first. */
+  artistsSeen: { name: string; slug: string; imageUrl: string | null; times: number; last: string }[];
   venue: {
     id: string;
     name: string;
@@ -895,12 +920,13 @@ export interface VenueDetailResponse {
     id: string;
     date: string;
     type: string;
+    slug: string;
     headlinerHint: string | null;
     headlinerName: string | null;
     headlinerSlug: string | null;
     info?: ShowInfo | null;
     eventSeries: { name: string } | null;
-    attendance?: { status: AttendanceStatus; rating: number | null };
+    attendance?: { status: AttendanceStatus };
   }>;
   stats: {
     total: number;
@@ -986,42 +1012,6 @@ export interface ParsedEvent {
 
 // ─── Series types ─────────────────────────────────────────────────────────────
 
-export interface SeriesListItem {
-  id: string;
-  name: string;
-  slug: string;
-  year: number | null;
-  dayCount: number;
-  artistCount: number;
-}
-
-export interface SeriesListResponse {
-  series: SeriesListItem[];
-  total: number;
-  page: number;
-  totalPages: number;
-  limit: number;
-}
-
-export interface SeriesDetailResponse {
-  series: {
-    id: string;
-    name: string;
-    slug: string;
-    year: number | null;
-  };
-  concerts: Array<{
-    id: string;
-    date: string;
-    venue: { name: string; city: string | null } | null;
-    attendance?: { status: AttendanceStatus };
-    artists: Array<{ name: string; slug: string }>;
-  }>;
-  stats: {
-    daysAttended: number;
-    uniqueArtists: number;
-  };
-}
 
 // ─── Festival types (first-class entities) ────────────────────────────────────
 
@@ -1088,6 +1078,8 @@ export interface FestivalDetail {
   name: string;
   slug: string;
   year: number | null;
+  /** The festival across years, e.g. "Bluesfest". */
+  brand: string | null;
   startDate: string | null;
   endDate: string | null;
   flyerUrl: string | null;
@@ -1106,6 +1098,8 @@ export interface FestivalDetailResponse {
   /** Every day of the festival, in date order — the day's show and your attendance. */
   concertsByDate: Record<string, { id: string; slug: string; status: AttendanceStatus | null; number: number }>;
   attendance: FestivalAttendance | null;
+  /** The same festival (brand) in other years, newest first. */
+  otherYears: { name: string; slug: string; year: number | null; startDate: string | null; flyerUrl: string | null }[];
   stats: {
     totalArtists: number;
     /** How many days the festival runs, from its dates. */
@@ -1181,7 +1175,6 @@ export interface ArtistSetlistsResponse {
 
 export interface PublicAttendance {
   status: AttendanceStatus;
-  rating: number | null;
   personalNotes: string | null;
   ticketPricePaid: number | null;
   ticketPriceCurrency: string | null;
@@ -1260,30 +1253,29 @@ export interface DeepStatsResponse {
   totalArtists: number;
   totalVenues: number;
   yearsActive: number;
-  avgRating: number | null;
   firstShow:  { concertId: string; date: string; headlinerHint: string | null; info: ShowInfo | null } | null;
   latestShow: { concertId: string; date: string; headlinerHint: string | null; info: ShowInfo | null } | null;
 
   byStatus:    Array<{ status: string; count: number }>;
-  byYear:      Array<{ year: string; count: number; attended: number; avgRating: number | null }>;
+  byYear:      Array<{ year: string; count: number; attended: number }>;
   byMonth:     Array<{ month: number; count: number }>;
   byDayOfWeek: Array<{ dow: number; count: number }>;
   heatmap:     Array<{ year: string; month: number; count: number }>;
 
   topArtists: Array<{
     artistId: string; name: string; slug: string;
-    count: number; avgRating: number | null;
+    count: number;
     firstSeen: string; lastSeen: string;
   }>;
   topVenues: Array<{
     venueId: string; name: string; city: string | null; slug: string;
-    count: number; avgRating: number | null;
+    count: number;
   }>;
 
-  ratingDist: Array<{ rating: number; count: number }>;
 
+  /** Attended shows within 3 days of today's date in earlier years; `daysOff` 0 = this very day. */
   onThisDay: Array<{
-    concertId: string; date: string; headlinerHint: string | null;
+    concertId: string; slug: string; date: string; daysOff: number; flyerUrl: string | null; headlinerHint: string | null;
     seriesName: string | null; status: string; venueName: string | null; info: ShowInfo | null;
   }>;
 
@@ -1306,4 +1298,23 @@ export interface CopyItem {
   description: string | null;
   section: string;
   updatedAt: string;
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+
+export interface SearchIndex {
+  artists: { name: string; slug: string; imageUrl: string | null; shows: number }[];
+  venues: { name: string; slug: string; city: string | null; shows: number }[];
+  festivals: { name: string; slug: string; year: number | null; startDate: string | null }[];
+  shows: { slug: string; date: string; festival: string | null; venue: string | null; city: string | null; lineup: string | null }[];
+  /** [song, artist, index into `shows`] */
+  songs: [string, string | null, number][];
+}
+
+export interface TicketStub {
+  id: string;
+  width: number | null;
+  height: number | null;
+  urls: { original: string; thumb: string | null; medium: string | null; large: string | null };
+  show: { id: string; slug: string; date: string; title: string | null; venue: string | null };
 }

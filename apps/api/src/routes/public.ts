@@ -69,7 +69,6 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
         .select({
           concertId: schema.concertAttendees.concertId,
           status:    schema.concertAttendees.status,
-          rating:    schema.concertAttendees.rating,
           personalNotes: schema.concertAttendees.personalNotes,
           ticketPricePaid: schema.concertAttendees.ticketPricePaid,
           ticketPriceCurrency: schema.concertAttendees.ticketPriceCurrency,
@@ -122,7 +121,6 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
         attendance: attendee
           ? {
               status:   attendee.status,
-              rating:   attendee.rating,
               personalNotes: attendee.personalNotes,
               ticketPricePaid: attendee.ticketPricePaid,
               ticketPriceCurrency: attendee.ticketPriceCurrency,
@@ -185,7 +183,6 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
         attendance: attendee
           ? {
               status:   attendee.status,
-              rating:   attendee.rating,
               personalNotes: attendee.personalNotes,
               ticketPricePaid: attendee.ticketPricePaid,
               ticketPriceCurrency: attendee.ticketPriceCurrency,

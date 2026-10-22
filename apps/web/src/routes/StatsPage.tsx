@@ -163,24 +163,55 @@ export function MiniVBars({ data, labels, color = "#A8FF3E" }: {
 
 function OnThisDay({ shows }: { shows: DeepStatsResponse["onThisDay"] }) {
   if (shows.length === 0) return null;
+  // The exact day if anything happened on it; otherwise the surrounding week.
+  const exact = shows.filter((s) => s.daysOff === 0);
+  const list = exact.length > 0 ? exact : shows;
+  const [lead, ...rest] = list;
+  const when = (s: (typeof shows)[number]) =>
+    s.daysOff === 0 ? yearsAgo(s.date) : `${yearsAgo(s.date)} · ${fmtDayMonth(s.date)}`;
   return (
     <section className="space-y-3">
-      <h2 className="h-section px-0.5 text-accent-pink">♪ On this day</h2>
-      <List className="border-accent-pink/40">
-        {shows.map((s) => (
-          <EventRow
-            key={s.concertId}
-            to={`/shows/${s.concertId}`}
-            date={s.date}
-            title={showTitle(s.info, showName(s.headlinerHint, s.seriesName))}
-            subtitle={[yearsAgo(s.date), s.venueName].filter(Boolean).join(" · ")}
-            meta={showSubtitle(s.info)}
-          />
-        ))}
-      </List>
+      <h2 className="h-section px-0.5 text-accent-pink">♪ {exact.length > 0 ? "On this day" : "This week, years ago"}</h2>
+      {/* The lead show as a flyer card; any others as rows beneath it */}
+      <Link to={`/shows/${lead!.slug}`}
+        className="card group flex gap-4 overflow-hidden border-accent-pink/40 p-3 transition-colors hover:border-accent-pink active:scale-[0.99]">
+        <div className="h-28 w-20 shrink-0 overflow-hidden rounded-xl bg-surface-2 sm:h-32 sm:w-24">
+          {lead!.flyerUrl
+            ? <img src={lead!.flyerUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+            : <div className="flex h-full items-center justify-center font-display text-3xl text-accent-pink/60">♪</div>}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col justify-center">
+          <p className="eyebrow text-accent-pink">{when(lead!)}</p>
+          <p className="mt-1 line-clamp-2 font-display text-xl leading-tight group-hover:text-accent-lime">
+            {showTitle(lead!.info, showName(lead!.headlinerHint, lead!.seriesName))}
+          </p>
+          <p className="mt-1 truncate text-sm text-text-muted">{[lead!.venueName, fmtFull(lead!.date)].filter(Boolean).join(" · ")}</p>
+        </div>
+        <Chevron className="self-center text-text-subtle group-hover:text-accent-lime" />
+      </Link>
+      {rest.length > 0 && (
+        <List className="border-accent-pink/40">
+          {rest.map((s) => (
+            <EventRow
+              key={s.concertId}
+              to={`/shows/${s.slug}`}
+              date={s.date}
+              imageUrl={s.flyerUrl}
+              title={showTitle(s.info, showName(s.headlinerHint, s.seriesName))}
+              subtitle={[when(s), s.venueName].filter(Boolean).join(" · ")}
+              meta={showSubtitle(s.info)}
+            />
+          ))}
+        </List>
+      )}
     </section>
   );
 }
+
+const fmtDayMonth = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const fmtFull = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Milestones timeline
@@ -239,6 +270,7 @@ export function StatsPage() {
   // correct calendar day regardless of where it's hosted.
   const localDate = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local tz
 
+  const ticketsQ = useQuery({ queryKey: ["tickets"], queryFn: api.listTickets, staleTime: 5 * 60_000 });
   const q = useQuery({
     queryKey: ["concerts/deep-stats", localDate],
     queryFn:  () => api.getDeepStats(localDate),
@@ -315,6 +347,13 @@ export function StatsPage() {
           title={`Your ${d.byYear[0]!.year}, and every year before it`}
           sub="Top artists, new discoveries, every flyer"
         />
+      )}
+
+      {/* Ticket wall — once there's at least one stub */}
+      {(ticketsQ.data?.tickets.length ?? 0) > 0 && (
+        <LinkCard to="/tickets" eyebrow="Ticket stubs"
+          title={`${ticketsQ.data!.tickets.length} ticket${ticketsQ.data!.tickets.length === 1 ? "" : "s"} kept`}
+          sub="Every stub, from the first show on" />
       )}
 
       {/* First / latest show */}

@@ -60,7 +60,7 @@ export function PhotoCarousel({ items, initialIndex = 0, onClose }: PhotoCarouse
   }, [onClose]);
 
   return createPortal(
-    <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-xl flex flex-col select-none">
+    <div data-no-swipe className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-xl flex flex-col select-none">
       {/* Header bar: counter left, close right */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
         <span className="text-xs text-white/40">

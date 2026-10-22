@@ -322,6 +322,54 @@ export async function photoRoutes(app: FastifyInstance): Promise<void> {
   // ── DELETE /photos/:id ──────────────────────────────────────────────────────
   // Admin only
 
+  // ── Ticket stubs ─────────────────────────────────────────────────────────────
+  // A photo can be marked as a ticket stub; every stub shows on the ticket wall.
+
+  app.patch("/photos/:id", { preHandler: [requireAdmin] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const parsed = z.object({ kind: z.enum(["photo", "ticket"]) }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "kind must be photo or ticket." });
+    const [row] = await db
+      .update(schema.photos)
+      .set({ kind: parsed.data.kind })
+      .where(and(eq(schema.photos.id, id), sql`${schema.photos.kind} in ('photo', 'ticket')`))
+      .returning({ id: schema.photos.id });
+    if (!row) return reply.code(404).send({ error: "Photo not found (videos can't be tickets)." });
+    return reply.send({ ok: true });
+  });
+
+  app.get("/photos/tickets", async (_req, reply) => {
+    const rows = await db
+      .select({
+        id: schema.photos.id,
+        objectKey: schema.photos.objectKey,
+        variants: schema.photos.variants,
+        width: schema.photos.width,
+        height: schema.photos.height,
+        concertId: schema.concerts.id,
+        slug: schema.concerts.slug,
+        date: schema.concerts.date,
+        headlinerHint: schema.concerts.headlinerHint,
+        festival: schema.eventSeries.name,
+        venue: schema.venues.name,
+      })
+      .from(schema.photos)
+      .innerJoin(schema.concerts, eq(schema.concerts.id, schema.photos.concertId))
+      .leftJoin(schema.eventSeries, eq(schema.eventSeries.id, schema.concerts.eventSeriesId))
+      .leftJoin(schema.venues, eq(schema.venues.id, schema.concerts.venueId))
+      .where(eq(schema.photos.kind, "ticket"))
+      .orderBy(asc(schema.concerts.date));
+    return reply.send({
+      tickets: rows.map((r) => ({
+        id: r.id,
+        width: r.width,
+        height: r.height,
+        urls: resolveUrls(r.objectKey, r.variants as Record<string, string> | null),
+        show: { id: r.concertId, slug: r.slug, date: r.date, title: r.festival ?? r.headlinerHint, venue: r.venue },
+      })),
+    });
+  });
+
   app.delete("/photos/:id", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { id } = req.params as { id: string };
 

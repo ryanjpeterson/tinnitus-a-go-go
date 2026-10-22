@@ -8,9 +8,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { APIProvider, Map, Marker, useMap } from "@vis.gl/react-google-maps";
+import { APIProvider, ControlPosition, Map, Marker, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { api, type VenueMapItem } from "@/lib/api";
-import { Chevron, EmptyState, Loading, PageHeader, SearchField } from "@/components/ui/kit";
+import { Chevron, EmptyState, Loading, PageHeader, SearchField, VenueViewSwitch } from "@/components/ui/kit";
 
 const API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) ?? "";
 
@@ -48,7 +48,13 @@ const PINK_MARKER_ICON_SELECTED = "data:image/svg+xml," + encodeURIComponent(`
 `);
 
 // Venue info popup
-function VenuePopup({ venue, onClose }: { venue: VenueMapItem; onClose: () => void }) {
+function VenuePopup({ venue, here, onSelect, onClose }: {
+  venue: VenueMapItem;
+  /** Every venue on this spot (renamed venues often share one). */
+  here: VenueMapItem[];
+  onSelect: (v: VenueMapItem) => void;
+  onClose: () => void;
+}) {
   return (
     <div className="absolute bottom-[calc(6rem+env(safe-area-inset-bottom))] left-4 right-4 z-10 sm:bottom-4 sm:left-auto sm:right-4 sm:w-80">
       <div className="card p-4 shadow-2xl shadow-black/60">
@@ -68,6 +74,17 @@ function VenuePopup({ venue, onClose }: { venue: VenueMapItem; onClose: () => vo
             <p className="text-sm text-text-subtle mt-1">
               {venue.showCount} {venue.showCount === 1 ? "show" : "shows"}
             </p>
+            {here.length > 1 && (
+              <p className="mt-2 text-sm text-text-muted">
+                Also here:{" "}
+                {here.filter((v) => v.id !== venue.id).map((v, i) => (
+                  <span key={v.id}>
+                    {i > 0 && ", "}
+                    <button onClick={() => onSelect(v)} className="font-semibold text-text-base underline-offset-2 hover:text-accent-lime hover:underline">{v.name}</button>
+                  </span>
+                ))}
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -91,23 +108,63 @@ function VenuePopup({ venue, onClose }: { venue: VenueMapItem; onClose: () => vo
 }
 
 // Map content with markers
+
+/** Venues on the same spot (within ~10 m) share one pin. */
+function groupBySpot(venues: VenueMapItem[]): VenueMapItem[][] {
+  const groups = new globalThis.Map<string, VenueMapItem[]>();
+  for (const v of venues) {
+    const key = `${v.lat.toFixed(4)},${v.lng.toFixed(4)}`;
+    groups.set(key, [...(groups.get(key) ?? []), v]);
+  }
+  // Busiest venue first, so it's the one a shared pin opens.
+  return [...groups.values()].map((g) => g.sort((x, y) => y.showCount - x.showCount));
+}
+
 function MapContent({ venues, selected, onSelect }: {
   venues: VenueMapItem[];
   selected: VenueMapItem | null;
   onSelect: (v: VenueMapItem | null) => void;
 }) {
+  // Marker images anchor at their bottom-centre by default, which drew every
+  // dot ~10 px north of its venue; anchor the circles at their centre instead.
+  const core = useMapsLibrary("core");
+  const spots = useMemo(() => groupBySpot(venues), [venues]);
+  if (!core) return null;
+  const icon = (selectedHere: boolean) => {
+    const size = selectedHere ? 28 : 20;
+    return {
+      url: selectedHere ? PINK_MARKER_ICON_SELECTED : PINK_MARKER_ICON,
+      size: new core.Size(size, size),
+      scaledSize: new core.Size(size, size),
+      anchor: new core.Point(size / 2, size / 2),
+      labelOrigin: new core.Point(size / 2, size / 2),
+    };
+  };
   return (
     <>
-      {venues.map((venue) => (
-        <Marker
-          key={venue.id}
-          position={{ lat: venue.lat, lng: venue.lng }}
-          title={venue.name}
-          onClick={() => onSelect(venue)}
-          icon={selected?.id === venue.id ? PINK_MARKER_ICON_SELECTED : PINK_MARKER_ICON}
+      {spots.map((group) => {
+        const first = group[0]!;
+        const selectedHere = !!selected && group.some((v) => v.id === selected.id);
+        return (
+          <Marker
+            key={first.id}
+            position={{ lat: first.lat, lng: first.lng }}
+            title={group.map((v) => v.name).join(" / ")}
+            onClick={() => onSelect(selectedHere ? selected : first)}
+            icon={icon(selectedHere)}
+            label={group.length > 1 ? { text: String(group.length), color: "#ffffff", fontSize: "11px", fontWeight: "700" } : undefined}
+            zIndex={selectedHere ? 10 : 1}
+          />
+        );
+      })}
+      {selected && (
+        <VenuePopup
+          venue={selected}
+          here={spots.find((g) => g.some((v) => v.id === selected.id)) ?? [selected]}
+          onSelect={onSelect}
+          onClose={() => onSelect(null)}
         />
-      ))}
-      {selected && <VenuePopup venue={selected} onClose={() => onSelect(null)} />}
+      )}
     </>
   );
 }
@@ -190,7 +247,7 @@ function VenuePanel({ venues, selected, onCity, onVenue, onAll }: {
   }
 
   return (
-    <div className="absolute inset-x-3 top-3 flex max-h-[60%] flex-col overflow-hidden rounded-2xl border border-white/10 bg-bg/90 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:bottom-6 sm:left-6 sm:top-6 sm:max-h-none sm:w-80">
+    <div className="absolute inset-x-3 top-16 flex max-h-[60%] flex-col overflow-hidden rounded-2xl border border-white/10 bg-bg/90 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:bottom-6 sm:left-6 sm:top-6 sm:max-h-none sm:w-80">
       <div className="space-y-3 border-b border-border p-3">
         <div className="flex items-center justify-between gap-2">
           <p className="font-display text-xl leading-none">Venues <span className="font-body text-sm font-medium text-text-subtle">{venues.length}</span></p>
@@ -339,6 +396,8 @@ export function MapPage() {
   return (
     <div className="relative -mt-6 ml-[calc(50%-50vw)] w-screen -mb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:-mb-8 sm:-mt-8">
       <div className="relative h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] min-h-[360px] sm:h-[calc(100dvh-4rem-env(safe-area-inset-top))]">
+        {/* Venues tab: back to the list */}
+        <div className="absolute right-4 top-4 z-20"><VenueViewSwitch view="map" floating /></div>
         <APIProvider apiKey={API_KEY}>
           <Map
             defaultCenter={center}
@@ -346,6 +405,9 @@ export function MapPage() {
             styles={DARK_STYLES}
             disableDefaultUI={false}
             zoomControl={true}
+            // Mid-right, clear of the floating tab bar on phones.
+            zoomControlOptions={{ position: ControlPosition.RIGHT_CENTER }}
+            cameraControl={false}
             mapTypeControl={false}
             streetViewControl={false}
             fullscreenControl={false}

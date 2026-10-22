@@ -40,7 +40,6 @@ const attendanceStatuses = [
   "attended",
   "missed",
   "cancelled",
-  "dismissed",
 ] as const;
 
 export async function festivalRoutes(app: FastifyInstance): Promise<void> {
@@ -188,12 +187,31 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
     });
     const length = festivalLength(festival, days.length);
 
+    // The same festival in other years (same brand), newest first.
+    const otherYears = festival.brand
+      ? await db
+          .select({
+            name: schema.eventSeries.name,
+            slug: schema.eventSeries.slug,
+            year: schema.eventSeries.year,
+            startDate: schema.eventSeries.startDate,
+            flyerKey: schema.eventSeries.flyerKey,
+          })
+          .from(schema.eventSeries)
+          .where(and(
+            sql`lower(${schema.eventSeries.brand}) = lower(${festival.brand})`,
+            sql`${schema.eventSeries.id} <> ${festival.id}`,
+          ))
+          .orderBy(sql`${schema.eventSeries.startDate} desc nulls last`)
+      : [];
+
     return reply.send({
       festival: {
         id: festival.id,
         name: festival.name,
         slug: festival.slug,
         year: festival.year,
+        brand: festival.brand,
         startDate: festival.startDate,
         endDate: festival.endDate,
         flyerUrl: festival.flyerKey ? mediaUrl(festival.flyerKey) : null,
@@ -219,6 +237,7 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       setsByDate,
       concertsByDate,
       attendance: festivalAttendance(days, length),
+      otherYears: otherYears.map(({ flyerKey, ...o }) => ({ ...o, flyerUrl: flyerKey ? mediaUrl(flyerKey) : null })),
       stats: {
         totalArtists: new Set(sets.map((s) => s.artist.id)).size,
         totalDays: length,
@@ -396,6 +415,8 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
     venueRegion: z.string().max(64).nullable().optional(),
     eventNotes: z.string().max(4096).nullable().optional(),
     sourceUrl: z.string().url().max(2048).nullable().optional(),
+    // The festival across years; empty resets it to the name without its year.
+    brand: z.string().max(256).nullable().optional(),
   }).refine((d) => Object.keys(d).length > 0, "Provide at least one field to update.");
 
   app.patch("/festivals/:slug", { preHandler: [requireAdmin] }, async (req, reply) => {
@@ -444,6 +465,7 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
     if (body.endDate !== undefined) updates.endDate = body.endDate;
     if (body.eventNotes !== undefined) updates.eventNotes = body.eventNotes;
     if (body.sourceUrl !== undefined) updates.sourceUrl = body.sourceUrl;
+    if (body.brand !== undefined) updates.brand = body.brand?.trim() || null;
 
     // Venue upsert or clear
     if (body.venueName !== undefined) {

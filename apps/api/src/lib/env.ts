@@ -20,6 +20,8 @@ const envSchema = z.object({
   SMTP_HOST: z.string(),
   SMTP_PORT: z.coerce.number().int().positive(),
   SMTP_FROM: z.string(),
+  // Time zone for push reminders ("Tonight: …" at 10am local, "How was it?" the morning after).
+  PUSH_TIMEZONE: z.string().default("America/Toronto"),
 
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be at least 32 chars"),
   SESSION_COOKIE_NAME: z.string().default("tagg_session"),

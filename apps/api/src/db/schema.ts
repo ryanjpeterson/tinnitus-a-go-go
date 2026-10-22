@@ -30,7 +30,6 @@ export const attendanceStatusEnum = pgEnum("attendance_status", [
   "attended",
   "missed",
   "cancelled",
-  "dismissed",
 ]);
 export const concertArtistRoleEnum = pgEnum("concert_artist_role", [
   "headliner",
@@ -57,6 +56,8 @@ export const users = pgTable(
     isAdmin: boolean("is_admin").notNull().default(false),
     // Reserved for future TOTP/2FA — adding column now avoids a migration later.
     totpSecret: text("totp_secret"),
+    // Secret in the private calendar-feed URL (/calendar/<token>.ics); reset to revoke.
+    calendarToken: text("calendar_token").unique(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -195,7 +196,8 @@ export const eventSeries = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull().unique(),
     year: integer("year"),
-    imageKey: text("image_key"),
+    // The festival across years ("Bluesfest" for Bluesfest 2024, 2025, …).
+    brand: text("brand"),
     // Festival-specific fields (nullable for backward compatibility with tour names)
     venueId: uuid("venue_id").references(() => venues.id, { onDelete: "set null" }),
     startDate: date("start_date"),
@@ -280,10 +282,8 @@ export const concertAttendees = pgTable(
       .notNull()
       .references(() => concerts.id, { onDelete: "cascade" }),
     status: attendanceStatusEnum("status").notNull().default("interested"),
-    rsvpAt: timestamp("rsvp_at", { withTimezone: true }),
     attendedConfirmedAt: timestamp("attended_confirmed_at", { withTimezone: true }),
     personalNotes: text("personal_notes"),
-    rating: integer("rating"), // 1..5 (or 1..10 — settle later)
     ticketPricePaid: integer("ticket_price_paid"), // cents
     ticketPriceCurrency: text("ticket_price_currency"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -336,28 +336,6 @@ export const photoArtists = pgTable(
     pk:        primaryKey({ columns: [t.photoId, t.artistId] }),
     photoIdx:  index("photo_artists_photo_idx").on(t.photoId),
     artistIdx: index("photo_artists_artist_idx").on(t.artistId),
-  }),
-);
-
-export const tags = pgTable("tags", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: text("name").notNull().unique(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const concertTags = pgTable(
-  "concert_tags",
-  {
-    concertId: uuid("concert_id")
-      .notNull()
-      .references(() => concerts.id, { onDelete: "cascade" }),
-    tagId: uuid("tag_id")
-      .notNull()
-      .references(() => tags.id, { onDelete: "cascade" }),
-    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
-  },
-  (t) => ({
-    pk: primaryKey({ columns: [t.concertId, t.tagId] }),
   }),
 );
 
@@ -423,6 +401,42 @@ export const setlistLookups = pgTable(
   },
   (t) => ({ pk: primaryKey({ columns: [t.concertId, t.artistId] }) }),
 );
+
+// ===== Push notifications =====
+
+/** A device that asked for notifications (Web Push subscription). */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id:        uuid("id").defaultRandom().primaryKey(),
+    userId:    uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    endpoint:  text("endpoint").notNull().unique(),
+    p256dh:    text("p256dh").notNull(),
+    auth:      text("auth").notNull(),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ userIdx: index("push_subscriptions_user_idx").on(t.userId) }),
+);
+
+/** Notifications already sent, so each reminder goes out once. */
+export const pushSent = pgTable(
+  "push_sent",
+  {
+    userId:    uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    concertId: uuid("concert_id").notNull().references(() => concerts.id, { onDelete: "cascade" }),
+    kind:      text("kind").notNull(), // "tonight" | "how-was-it"
+    sentAt:    timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.concertId, t.kind] }) }),
+);
+
+/** Server-generated secrets kept in the database (e.g. the Web Push VAPID key pair). */
+export const appSecrets = pgTable("app_secrets", {
+  key:       text("key").primaryKey(),
+  value:     text("value").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 // ===== Data cleanup =====
 
@@ -493,7 +507,6 @@ export const concertsRelations = relations(concerts, ({ one, many }) => ({
   concertArtists: many(concertArtists),
   concertAttendees: many(concertAttendees),
   photos: many(photos),
-  tags: many(concertTags),
   setlists: many(setlists),
 }));
 
@@ -535,16 +548,6 @@ export const setlistsRelations = relations(setlists, ({ one, many }) => ({
 
 export const setlistSongsRelations = relations(setlistSongs, ({ one }) => ({
   setlist: one(setlists, { fields: [setlistSongs.setlistId], references: [setlists.id] }),
-}));
-
-export const concertTagsRelations = relations(concertTags, ({ one }) => ({
-  concert: one(concerts, { fields: [concertTags.concertId], references: [concerts.id] }),
-  tag: one(tags, { fields: [concertTags.tagId], references: [tags.id] }),
-  user: one(users, { fields: [concertTags.userId], references: [users.id] }),
-}));
-
-export const tagsRelations = relations(tags, ({ many }) => ({
-  concertTags: many(concertTags),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({

@@ -48,6 +48,5 @@ export const attendanceStatus = z.enum([
   "attended",
   "missed",
   "cancelled",
-  "dismissed",
 ]);
 export type AttendanceStatus = z.infer<typeof attendanceStatus>;

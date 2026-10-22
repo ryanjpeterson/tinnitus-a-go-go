@@ -1,0 +1,25 @@
+# Production web overlay — serves the built app (nginx) instead of the Vite
+# dev server. Needed for the installed app's offline mode and notifications:
+# only a production build has a service worker, and browsers only run service
+# workers over HTTPS (see "Turning on HTTPS" in the README).
+#
+# Usage (with the Tailscale overlay):
+#   docker compose -f docker-compose.yml -f docker-compose.tailscale.yml -f docker-compose.https.yml up -d --build
+#
+# Leave this file off the command to go back to the dev server.
+
+name: tinnitus-a-go-go
+
+services:
+  web:
+    build:
+      target: prod
+      args:
+        VITE_GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+        VITE_MINIO_CONSOLE_URL: ${VITE_MINIO_CONSOLE_URL:-}
+        VITE_MAILPIT_URL: ${VITE_MAILPIT_URL:-}
+    # nginx listens on 80 inside the container; keep the app on port 4444.
+    ports: !override
+      - "0.0.0.0:4444:80"
+    # The dev server's source mounts aren't used by the built image.
+    volumes: !reset []

@@ -93,7 +93,6 @@ interface ExportShow {
   date: string;
   type: "concert" | "festival_day";
   status: string;
-  rating: number | null;
   notes: string | null;
   ticket: { price: number; currency: string | null } | null;
   eventName: string | null;
@@ -106,7 +105,6 @@ async function loadExport(userId: string, log: { warn: (obj: object, msg: string
     .select({
       concertId: schema.concertAttendees.concertId,
       status: schema.concertAttendees.status,
-      rating: schema.concertAttendees.rating,
       personalNotes: schema.concertAttendees.personalNotes,
       ticketPricePaid: schema.concertAttendees.ticketPricePaid,
       ticketPriceCurrency: schema.concertAttendees.ticketPriceCurrency,
@@ -179,7 +177,6 @@ async function loadExport(userId: string, log: { warn: (obj: object, msg: string
     date: r.concertDate,
     type: r.concertType,
     status: r.status,
-    rating: r.rating,
     notes: r.personalNotes,
     ticket: r.ticketPricePaid != null ? { price: r.ticketPricePaid / 100, currency: r.ticketPriceCurrency } : null,
     eventName: r.seriesName,

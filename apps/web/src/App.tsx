@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { warmCache } from "@/lib/offline";
+import { startOutbox } from "@/lib/outbox";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth-context";
 import { LoginPage } from "@/routes/LoginPage";
@@ -21,6 +22,8 @@ const queryClient = new QueryClient({
 export default function App() {
   // Fill the offline cache with the main lists once per session.
   useEffect(() => { warmCache(); }, []);
+  // Send attendance edits made while offline, once the connection is back.
+  useEffect(() => { startOutbox(queryClient); }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

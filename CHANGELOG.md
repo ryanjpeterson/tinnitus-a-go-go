@@ -7,6 +7,11 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Documentation
+
+- **README brought up to date with the app** — the project structure now lists every current file (about 50 were missing; `ConcertGridPage`, `PublicConcertPage`, `SeriesPage` and `useCopyValue` no longer exist); the feature overview describes the app as it is (tab dock, festivals as day containers, search, background uploads, what needs HTTPS) instead of the old grid editor, landing page and ratings; the roadmap is a short summary by area with the genuinely open items; the stack table drops AG-Grid and adds the PWA, viewer, setlist and push libraries.
+- **API reference complete** — all 104 routes are documented (added `/health/deep`, `PATCH /auth/password`, invites list / issue / revoke, `/concerts/:id/flyer/url`, `/venues/map`, festival edit and flyer routes, setlist finder admin routes); endpoints no UI uses any more are marked as such.
+
 ### Changed — Background uploads, photo viewer on phones
 
 - **Uploads run in the background** — adding photos or videos no longer covers the screen with a "please wait" box. Files go into a queue and upload one at a time while you keep using the app on any page. A spinning progress ring in the bottom-right corner (above the tab bar on phones) shows how many are left; tap it for the list, with **Pause** / **Resume**, **Cancel** and **Retry failed**. Pausing stops the file in flight, which starts over on resume. Files already on the show are skipped. The ring ticks and tidies itself away when everything's done. The per-artist drop zones use the same queue (and still tag the artist). Closing or reloading the app with uploads pending asks first — queued files can't survive a reload.

@@ -1,6 +1,7 @@
 /**
- * Web Push, shared by the API (subscribe, test) and the worker (reminders).
- * Pure: takes the database handle, reads no env — so the worker can import it.
+ * Web Push: sending, and the VAPID key pair. Used by the push routes and the
+ * reminder timer (lib/push-reminders.ts). Takes the database handle and reads
+ * no env.
  *
  * The VAPID key pair is generated on first use and kept in app_secrets, so a
  * fresh install needs no setup.

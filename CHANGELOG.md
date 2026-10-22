@@ -7,6 +7,11 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Added — Anniversary notifications and notification switches
+
+- **Show anniversaries** — a notification on the anniversary of shows you attended: “15 years ago today · Foo Fighters / Against Me! · Air Canada Centre”. Several on the same day arrive as one (“On this day: 3 shows”). Sent once a year per show, from 10:00 local time. Shows on Feb 29 come round on Feb 28 in other years.
+- **Choose which notifications you get** — Account → Notifications has a switch for each kind (Tonight, How was it?, Show anniversaries), saved to your account so every device follows it. All on by default. Requires migration `0017_notification_prefs.sql`.
+
 ### Added — Search, notifications, calendar feed, share images, ticket wall
 
 - **Home tab, and Venues gets a map** — the tab bar is now Home · Shows · Artists · Festivals · Venues. The Map lives inside Venues behind a **List | Map** switch; both keep the Venues tab lit.

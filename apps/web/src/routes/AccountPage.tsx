@@ -5,7 +5,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
-import { api } from "@/lib/api";
+import { api, type PushPrefs } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ServicesPanel } from "@/components/ServicesPanel";
 import { LinkCard, PageHeader } from "@/components/ui/kit";
@@ -211,7 +212,7 @@ function NotificationsCard() {
       <div>
         <h2 className="h-section">Notifications</h2>
         <p className="meta mt-1">
-          On the day of a show you're attending: “Tonight: …”. The morning after: “How was it?”, to mark it attended.
+          Reminders about shows you're going to, and the anniversaries of ones you went to.
         </p>
       </div>
       {state === "needs-install" && (
@@ -234,6 +235,7 @@ function NotificationsCard() {
         )}
         {state === "on" && (
           <>
+            <NotificationKinds />
             <Button variant="secondary" disabled={busy}
               onClick={() => void act(async () => { const r = await api.testPush(); setNote(r.delivered > 0 ? "Test sent — it should arrive in a few seconds." : "Couldn't reach this device."); })}>
               Send a test
@@ -244,6 +246,45 @@ function NotificationsCard() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+const KINDS: { key: keyof PushPrefs; label: string; detail: string }[] = [
+  { key: "tonight", label: "Tonight", detail: "On the day of a show you're attending" },
+  { key: "howWasIt", label: "How was it?", detail: "The morning after, to mark it attended" },
+  { key: "anniversaries", label: "Show anniversaries", detail: "“15 years ago today” for shows you went to" },
+];
+
+/** A switch for each kind of notification (saved to your account, so every device follows it). */
+function NotificationKinds() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["push-prefs"], queryFn: api.getPushPrefs });
+  const prefs = q.data?.prefs;
+  const toggle = async (key: keyof PushPrefs) => {
+    if (!prefs) return;
+    const next = { ...prefs, [key]: !prefs[key] };
+    qc.setQueryData(["push-prefs"], { prefs: next });
+    try { await api.setPushPrefs(next); } catch { qc.setQueryData(["push-prefs"], { prefs }); }
+  };
+  return (
+    <div className="w-full divide-y divide-border overflow-hidden rounded-2xl border border-border">
+      {KINDS.map((k) => {
+        const on = prefs?.[k.key] ?? true;
+        return (
+          <button key={k.key} type="button" role="switch" aria-checked={on} disabled={!prefs}
+            onClick={() => void toggle(k.key)}
+            className="flex min-h-[60px] w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-2/60 disabled:opacity-60">
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-semibold">{k.label}</span>
+              <span className="block text-sm text-text-muted">{k.detail}</span>
+            </span>
+            <span className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${on ? "bg-accent-lime" : "bg-surface-2"}`}>
+              <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-[left] ${on ? "left-[22px]" : "left-0.5"}`} />
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

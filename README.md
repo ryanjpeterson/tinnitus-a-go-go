@@ -596,8 +596,10 @@ A festival is a container of day shows (`concerts.type = 'festival_day'`). Each 
 | `POST` | `/push/subscribe` | Signed in. Save this device's Web Push subscription |
 | `POST` | `/push/unsubscribe` | Signed in. Remove it |
 | `POST` | `/push/test` | Signed in. Send a test notification to your devices |
+| `GET`  | `/push/prefs` | Signed in. Which kinds you get: `{ tonight, howWasIt, anniversaries }` |
+| `PUT`  | `/push/prefs` | Signed in. Change them (all three booleans) |
 
-Reminders run inside the API every 15 minutes between 10:00 and 22:00 (`PUSH_TIMEZONE`): **Tonight: …** on the day of a show you're attending, and **How was …?** the morning after a show still marked attending. Each is sent once (`push_sent`).
+Reminders run inside the API every 15 minutes between 10:00 and 22:00 (`PUSH_TIMEZONE`): **Tonight: …** on the day of a show you're attending, **How was …?** the morning after a show still marked attending, and **N years ago today** for shows you attended (several on one day arrive as one notification). Each kind can be switched off in Account → Notifications (`users.push_prefs`); each is sent once (`push_sent`, anniversaries once a year).
 
 ### Integrations & export
 
@@ -699,7 +701,7 @@ docker compose exec api pnpm db:migrate
 
 | Table | Purpose |
 | ----- | ------- |
-| `users` | Accounts with username, email, argon2id hash, `is_admin`, `calendar_token` (private feed URL) |
+| `users` | Accounts with username, email, argon2id hash, `is_admin`, `calendar_token` (private feed URL), `push_prefs` (which notifications) |
 | `sessions` | Server-side sessions; stores SHA-256 of token |
 | `auth_events` | Audit log: login, logout, password change |
 | `email_verification_tokens` | Single-use tokens from signup email |
@@ -752,11 +754,12 @@ Applied migrations:
 | `0011_data_cleanup.sql` | `merge_log` (each duplicate merge with an undo snapshot) and `duplicate_dismissals` ("not a duplicate" pairs) |
 | `0012_setlist_lookups.sql` | `setlist_lookups`: which (show, artist) pairs the automatic setlist finder has searched, with attempts and result |
 | `0013_artist_photos.sql` | `enriched_at` and `image_source` on artists (automatic photos; hourly enrichment moves through the list) |
+| `0017_notification_prefs.sql` | `users.push_prefs`: which push notifications each user wants (tonight, how was it, anniversaries — all on by default) |
 | `0016_brands_calendar_push_cleanup.sql` | `event_series.brand` (+ trigger) and consistent festival names (Ottawa Bluesfest → Bluesfest, year added where missing); `users.calendar_token`; `push_subscriptions`, `push_sent`, `app_secrets`; removes unused `event_series.image_key`, `concert_attendees.rating` / `rsvp_at`, `tags` / `concert_tags`, and the `dismissed` status (any rows become `missed`) |
 | `0015_show_integrity_and_slugs.sql` | Database-enforced show rules: `type` derived from the festival link (+ check), one show per festival per date, festival dates/venue/year widened to cover its days, one headliner per lineup (no headliner + co-headliner mix), `headliner_hint` maintained from the lineup, readable unique `slug` on every show |
 | `0014_festival_days_single_source.sql` | Festival days become the only source for festival lineups and attendance: `stage_name` on `concert_artists`; anything only `festival_sets` / `festival_attendees` held is copied onto the days, then both tables are dropped |
 
-0005–0016 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
+0005–0017 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
 
 ```bash
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0010_setlist_song_sets.sql
@@ -766,6 +769,7 @@ docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0013_arti
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0014_festival_days_single_source.sql
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0015_show_integrity_and_slugs.sql
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0016_brands_calendar_push_cleanup.sql
+docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0017_notification_prefs.sql
 docker compose exec api npx tsx src/scripts/cache-setlists.ts
 ```
 
@@ -797,7 +801,7 @@ The app on your phone's Home Screen only gets **offline mode** and **notificatio
 
    Leave the file off to go back to the dev server.
 
-2. **It's opened over HTTPS.** Browsers only run service workers (and Web Push) on `https://` or `localhost` — not on `http://100.x.x.x:4444`. Tailscale provides HTTPS inside your tailnet (no public exposure needed):
+2. **It's opened over HTTPS.** Browsers only run service workers (and Web Push) on `https://` or `localhost` — not on `http://100.x.x.x:4444`, even on a private network. Tailscale provides HTTPS **inside your tailnet** — `tailscale serve` is still Tailscale-only; only `tailscale funnel` makes anything public:
 
    1. In the Tailscale admin console → **DNS**, make sure **MagicDNS** and **HTTPS Certificates** are enabled.
    2. On the Mac mini: `tailscale serve --bg 4444` — the app is now at `https://macmini.<your-tailnet>.ts.net` for devices on your tailnet (`tailscale serve status` shows the exact URL).

@@ -40,6 +40,15 @@ export const photoKindEnum = pgEnum("photo_kind", ["flyer", "ticket", "photo", "
 
 // ===== Users / Auth =====
 
+export interface PushPrefs {
+  /** Day of a show you're attending. */
+  tonight: boolean;
+  /** The morning after, if it's still marked attending. */
+  howWasIt: boolean;
+  /** "N years ago today" for shows you attended. */
+  anniversaries: boolean;
+}
+
 export const users = pgTable(
   "users",
   {
@@ -58,6 +67,9 @@ export const users = pgTable(
     totpSecret: text("totp_secret"),
     // Secret in the private calendar-feed URL (/calendar/<token>.ics); reset to revoke.
     calendarToken: text("calendar_token").unique(),
+    // Which push notifications this user wants (migration 0017).
+    pushPrefs: jsonb("push_prefs").$type<PushPrefs>().notNull()
+      .default({ tonight: true, howWasIt: true, anniversaries: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

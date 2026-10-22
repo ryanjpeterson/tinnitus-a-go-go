@@ -157,6 +157,8 @@ export const api = {
   unsubscribePush: (endpoint: string) =>
     request<{ ok: true }>("/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
   testPush: () => request<{ ok: true; delivered: number }>("/push/test", { method: "POST" }),
+  getPushPrefs: () => request<{ prefs: PushPrefs }>("/push/prefs"),
+  setPushPrefs: (prefs: PushPrefs) => request<{ prefs: PushPrefs }>("/push/prefs", { method: "PUT", body: JSON.stringify(prefs) }),
   /** Mark a photo as a ticket stub (or back to a photo). */
   setPhotoKind: (photoId: string, kind: "photo" | "ticket") =>
     request<{ ok: true }>(`/photos/${photoId}`, { method: "PATCH", body: JSON.stringify({ kind }) }),
@@ -1317,4 +1319,14 @@ export interface TicketStub {
   height: number | null;
   urls: { original: string; thumb: string | null; medium: string | null; large: string | null };
   show: { id: string; slug: string; date: string; title: string | null; venue: string | null };
+}
+
+/** Which push notifications you get. */
+export interface PushPrefs {
+  /** Day of a show you're attending. */
+  tonight: boolean;
+  /** The morning after, if it's still marked attending. */
+  howWasIt: boolean;
+  /** "N years ago today" for shows you attended. */
+  anniversaries: boolean;
 }

@@ -2,12 +2,15 @@
  * Push notifications — the installed app on a phone can get:
  *   • "Tonight: …" on the day of a show you're attending
  *   • "How was …?" the morning after, to mark it attended
+ *   • "N years ago today" for shows you attended
  * (sent by the worker; see apps/worker/src/jobs/push-reminders.ts)
  *
  *   GET  /push/key           VAPID public key for subscribing
  *   POST /push/subscribe     save this device's subscription
  *   POST /push/unsubscribe   forget it
  *   POST /push/test          send a test notification to your devices
+ *   GET  /push/prefs         which kinds you want (tonight, howWasIt, anniversaries)
+ *   PUT  /push/prefs         change them
  */
 
 import type { FastifyInstance } from "fastify";
@@ -66,5 +69,17 @@ export async function pushRoutes(app: FastifyInstance): Promise<void> {
       tag: "test",
     }, pushContact(env.SMTP_FROM));
     return reply.send({ ok: true, delivered });
+  });
+
+  app.get("/push/prefs", { preHandler: [requireUser] }, async (req, reply) => {
+    const user = await db.query.users.findFirst({ where: eq(schema.users.id, req.user!.id), columns: { pushPrefs: true } });
+    return reply.send({ prefs: { tonight: true, howWasIt: true, anniversaries: true, ...(user?.pushPrefs ?? {}) } });
+  });
+
+  app.put("/push/prefs", { preHandler: [requireUser] }, async (req, reply) => {
+    const parsed = z.object({ tonight: z.boolean(), howWasIt: z.boolean(), anniversaries: z.boolean() }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "tonight, howWasIt and anniversaries must be true or false." });
+    await db.update(schema.users).set({ pushPrefs: parsed.data }).where(eq(schema.users.id, req.user!.id));
+    return reply.send({ prefs: parsed.data });
   });
 }

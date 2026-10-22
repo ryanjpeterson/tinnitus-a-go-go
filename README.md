@@ -987,6 +987,8 @@ crontab -e
 - SHA-256 dedup at both client (skip before upload) and server (flyer endpoint) levels
 - Direct public bucket URLs — no presigning required
 - Flyer, artist image, venue cover photo each stored at deterministic MinIO paths
+- **Background uploads** — files queue and upload one at a time while you use the app; a progress ring in the corner has Pause / Resume, Cancel and Retry (`apps/web/src/lib/uploads.ts`, `components/UploadIndicator.tsx`). Pausing restarts the file in flight on resume; a reload drops queued files (the browser warns first)
+- **Photo viewer** — full-screen, swipe sideways between photos, swipe down or tap around the photo to close; safe-area aware for iPhone
 
 ### Google Maps
 - `VenueMap` component uses `@vis.gl/react-google-maps` with a custom dark style (near-black base, muted roads, deep-navy water) and a branded pink/lime pin

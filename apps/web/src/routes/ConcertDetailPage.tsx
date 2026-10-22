@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Chevron, EmptyState, EventRow, Hero, List, Loading, ShareButton, StatusBadge } from "@/components/ui/kit";
 import { billLine } from "@/lib/showTitle";
 import { useSwipe } from "@/lib/gestures";
+import { enqueueUploads, isActive, useUploads } from "@/lib/uploads";
 import { initials } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 
@@ -244,36 +245,27 @@ interface Photo {
 }
 
 /** SHA-256 hex of a File using the Web Crypto API (no library needed). */
-async function hashFile(file: File): Promise<string> {
-  const buf = await file.arrayBuffer();
-  const digest = await crypto.subtle.digest("SHA-256", buf);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 function PhotoGallery({
   concertId,
   concertDate,
   concertArtists,
+  label,
   isAdmin = false,
 }: {
   concertId: string;
   concertDate: string;
   concertArtists: ConcertArtist[];
+  /** Show name, for the background upload list. */
+  label: string;
   isAdmin?: boolean;
 }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadPercent, setUploadPercent] = useState<number | null>(null);
-  // Global upload overlay — also covers ArtistUploadZone uploads
-  const [globalUploading, setGlobalUploading] = useState(false);
-  const [globalUploadPercent, setGlobalUploadPercent] = useState<number | null>(null);
-  const [batchCurrent, setBatchCurrent] = useState(0);
-  const [batchTotal, setBatchTotal] = useState(0);
-  const [batchFileName, setBatchFileName] = useState("");
-  const [batchPhase, setBatchPhase] = useState<"uploading" | "processing" | null>(null);
+  // Uploads run in the background queue (lib/uploads.ts); this show's share of it:
+  const { jobs: uploadJobs } = useUploads();
+  const pendingHere = uploadJobs.filter((j) => j.concertId === concertId && isActive(j)).length;
+  const uploading = pendingHere > 0;
   const [uploadError, setUploadError] = useState<string | null>(null);
   // lightboxIndex: index into `photos` of the slide to open; null = closed
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -388,11 +380,11 @@ function PhotoGallery({
     e.preventDefault();
     dragCounterRef.current = 0;
     setIsDragging(false);
-    if (isFutureEvent || uploading) return;
+    if (isFutureEvent) return;
     const files = e.dataTransfer.files;
     if (files.length > 0) await handleUpload(files);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFutureEvent, uploading]);
+  }, [isFutureEvent]);
 
   // ── Tagging helpers ──────────────────────────────────────────────────────────
 
@@ -512,115 +504,12 @@ function PhotoGallery({
     }
   };
 
-  const MAX_BATCH = 20;
-
-  // Polls the photo list directly (bypassing TanStack cache) until the given
-  // photo's processing flag clears, or until a 2-minute timeout.
-  const waitForProcessing = async (photoId: string): Promise<void> => {
-    const POLL_MS = 2000;
-    const TIMEOUT_MS = 120_000;
-    const deadline = Date.now() + TIMEOUT_MS;
-    while (Date.now() < deadline) {
-      await new Promise<void>((r) => setTimeout(r, POLL_MS));
-      try {
-        const data = await api.listPhotos(concertId);
-        const photo = data.photos.find((p) => p.id === photoId);
-        if (!photo || !photo.processing) return;
-      } catch {
-        // network blip — keep polling
-      }
-    }
-    // timed out — move on anyway
-  };
-
+  /** Hand the files to the background queue — uploading carries on while you use the app. */
   const handleUpload = async (files: FileList | null): Promise<void> => {
     if (!files || files.length === 0) return;
-
-    const allFiles = Array.from(files);
-    if (allFiles.length > MAX_BATCH) {
-      setUploadError(
-        `Max ${MAX_BATCH} photos per upload. You selected ${allFiles.length} — ` +
-        `upload the first ${MAX_BATCH} now, then drag the rest in a second batch.`,
-      );
-      // Still proceed with the first MAX_BATCH files
-    }
-    const fileList = allFiles.slice(0, MAX_BATCH);
-
-    // Pre-flight dedup — run before showing the overlay so we know the real count.
-    // Duplicates are silently skipped; if a hash fails we let the server catch it.
-    const existingHashes = new Set(photos.map((p) => p.contentHash).filter(Boolean));
-    const toUpload: File[] = [];
-    for (const file of fileList) {
-      try {
-        const hash = await hashFile(file);
-        if (!existingHashes.has(hash)) {
-          existingHashes.add(hash);
-          toUpload.push(file);
-        }
-      } catch {
-        toUpload.push(file); // hash failed — let server catch it
-      }
-    }
-
-    // Everything was a duplicate — nothing to do, silently bail
-    if (toUpload.length === 0) {
-      if (fileRef.current) fileRef.current.value = "";
-      return;
-    }
-
-    setUploading(true);
-    setGlobalUploading(true);
-    setUploadPercent(0);
-    setGlobalUploadPercent(0);
-    setBatchCurrent(0);
-    setBatchTotal(toUpload.length);
-    setBatchFileName("");
-    setBatchPhase("uploading");
     setUploadError(null);
-
-    const failed: string[] = [];
-
-    try {
-      for (let i = 0; i < toUpload.length; i++) {
-        const file = toUpload[i]!;
-        setBatchCurrent(i + 1);
-        setBatchTotal(toUpload.length);
-        setBatchFileName(file.name);
-        setBatchPhase("uploading");
-        setUploadPercent(0);
-        setGlobalUploadPercent(0);
-
-        try {
-          const { photoId } = await api.uploadPhoto(concertId, file, (pct) => {
-            setUploadPercent(pct);
-            setGlobalUploadPercent(pct);
-          });
-          // Switch to processing phase: poll until the worker finishes this file,
-          // then immediately add it to the gallery before starting the next one.
-          setBatchPhase("processing");
-          setUploadPercent(null);
-          setGlobalUploadPercent(null);
-          await waitForProcessing(photoId);
-          await qc.invalidateQueries({ queryKey: ["concerts", concertId, "photos"] });
-        } catch (err) {
-          failed.push(file.name);
-          // Continue with remaining files
-        }
-      }
-
-      // Only report actual upload failures; duplicates are silently skipped
-      if (failed.length) setUploadError(`${failed.length} failed: ${failed.join(", ")}`);
-    } finally {
-      setUploading(false);
-      setGlobalUploading(false);
-      setUploadPercent(null);
-      setGlobalUploadPercent(null);
-      setBatchCurrent(0);
-      setBatchTotal(0);
-      setBatchFileName("");
-      setBatchPhase(null);
-      if (fileRef.current) fileRef.current.value = "";
-    }
+    enqueueUploads(concertId, label, Array.from(files));
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   return (
@@ -631,36 +520,6 @@ function PhotoGallery({
       onDragOver={handleDragOver}
       onDrop={(e) => void handleDrop(e)}
     >
-      {/* Global upload overlay — blocks all interaction and shows progress */}
-      {globalUploading && (
-        <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col items-center justify-center gap-4 backdrop-blur-sm">
-          <div className="w-72 text-center px-6 py-8 rounded-2xl bg-bg/90 border border-border shadow-2xl">
-            <div className="w-12 h-12 border-[3px] border-accent-lime/20 border-t-accent-lime rounded-full animate-spin mx-auto mb-5" />
-            <p className="text-sm text-text-base mb-1">
-              {batchTotal > 1
-                ? `Photo ${batchCurrent} of ${batchTotal}`
-                : (batchPhase === "processing" ? "Processing…" : "Uploading…")}
-            </p>
-            {batchFileName && (
-              <p className="text-sm text-text-subtle truncate max-w-full mb-1">{batchFileName}</p>
-            )}
-            <p className="text-sm text-text-subtle mb-4">
-              {batchPhase === "processing"
-                ? "Worker processing…"
-                : (globalUploadPercent !== null ? `${globalUploadPercent}%` : "Please wait")}
-            </p>
-            {batchPhase === "uploading" && globalUploadPercent !== null && (
-              <div className="w-full bg-surface-2 rounded-full h-1.5 overflow-hidden">
-                <div
-                  className="h-full bg-accent-lime rounded-full transition-all duration-150"
-                  style={{ width: `${globalUploadPercent}%` }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Drag-over overlay */}
       {isDragging && !isFutureEvent && (
         <div className="absolute inset-0 z-20 rounded-lg border-2 border-dashed border-accent-lime bg-accent-lime/5 flex items-center justify-center pointer-events-none">
@@ -706,22 +565,14 @@ function PhotoGallery({
                     + Add media
                   </span>
                 ) : (
-                  <label className={clsx(
-                    "text-xs  px-3 py-1.5 rounded border cursor-pointer transition-colors",
-                    uploading
-                      ? "border-border text-text-subtle cursor-not-allowed"
-                      : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
-                  )}>
-                    {uploading
-                      ? uploadPercent !== null ? `${uploadPercent}%` : "Uploading…"
-                      : "+ Add media"}
+                  <label className="cursor-pointer rounded border border-border px-3 py-1.5 text-xs text-text-muted transition-colors hover:border-accent-lime hover:text-accent-lime">
+                    {uploading ? `+ Add media · ${pendingHere} uploading` : "+ Add media"}
                     <input
                       ref={fileRef}
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm"
                       multiple
                       className="sr-only"
-                      disabled={uploading}
                       onChange={(e) => void handleUpload(e.target.files)}
                     />
                   </label>
@@ -936,7 +787,7 @@ function PhotoGallery({
                 {isAdmin && !reordering && !tagging && confirmDeleteId !== p.id && !p.processing && (
                   <button
                     onClick={() => setConfirmDeleteId(p.id)}
-                    className="absolute top-1 right-1 w-6 h-6 rounded bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent-pink z-10"
+                    className="absolute top-1 right-1 w-6 h-6 rounded bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-70 transition-opacity hover:bg-accent-pink z-10"
                     title="Delete photo"
                   >
                     ✕
@@ -980,10 +831,7 @@ function PhotoGallery({
                 artist={artist}
                 concertId={concertId}
                 concertDate={concertDate}
-                onUploaded={() => qc.invalidateQueries({ queryKey: ["concerts", concertId, "photos"] })}
-                onUploadStart={() => { setGlobalUploading(true); setGlobalUploadPercent(0); }}
-                onUploadEnd={() => { setGlobalUploading(false); setGlobalUploadPercent(null); }}
-                onProgress={(pct) => setGlobalUploadPercent(pct)}
+                label={label}
               />
             ))}
           </div>
@@ -1016,55 +864,30 @@ function ArtistUploadZone({
   artist,
   concertId,
   concertDate,
-  onUploaded,
-  onUploadStart,
-  onUploadEnd,
-  onProgress,
+  label,
 }: {
   artist: ConcertArtist;
   concertId: string;
   concertDate: string;
-  onUploaded: () => void;
-  onUploadStart?: () => void;
-  onUploadEnd?: () => void;
-  onProgress?: (pct: number) => void;
+  label: string;
 }) {
   const [isDragging, setIsDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [uploadCount, setUploadCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
+  // This artist's files in the background queue.
+  const { jobs } = useUploads();
+  const mine = jobs.filter((j) => j.concertId === concertId && j.artistId === artist.id);
+  const pending = mine.filter(isActive).length;
+  const added = mine.filter((j) => j.status === "done").length;
 
   const today = new Date().toISOString().slice(0, 10);
   const isFutureEvent = concertDate > today;
 
+  /** Queue the files, tagged with this artist once uploaded. */
   const handleUpload = async (files: FileList | null): Promise<void> => {
     if (!files || files.length === 0 || isFutureEvent) return;
-    setUploading(true);
-    onUploadStart?.();
-    setError(null);
-    let uploaded = 0;
-    try {
-      const fileList = Array.from(files);
-      for (let i = 0; i < fileList.length; i++) {
-        onProgress?.(0);
-        const res = await api.uploadPhoto(concertId, fileList[i]!, (pct) => onProgress?.(pct));
-        // Auto-tag the artist on the freshly uploaded photo
-        if (res.photoId) {
-          try { await api.tagPhotoArtists(res.photoId, [artist.id]); } catch { /* best-effort */ }
-        }
-        uploaded++;
-      }
-      setUploadCount((n) => n + uploaded);
-      onUploaded();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
-    } finally {
-      setUploading(false);
-      onUploadEnd?.();
-      if (fileRef.current) fileRef.current.value = "";
-    }
+    enqueueUploads(concertId, label, Array.from(files), { artistId: artist.id });
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   return (
@@ -1093,18 +916,17 @@ function ArtistUploadZone({
         accept="image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm"
         multiple
         className="sr-only"
-        disabled={isFutureEvent || uploading}
+        disabled={isFutureEvent}
         onChange={(e) => void handleUpload(e.target.files)}
       />
       <p className="text-sm font-medium text-text-muted truncate leading-tight mb-0.5">{artist.name}</p>
-      {uploading ? (
-        <p className="text-sm text-accent-lime animate-pulse">Uploading…</p>
-      ) : uploadCount > 0 ? (
-        <p className="text-sm text-accent-lime">+{uploadCount} tagged</p>
+      {pending > 0 ? (
+        <p className="text-sm text-accent-lime animate-pulse">{pending} uploading…</p>
+      ) : added > 0 ? (
+        <p className="text-sm text-accent-lime">+{added} tagged</p>
       ) : (
         <p className="text-sm text-text-subtle">Drop or click</p>
       )}
-      {error && <p className="text-sm text-accent-pink mt-0.5 truncate">{error}</p>}
     </div>
   );
 }
@@ -2822,6 +2644,7 @@ export function ConcertDetailPage() {
                   concertId={concert.id}
                   concertDate={concert.date}
                   concertArtists={concert.artists}
+                  label={title}
                   isAdmin={isAdmin}
                 />
               </div>

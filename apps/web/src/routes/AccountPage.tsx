@@ -135,9 +135,11 @@ export function AccountPage() {
         </>
       )}
 
-      <NotificationsCard />
+      {/* Notifications and offline saving need a service worker, which browsers
+          only allow over HTTPS — on plain http they're hidden. */}
+      {window.isSecureContext && <NotificationsCard />}
       <CalendarCard />
-      <OfflineCard />
+      {window.isSecureContext && "caches" in window && <OfflineCard />}
 
       {/* Sign out — the only sign-out control on mobile, where the header has no room for one */}
       <div className="space-y-3">

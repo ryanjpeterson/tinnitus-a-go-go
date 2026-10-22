@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { warmCache } from "@/lib/offline";
 import { startOutbox } from "@/lib/outbox";
+import { startUploads } from "@/lib/uploads";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth-context";
 import { LoginPage } from "@/routes/LoginPage";
@@ -24,6 +25,8 @@ export default function App() {
   useEffect(() => { warmCache(); }, []);
   // Send attendance edits made while offline, once the connection is back.
   useEffect(() => { startOutbox(queryClient); }, []);
+  // Background uploads refresh show galleries as files land.
+  useEffect(() => { startUploads(queryClient); }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

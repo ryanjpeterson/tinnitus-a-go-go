@@ -233,6 +233,8 @@ export const api = {
     concertId: string,
     file: File,
     onProgress?: (pct: number) => void,
+    /** Aborting cancels the upload in flight (used to pause the upload queue). */
+    signal?: AbortSignal,
   ): Promise<{ photoId: string; objectKey: string }> => {
     // Wraps the XHR in a retry loop: if the server returns 429 (rate limited)
     // we wait 6 seconds and try once more before surfacing the error.
@@ -268,6 +270,8 @@ export const api = {
         xhr.addEventListener("error", () => reject(new ApiError("Network error during upload", 0)));
         xhr.addEventListener("abort", () => reject(new ApiError("Upload cancelled", 0)));
 
+        if (signal?.aborted) { reject(new ApiError("Upload cancelled", 0)); return; }
+        signal?.addEventListener("abort", () => xhr.abort(), { once: true });
         xhr.open("POST", `/api/concerts/${concertId}/photos`);
         xhr.withCredentials = true;
         xhr.send(form);

@@ -7,6 +7,17 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Changed — Background uploads, photo viewer on phones
+
+- **Uploads run in the background** — adding photos or videos no longer covers the screen with a "please wait" box. Files go into a queue and upload one at a time while you keep using the app on any page. A spinning progress ring in the bottom-right corner (above the tab bar on phones) shows how many are left; tap it for the list, with **Pause** / **Resume**, **Cancel** and **Retry failed**. Pausing stops the file in flight, which starts over on resume. Files already on the show are skipped. The ring ticks and tidies itself away when everything's done. The per-artist drop zones use the same queue (and still tag the artist). Closing or reloading the app with uploads pending asks first — queued files can't survive a reload.
+- **No more 20-file limit** per upload — the queue takes any number.
+
+### Fixed
+
+- **Photo viewer on phones** — the close button sat under the iPhone status bar (no safe-area padding), so the viewer could be impossible to leave; the page behind could scroll instead of the photos (iOS ignores the old scroll lock); and photos in off-screen slides could stay blank in Safari. Now: a solid black viewer with the close button clear of the notch, tap around the photo or **swipe down to close**, a scroll lock that works on iOS, videos that play inline, and neighbouring photos loaded up front.
+- The photo delete button shows on touch screens (it only appeared on hover).
+- **Account page on plain http** — the Notifications and Offline cards are hidden, since browsers only allow those over HTTPS.
+
 ### Added — Anniversary notifications and notification switches
 
 - **Show anniversaries** — a notification on the anniversary of shows you attended: “15 years ago today · Foo Fighters / Against Me! · Air Canada Centre”. Several on the same day arrive as one (“On this day: 3 shows”). Sent once a year per show, from 10:00 local time. Shows on Feb 29 come round on Feb 28 in other years.

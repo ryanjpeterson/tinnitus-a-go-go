@@ -3,6 +3,7 @@ import { Link, Routes, Route, NavLink, useLocation, Navigate } from "react-route
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePullToRefresh } from "@/lib/gestures";
 import { onOutboxChange, outboxCount } from "@/lib/outbox";
+import { UploadIndicator } from "@/components/UploadIndicator";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/Wordmark";
@@ -193,6 +194,9 @@ export function AppShell() {
       </header>
 
       <OfflineBanner />
+
+      {/* Background uploads — a progress ring in the corner while files send */}
+      <UploadIndicator />
 
       {/* Pull-to-refresh indicator, sliding down from under the app bar */}
       {(pull > 0 || refreshing) && (

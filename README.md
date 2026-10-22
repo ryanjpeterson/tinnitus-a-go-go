@@ -287,7 +287,9 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │       └── data.ts       data cleanup: duplicates, merge + undo, health checks, setlist finder
 │   │       ├── lib/
 │   │       │   ├── show-info.ts      whole-bill lineups and festival day numbers for naming shows
-│   │       │   ├── festival-days.ts  festival day loading, attendance summary, day numbers and length
+│   │       │   ├── festival-days.ts  festival shows by day, attendance summary, day numbers and length
+│   │       │   ├── festival-suggestions.ts  shows that look like a festival (Data cleanup)
+│   │       │   ├── storage-orphans.ts  hourly delete of storage files nothing references any more
 │   │       │   ├── lineup.ts         billing rules (one headliner, no headliner + co-headliner mix)
 │   │       │   ├── setlistfm-core.ts setlist.fm calls + parsing (shared with the worker)
 │   │       │   ├── setlist-cache.ts  setlist.fm song cache in the database
@@ -343,6 +345,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   │                     EmptyState, StatusBadge
 │   │       │   ├── ui/button, card, input, label   primitives
 │   │       │   ├── PhotoCarousel.tsx full-screen photo/video viewer (swipe, swipe down to close)
+│   │       │   ├── FestivalPicker.tsx  put shows in a festival: pick one or start a new one
 │   │       │   ├── UploadIndicator.tsx corner progress ring for background uploads
 │   │       │   ├── VenueMap.tsx      venue map embed (Google Maps, OSM fallback)
 │   │       │   ├── ServicesPanel.tsx admin: service health links
@@ -574,15 +577,17 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | Method | Path              | Description                                                    |
 | ------ | ----------------- | -------------------------------------------------------------- |
 | `GET`    | `/festivals`                   | Festival list with day and artist counts and your attendance (summarised from the days) |
-| `GET`    | `/festivals/:slug`             | Festival detail built from its day shows: lineup (`sets`, `setsByDate`), each day's show and your status (`concertsByDate`), attendance summary, stats |
-| `POST`   | `/festivals`                   | Create a festival and its day shows (one per lineup date, or per festival date when no lineup is given) |
+| `GET`    | `/festivals/:slug`             | Festival detail built from its shows: lineup (`sets`, `setsByDate`), `days` (each date with its shows — a date can have several sets), each date's first show (`concertsByDate`), attendance summary, stats (`totalDays`, `loggedDays`, `shows`) |
+| `POST`   | `/festivals`                   | Create a festival and its day shows (one per lineup date, or per festival date when no lineup is given). With `concertIds`: group those existing shows into it instead — dates and venue come from the shows, and an existing festival of the same name is joined |
+| `POST`   | `/festivals/:slug/shows`       | Add existing shows (`concertIds`). They take the festival's name, flyer, and venue if they have none |
+| `DELETE` | `/festivals/:slug/shows/:concertId` | Take a show out; it goes back to its own name and URL. Returns `festivalRemoved` — a festival left with no shows is removed |
 | `PATCH`  | `/festivals/:slug`             | Edit name, brand, dates, venue, notes, source URL. Dates must still cover the festival's days; a venue change moves the days that were at the old venue |
 | `POST`   | `/festivals/:slug/flyer`       | Upload / replace the festival flyer (days without their own flyer show it) |
 | `POST`   | `/festivals/:slug/flyer/url`   | Import the festival flyer from an image URL |
 | `DELETE` | `/festivals/:slug/flyer`       | Remove the festival flyer |
 | `PUT`    | `/festivals/:slug/sets`        | Replace the lineup across the days: dates pick the day, new dates add days, emptied days are removed unless they hold photos or setlists |
 | `PATCH`  | `/festivals/:slug/attendance`  | Set your attendance on every day at once. Body: `status` |
-| `DELETE` | `/festivals/:slug`             | Delete the festival; its days stay as ordinary shows |
+| `DELETE` | `/festivals/:slug`             | Ungroup: the festival goes, its shows stay as ordinary shows; each show without a flyer gets its own copy of the festival's |
 
 A festival is a container of day shows (`concerts.type = 'festival_day'`). Each day holds its own lineup and attendance; nothing about lineup or attendance is stored on the festival itself.
 
@@ -629,6 +634,8 @@ Data cleanup (`/admin/data` in the app):
 | `GET`  | `/admin/data/similar?type&name&city` | Existing records a new name would duplicate (used by Add show) |
 | `GET`  | `/admin/data/setlist-finder` | Automatic setlist finder progress: found, no match, still to check, shows with setlists |
 | `POST` | `/admin/data/setlist-finder/run` | Queue a setlist finder scan now instead of waiting for the hourly one |
+| `GET`  | `/admin/data/festival-suggestions` | Standalone shows that look like a festival: at a festival's venue within a week of its dates (`join`), or a run of 3+ shows with different headliners at one venue on nearby dates (`new`) |
+| `POST` | `/admin/data/festival-suggestions/dismiss` | Hide a suggestion. Body: `{ key }` (its first two show ids) |
 
 | Method  | Path                    | Description                                                        |
 | ------- | ----------------------- | ------------------------------------------------------------------ |
@@ -710,7 +717,7 @@ docker compose exec api pnpm db:migrate
 | `auth_events` | Audit log: login, logout, password change |
 | `email_verification_tokens` | Single-use tokens from signup email |
 | `invites` | Invite codes (hashed); tracks who issued and who used |
-| `concerts` | Canonical show record: date, venue FK, series FK, flyer, flyer hash. Maintained by the database: `type` (`festival_day` exactly when it belongs to a festival), `headliner_hint` (from the lineup), and a unique readable `slug` (festival or headliner + date). One show per festival per date |
+| `concerts` | Canonical show record: date, venue FK, series FK, flyer, flyer hash. Maintained by the database: `type` (`festival_day` exactly when it belongs to a festival), `headliner_hint` (from the lineup), and a unique readable `slug` (festival or headliner + date; a second set on a festival date adds its headliner). A festival can have several shows on one date. A show joining a festival takes its venue if it has none; a festival whose last show leaves is removed |
 | `concert_attendees` | Per-user junction: status (`interested` / `attending` / `attended` / `missed` / `cancelled`), notes, ticket price, timestamps |
 | `concert_artists` | Lineup: artist FK, role (`headliner` / `co_headliner` / `support`, default `support`), set_order, appearance_notes, stage_name (festival days). At most one headliner, never alongside co-headliners (enforced by the database). `headliner` and `co_headliner` are mutually exclusive in any one lineup |
 | `artists` | Canonical artist: name, slug, genre, bio, MusicBrainz ID, image key |
@@ -726,6 +733,7 @@ docker compose exec api pnpm db:migrate
 | `push_subscriptions` | Web Push subscriptions per device (endpoint, keys) |
 | `push_sent` | Reminders already sent (user, show, kind) so each goes out once |
 | `app_secrets` | Server-generated secrets, e.g. the VAPID key pair for Web Push |
+| `storage_orphans` | Storage files nothing references any more (queued by triggers); the API deletes them hourly |
 
 ---
 
@@ -758,12 +766,13 @@ Applied migrations:
 | `0011_data_cleanup.sql` | `merge_log` (each duplicate merge with an undo snapshot) and `duplicate_dismissals` ("not a duplicate" pairs) |
 | `0012_setlist_lookups.sql` | `setlist_lookups`: which (show, artist) pairs the automatic setlist finder has searched, with attempts and result |
 | `0013_artist_photos.sql` | `enriched_at` and `image_source` on artists (automatic photos; hourly enrichment moves through the list) |
+| `0018_couple_decouple_festivals.sql` | Shows join and leave festivals freely: several shows per festival date allowed, venue inherited on joining, a festival whose last show leaves is removed (its flyer moves to that show or is queued in `storage_orphans`), festival suggestions can be dismissed |
 | `0017_notification_prefs.sql` | `users.push_prefs`: which push notifications each user wants (tonight, how was it, anniversaries — all on by default) |
 | `0016_brands_calendar_push_cleanup.sql` | `event_series.brand` (+ trigger) and consistent festival names (Ottawa Bluesfest → Bluesfest, year added where missing); `users.calendar_token`; `push_subscriptions`, `push_sent`, `app_secrets`; removes unused `event_series.image_key`, `concert_attendees.rating` / `rsvp_at`, `tags` / `concert_tags`, and the `dismissed` status (any rows become `missed`) |
 | `0015_show_integrity_and_slugs.sql` | Database-enforced show rules: `type` derived from the festival link (+ check), one show per festival per date, festival dates/venue/year widened to cover its days, one headliner per lineup (no headliner + co-headliner mix), `headliner_hint` maintained from the lineup, readable unique `slug` on every show |
 | `0014_festival_days_single_source.sql` | Festival days become the only source for festival lineups and attendance: `stage_name` on `concert_artists`; anything only `festival_sets` / `festival_attendees` held is copied onto the days, then both tables are dropped |
 
-0005–0017 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
+0005–0018 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
 
 ```bash
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0010_setlist_song_sets.sql
@@ -774,6 +783,7 @@ docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/ap
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0015_show_integrity_and_slugs.sql
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0016_brands_calendar_push_cleanup.sql
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0017_notification_prefs.sql
+docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0018_couple_decouple_festivals.sql
 docker compose exec api npx tsx src/scripts/cache-setlists.ts
 ```
 
@@ -914,9 +924,11 @@ An installable web app (add it to your phone's Home Screen). Phone-first layout:
 - Statuses: `attended`, `attending`, `interested`, `missed`, `cancelled`.
 
 ### Festivals
-- A festival is a **container of day shows**: each day is a show with its own lineup, attendance, photos and setlists; the festival page is built from its days.
+- A festival is a **container of shows**: each show keeps its own lineup, attendance, photos and setlists, and the festival groups them by date into days — a day can hold several separately logged sets.
+- **Couple and decouple freely** — on Shows, **Select** a few shows and **Add to festival…** (an existing one, or a new one named for you); on a show, **Add to festival** / **Remove from festival**; on a festival, **+ Add shows** (standalone shows from around its dates), **Remove** on any set, and **Ungroup festival**. Shows in a festival take its name, flyer and (if they have none) venue, and get it back when they leave. A festival whose last show leaves is removed, its flyer moving to that show if it has none.
+- **Suggestions** — Data cleanup → Festivals lists standalone shows that look like part of a festival, to add or group in one tap.
 - **Full lineup / All days / Day N** views; days are numbered from the festival's dates ("Day 5 of 5"); **Days attended** (e.g. 1/5); set every day's attendance at once.
-- Editing the lineup edits the days (a new date adds a day; an emptied day is removed unless it has photos or setlists).
+- Editing the lineup edits the shows (a new date adds a show; a show left with no artists is removed unless it has photos or setlists).
 - **Brands across years** — "More Bluesfest" shows the other years' flyers. Festivals have no ratings.
 
 ### Home and Year in review

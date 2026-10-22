@@ -12,6 +12,8 @@
  *   GET  /admin/data/similar?type&name&city                     for the Add show warning
  *   GET  /admin/data/setlist-finder                             automatic setlist finder progress
  *   POST /admin/data/setlist-finder/run                         queue a scan now
+ *   GET  /admin/data/festival-suggestions                       shows that look like a festival
+ *   POST /admin/data/festival-suggestions/dismiss { key }       hide one
  */
 
 import type { FastifyInstance } from "fastify";
@@ -22,6 +24,7 @@ import { requireAdmin } from "../../auth/middleware.js";
 import { dismissPair, findDuplicates, findSimilar } from "../../lib/duplicates.js";
 import { mergeRecords, previewMerge, undoMerge } from "../../lib/merge.js";
 import { applyFix, runHealthChecks } from "../../lib/data-health.js";
+import { dismissFestivalSuggestion, findFestivalSuggestions } from "../../lib/festival-suggestions.js";
 import { setlistEnrichQueue } from "../../lib/queues.js";
 import { env } from "../../lib/env.js";
 import { redis } from "../../lib/redis.js";
@@ -67,6 +70,17 @@ export async function adminDataRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(409).send({ error: (err as Error).message, merged });
     }
     return reply.send({ ok: true, merged });
+  });
+
+  app.get("/admin/data/festival-suggestions", async (_req, reply) => {
+    return reply.send({ suggestions: await findFestivalSuggestions() });
+  });
+
+  app.post("/admin/data/festival-suggestions/dismiss", async (req, reply) => {
+    const parsed = z.object({ key: z.tuple([z.string().uuid(), z.string().uuid()]) }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "key must be two show ids." });
+    await dismissFestivalSuggestion(parsed.data.key);
+    return reply.send({ ok: true });
   });
 
   app.post("/admin/data/dismiss", async (req, reply) => {

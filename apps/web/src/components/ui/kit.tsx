@@ -290,7 +290,7 @@ export function DateBlock({ date, showYear = false, approximate = false }: { dat
 const rowBase = "group flex items-center gap-3 px-4 py-3 min-h-[72px] transition-colors hover:bg-surface-2/70 active:bg-surface-2 sm:gap-4";
 
 /** A show as a row: date block, optional flyer thumb, title, sub lines, status, chevron. */
-export function EventRow({ to, date, title, subtitle, meta, imageUrl, status, showYear = true, approximate }: {
+export function EventRow({ to, date, title, subtitle, meta, imageUrl, status, showYear = true, approximate, selected, onSelect }: {
   to: string;
   date: string;
   title: string;
@@ -300,7 +300,31 @@ export function EventRow({ to, date, title, subtitle, meta, imageUrl, status, sh
   status?: AttendanceStatus | null;
   showYear?: boolean;
   approximate?: boolean;
+  /** Selection mode: the row toggles instead of opening the show. */
+  selected?: boolean;
+  onSelect?: () => void;
 }) {
+  if (onSelect) {
+    return (
+      <button type="button" onClick={onSelect} aria-pressed={!!selected}
+        className={cn(rowBase, "w-full text-left", selected && "bg-accent-lime/10")}>
+        <span className={cn(
+          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+          selected ? "border-accent-lime bg-accent-lime text-bg" : "border-border",
+        )}>
+          {selected && (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
+          )}
+        </span>
+        <DateBlock date={date} showYear={showYear} approximate={approximate} />
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-text-base sm:text-base">{title}</p>
+          {subtitle && <p className="mt-0.5 truncate text-sm text-text-muted">{subtitle}</p>}
+          {meta && <p className="mt-0.5 truncate text-xs text-text-subtle">{meta}</p>}
+        </div>
+      </button>
+    );
+  }
   return (
     <Link to={to} className={rowBase}>
       <DateBlock date={date} showYear={showYear} approximate={approximate} />
@@ -531,13 +555,16 @@ export function Tabs<T extends string>({ value, onChange, options }: {
 }) {
   return (
     <div role="tablist" className="grid rounded-full border border-border bg-surface p-1 sm:inline-grid sm:min-w-[320px]"
-      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+      // Four or more tabs size to their labels (equal widths would clip the longest).
+      style={{ gridTemplateColumns: options.length > 3 ? `repeat(${options.length}, auto)` : `repeat(${options.length}, minmax(0, 1fr))` }}>
       {options.map((o) => {
         const active = o.value === value;
         return (
           <button key={o.value} role="tab" aria-selected={active} onClick={() => onChange(o.value)}
             className={cn(
-              "h-10 rounded-full px-4 text-[15px] font-semibold transition-colors sm:h-9 sm:text-sm",
+              "h-10 truncate rounded-full font-semibold transition-colors sm:h-9 sm:px-4 sm:text-sm",
+              // Four or more tabs: tighter on phones so every label fits.
+              options.length > 3 ? "px-2.5 text-sm" : "px-4 text-[15px]",
               active ? "bg-accent-lime text-bg" : "text-text-muted hover:text-text-base",
             )}>
             {o.label}

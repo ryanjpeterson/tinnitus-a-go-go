@@ -596,18 +596,19 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       }
     }
 
-    // For a festival day: every day of that festival, so the page can switch between them.
+    // For a festival day: every show of that festival (a date can have several
+    // sets), so the page can switch between them.
     const festivalDays = concert.type === "festival_day" && concert.eventSeriesId
       ? (await db.execute<{ concert_id: string; slug: string; date: string; day_number: number | null; lineup: string[] | null }>(sql`
-          select distinct on (c.date) c.id as concert_id, c.slug, c.date::text as date,
-            (c.date - es.start_date) + 1 as day_number,
+          select c.id as concert_id, c.slug, c.date::text as date,
+            coalesce((c.date - es.start_date) + 1, dense_rank() over (order by c.date)::int) as day_number,
             (select array_agg(a.name order by ${BILLING_ORDER_SQL})
                from concert_artists ca join artists a on a.id = ca.artist_id
               where ca.concert_id = c.id) as lineup
           from concerts c join event_series es on es.id = c.event_series_id
           where c.event_series_id = ${concert.eventSeriesId}
-          order by c.date, c.id
-        `)).map((r, i) => ({ number: r.day_number ?? i + 1, date: r.date, concertId: r.concert_id, slug: r.slug, lineup: r.lineup ?? [] }))
+          order by c.date, c.created_at, c.id
+        `)).map((r) => ({ number: r.day_number ?? 1, date: r.date, concertId: r.concert_id, slug: r.slug, lineup: r.lineup ?? [] }))
       : [];
 
     // Whether the show was attended/missed/etc., for everyone (the page hides
@@ -681,7 +682,7 @@ export async function concertRoutes(app: FastifyInstance): Promise<void> {
       festivalDays,
       // How many days the festival runs (from its dates), for "Day 5 of 5".
       festivalLength: concert.eventSeries
-        ? festivalLength(concert.eventSeries, festivalDays.length)
+        ? festivalLength(concert.eventSeries, new Set(festivalDays.map((d) => d.date)).size)
         : null,
     });
   });

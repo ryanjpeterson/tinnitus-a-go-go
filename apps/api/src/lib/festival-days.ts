@@ -1,8 +1,9 @@
 /**
- * Festival days — a festival (event_series) is a container of day shows
- * (concerts.type = 'festival_day'). Each day owns its lineup (concert_artists)
- * and attendance (concert_attendees); everything the festival shows about
- * lineup or attendance is read from its days.
+ * Festival days — a festival (event_series) is a container of shows
+ * (concerts.type = 'festival_day'). Each show owns its lineup and attendance;
+ * a date can have several (separately logged sets), and the festival groups
+ * them by date into days. Everything the festival shows about lineup or
+ * attendance is read from its shows.
  */
 
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
@@ -30,14 +31,14 @@ export interface FestivalDay {
   }[];
 }
 
-/** Days of the given festivals in date order, with lineups and the caller's attendance. */
+/** Shows of the given festivals in date order (several per date allowed), with lineups and the caller's attendance. */
 export async function loadFestivalDays(festivalIds: string[], userId: string | null): Promise<FestivalDay[]> {
   if (festivalIds.length === 0) return [];
   const days = await db
     .select({ id: schema.concerts.id, festivalId: schema.concerts.eventSeriesId, date: schema.concerts.date, slug: schema.concerts.slug })
     .from(schema.concerts)
     .where(and(inArray(schema.concerts.eventSeriesId, festivalIds), eq(schema.concerts.type, "festival_day")))
-    .orderBy(asc(schema.concerts.date));
+    .orderBy(asc(schema.concerts.date), asc(schema.concerts.createdAt));
   if (days.length === 0) return [];
   const dayIds = days.map((d) => d.id);
 
@@ -99,18 +100,23 @@ export function festivalDayNumber(festival: { startDate: string | null }, date: 
 
 const PRECEDENCE: Status[] = ["attended", "attending", "interested", "missed", "cancelled"];
 
+/** How many distinct dates the festival's shows fall on. */
+export const loggedDates = (shows: Pick<FestivalDay, "date">[]): number => new Set(shows.map((s) => s.date)).size;
+
 /**
- * A festival's attendance, summarised from its days: attended if any day was
- * attended, otherwise the most committed status any day has.
+ * A festival's attendance, summarised from its shows: attended if any was
+ * attended, otherwise the most committed status any has. Days attended counts
+ * dates (two sets on one day are one day).
  */
-export function festivalAttendance(days: Pick<FestivalDay, "status">[], totalDays = days.length): { status: Status; daysAttended: number; totalDays: number } | null {
-  const statuses = days.map((d) => d.status).filter((s): s is Status => !!s);
+export function festivalAttendance(shows: Pick<FestivalDay, "status" | "date">[], totalDays = loggedDates(shows)): { status: Status; daysAttended: number; totalDays: number } | null {
+  const statuses = shows.map((d) => d.status).filter((s): s is Status => !!s);
   const status = PRECEDENCE.find((s) => statuses.includes(s));
   if (!status) return null;
-  return { status, daysAttended: statuses.filter((s) => s === "attended").length, totalDays };
+  const daysAttended = new Set(shows.filter((s) => s.status === "attended").map((s) => s.date)).size;
+  return { status, daysAttended, totalDays };
 }
 
-/** The festival's day show for a date, created if it doesn't exist yet. */
+/** The festival's (first) show on a date, created if it has none yet. */
 export async function ensureFestivalDay(
   tx: Tx,
   festival: { id: string; venueId: string | null },
@@ -121,6 +127,7 @@ export async function ensureFestivalDay(
     .select({ id: schema.concerts.id })
     .from(schema.concerts)
     .where(and(eq(schema.concerts.eventSeriesId, festival.id), eq(schema.concerts.type, "festival_day"), eq(schema.concerts.date, date)))
+    .orderBy(asc(schema.concerts.createdAt))
     .limit(1);
   if (existing[0]) return { id: existing[0].id, created: false };
 

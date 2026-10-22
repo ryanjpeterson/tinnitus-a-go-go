@@ -7,6 +7,22 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Added — Couple and decouple festivals
+
+- **Group shows into a festival** — on Shows, tap **Select**, tick shows, then **Add to festival…**: pick an existing festival, or create one (named from the venue and year to start with). Its dates and venue come from the shows. A show's page has **Add to festival** too.
+- **Take shows out** — **Remove from festival** on a show's page, or **Remove** on any set on the festival page; the show goes back to its own name and link. **Ungroup festival** dissolves it entirely — every show stays, each keeping a copy of the flyer.
+- **Empty festivals go away** — when a festival's last show leaves or is deleted, the festival is removed. If that last show has no flyer of its own it takes the festival's, so no poster is lost; otherwise the file is deleted from storage.
+- **Several sets on one festival day** — shows you logged separately stay separate when grouped: the festival page shows each day with its sets, each with its own status, and the show page lists every set when switching days. A second set on a date gets the headliner in its link (`/shows/bluesfest-2025-pixies-2025-07-12`).
+- **Inherit festival details** — a show in a festival is named for it, shows its flyer, and takes its venue if it has none; it gets its own back when it leaves.
+- **Festival suggestions** — Data cleanup has a **Festivals** tab: standalone shows at a festival's venue within a week of its dates ("Add to Bluesfest 2025?"), and runs of 3+ shows with different headliners at one venue on nearby dates ("A festival?"). Add, group or dismiss each.
+- **+ Add shows** on a festival page lists standalone shows from a week either side of its dates, its venue first.
+- Requires migration `0018_couple_decouple_festivals.sql`.
+
+### Changed
+
+- The rule "one show per festival per date" is gone — a festival day can hold several shows.
+- Four-option tab bars (like Data cleanup's) size each tab to its label on phones, so none get cut off.
+
 ### Documentation
 
 - **README brought up to date with the app** — the project structure now lists every current file (about 50 were missing; `ConcertGridPage`, `PublicConcertPage`, `SeriesPage` and `useCopyValue` no longer exist); the feature overview describes the app as it is (tab dock, festivals as day containers, search, background uploads, what needs HTTPS) instead of the old grid editor, landing page and ratings; the roadmap is a short summary by area with the genuinely open items; the stack table drops AG-Grid and adds the PWA, viewer, setlist and push libraries.

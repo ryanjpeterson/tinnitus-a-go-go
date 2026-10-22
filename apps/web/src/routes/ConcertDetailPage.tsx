@@ -11,6 +11,7 @@ import { api, type ConcertDetail, type ArtistListItem, type VenueListItem, type 
 import type { AttendanceStatus } from "@tagg/shared";
 import { VenueMap } from "@/components/VenueMap";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
+import { FestivalPicker } from "@/components/FestivalPicker";
 import type { CarouselItem } from "@/components/PhotoCarousel";
 import { useAuth } from "@/lib/auth-context";
 import { Chevron, EmptyState, EventRow, Hero, List, Loading, ShareButton, StatusBadge } from "@/components/ui/kit";
@@ -2494,6 +2495,20 @@ export function ConcertDetailPage() {
     onRight: dayIdx >= 0 ? () => goDay(days[dayIdx - 1]) : undefined,
   });
 
+  // Coupling: put this show in a festival, or take it out.
+  const [festivalPickerOpen, setFestivalPickerOpen] = useState(false);
+  const leaveFestival = async (festival: { slug: string; name: string }, concertId: string) => {
+    if (!window.confirm(`Take this show out of ${festival.name}? It goes back to being its own show.`)) return;
+    try {
+      const res = await api.removeShowFromFestival(festival.slug, concertId);
+      await Promise.all([qc.invalidateQueries({ queryKey: ["concerts"] }), qc.invalidateQueries({ queryKey: ["festivals"] })]);
+      if (res.festivalRemoved) window.alert(`That was the last show in ${festival.name}, so the festival has been removed.`);
+      navigate(`/shows/${res.showSlug}`, { replace: true });
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Couldn't take the show out of the festival.");
+    }
+  };
+
   if (concertQuery.isLoading) return <Loading />;
   if (concertQuery.isError || !concertQuery.data) {
     return (
@@ -2553,6 +2568,9 @@ export function ConcertDetailPage() {
               </a>
             )}
             {isAdmin && <FlyerControls key={concert.id} concert={concert} />}
+            {isAdmin && (isFestivalDay
+              ? <Button variant="ghost" className="rounded-full" onClick={() => void leaveFestival(concert.eventSeries!, concert.id)}>Remove from festival</Button>
+              : <Button variant="ghost" className="rounded-full" onClick={() => setFestivalPickerOpen(true)}>Add to festival</Button>)}
             <ShareButton card={() => ({
               imageUrl: concert.flyerUrl,
               eyebrow: [
@@ -2601,19 +2619,32 @@ export function ConcertDetailPage() {
                 </Link>
               </div>
               <List>
-                {festivalDays.map((d) => (
+                {festivalDays.map((d) => {
+                  // A day with several sets names each by its headliner.
+                  const shared = festivalDays.filter((x) => x.date === d.date).length > 1;
+                  const label = `Day ${d.number}${shared && d.lineup[0] ? ` · ${d.lineup[0]}` : ""}`;
+                  return (
                   <div key={d.concertId} className={d.concertId === concert.id ? "bg-lime-950/30" : undefined}>
                     <EventRow
                       to={`/shows/${d.slug ?? d.concertId}`}
                       date={d.date}
                       showYear={false}
-                      title={d.concertId === concert.id ? `Day ${d.number} · you're here` : `Day ${d.number}`}
+                      title={d.concertId === concert.id ? `${label} · you're here` : label}
                       subtitle={billLine(d.lineup, 4, ", ") || "No lineup yet"}
                     />
                   </div>
-                ))}
+                  );
+                })}
               </List>
             </section>
+          )}
+
+          {festivalPickerOpen && (
+            <FestivalPicker
+              concertIds={[concert.id]}
+              suggestedName={`${concert.venue?.name ?? "Festival"} ${concert.date.slice(0, 4)}`}
+              onClose={() => setFestivalPickerOpen(false)}
+            />
           )}
 
           {/* Attendance (admin only) */}

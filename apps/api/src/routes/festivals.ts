@@ -5,27 +5,31 @@
  *   GET    /festivals/:slug              festival detail: its days, lineup and attendance
  *   POST   /festivals                    create a festival and its days
  *   PATCH  /festivals/:slug              update festival info
- *   DELETE /festivals/:slug              delete the festival (its days stay, as shows)
+ *   DELETE /festivals/:slug              ungroup: the festival goes, its shows stay (and keep its flyer)
+ *   POST   /festivals/:slug/shows        add existing shows to the festival
+ *   DELETE /festivals/:slug/shows/:id    take a show out (an emptied festival is removed)
  *   POST   /festivals/:slug/flyer        upload flyer image
  *   POST   /festivals/:slug/flyer/url    upload flyer from URL
  *   DELETE /festivals/:slug/flyer        remove flyer
  *   PUT    /festivals/:slug/sets         replace the lineup across its days
  *   PATCH  /festivals/:slug/attendance   set attendance on every day at once
  *
- * A festival is a container of day shows (concerts.type = 'festival_day'); the
- * days hold the lineup and attendance (see lib/festival-days.ts).
+ * A festival is a container of shows (concerts.type = 'festival_day'), grouped
+ * by date into days; the shows hold the lineup and attendance (see
+ * lib/festival-days.ts). A festival whose last show leaves is removed by the
+ * database (migration 0018).
  */
 
 import { createHash } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { and, desc, asc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, DeleteObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
 import { db, schema } from "../db/client.js";
 import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
 import { requireAdmin } from "../auth/middleware.js";
-import { dateRange, ensureFestivalDay, festivalAttendance, festivalDayNumber, festivalLength, loadFestivalDays } from "../lib/festival-days.js";
+import { dateRange, ensureFestivalDay, festivalAttendance, festivalDayNumber, festivalLength, loadFestivalDays, loggedDates } from "../lib/festival-days.js";
 import { slugify } from "@tagg/shared";
 
 /** Direct public URL for a MinIO object */
@@ -130,8 +134,8 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
           ? { id: r.venueId, slug: r.venueSlug!, name: r.venueName!, city: r.venueCity, region: r.venueRegion }
           : null,
         artistCount: new Set(own.flatMap((d) => d.artists.map((a) => a.id))).size,
-        dayCount: festivalLength(r, own.length),
-        attendance: festivalAttendance(own, festivalLength(r, own.length)),
+        dayCount: festivalLength(r, loggedDates(own)),
+        attendance: festivalAttendance(own, festivalLength(r, loggedDates(own))),
       };
     });
 
@@ -176,16 +180,31 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       })),
     );
 
-    // One entry per day, in date order — including days with no artists yet.
+    // Days in date order, each with its shows (a date can hold several
+    // separately logged sets) — including shows with no artists yet. Days are
+    // numbered by the festival's dates: the 20th of a festival that starts on
+    // the 16th is Day 5, even if it's the only day logged.
+    const dates = [...new Set(days.map((d) => d.date))];
     const setsByDate: Record<string, typeof sets> = {};
-    // Days are numbered by the festival's dates: the 20th of a festival that
-    // starts on the 16th is Day 5, even if it's the only day logged.
     const concertsByDate: Record<string, { id: string; slug: string; status: string | null; number: number }> = {};
-    days.forEach((d, i) => {
-      setsByDate[d.date] = sets.filter((s) => s.concertId === d.id);
-      concertsByDate[d.date] = { id: d.id, slug: d.slug, status: d.status, number: festivalDayNumber(festival, d.date, i + 1) };
+    const dayList = dates.map((date, i) => {
+      const shows = days.filter((d) => d.date === date);
+      const number = festivalDayNumber(festival, date, i + 1);
+      setsByDate[date] = sets.filter((s) => s.performanceDate === date);
+      // The date's first show, for links that need one.
+      concertsByDate[date] = { id: shows[0]!.id, slug: shows[0]!.slug, status: shows[0]!.status, number };
+      return {
+        date,
+        number,
+        shows: shows.map((sh) => ({
+          id: sh.id,
+          slug: sh.slug,
+          status: sh.status,
+          artists: sh.artists.map((a) => a.name),
+        })),
+      };
     });
-    const length = festivalLength(festival, days.length);
+    const length = festivalLength(festival, dates.length);
 
     // The same festival in other years (same brand), newest first.
     const otherYears = festival.brand
@@ -236,12 +255,14 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       sets,
       setsByDate,
       concertsByDate,
+      days: dayList,
       attendance: festivalAttendance(days, length),
       otherYears: otherYears.map(({ flyerKey, ...o }) => ({ ...o, flyerUrl: flyerKey ? mediaUrl(flyerKey) : null })),
       stats: {
         totalArtists: new Set(sets.map((s) => s.artist.id)).size,
         totalDays: length,
-        loggedDays: days.length,
+        loggedDays: dates.length,
+        shows: days.length,
       },
     });
   });
@@ -263,6 +284,8 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
     personalNotes: z.string().max(4096).optional(),
     ticketPricePaid: z.number().int().min(0).optional(),
     ticketPriceCurrency: z.string().length(3).optional(),
+    // Group these existing shows into the festival instead of creating days.
+    concertIds: z.array(z.string().uuid()).min(1).max(300).optional(),
     // Initial lineup
     artists: z
       .array(
@@ -285,6 +308,42 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
 
     const body = parsed.data;
     const userId = req.user!.id;
+
+    // Grouping existing shows: the festival takes its dates and venue from them
+    // (unless given), and an existing festival of the same name is joined, not
+    // overwritten.
+    if (body.concertIds) {
+      const shows = await db
+        .select({ id: schema.concerts.id, date: schema.concerts.date, venueId: schema.concerts.venueId })
+        .from(schema.concerts)
+        .where(inArray(schema.concerts.id, body.concertIds))
+        .orderBy(asc(schema.concerts.date));
+      if (shows.length === 0) return reply.code(404).send({ error: "None of those shows exist." });
+      const slugFor = slugify(body.name);
+      let festival = await db.query.eventSeries.findFirst({ where: eq(schema.eventSeries.slug, slugFor) });
+      if (!festival) {
+        const startDate = body.startDate ?? shows[0]!.date;
+        const [created] = await db
+          .insert(schema.eventSeries)
+          .values({
+            name: body.name,
+            slug: slugFor,
+            year: body.year ?? Number(startDate.slice(0, 4)),
+            startDate,
+            endDate: body.endDate ?? shows[shows.length - 1]!.date,
+            venueId: shows.find((x) => x.venueId)?.venueId ?? null,
+            eventNotes: body.eventNotes ?? null,
+            sourceUrl: body.sourceUrl ?? null,
+          })
+          .returning();
+        festival = created!;
+      }
+      await db
+        .update(schema.concerts)
+        .set({ eventSeriesId: festival.id, updatedAt: new Date() })
+        .where(inArray(schema.concerts.id, shows.map((x) => x.id)));
+      return reply.code(201).send({ festivalId: festival.id, slug: festival.slug, added: shows.length });
+    }
 
     // Auto-extract year from startDate if not provided
     const year = body.year ?? (body.startDate ? parseInt(body.startDate.slice(0, 4), 10) : null);
@@ -519,7 +578,9 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── DELETE /festivals/:slug ────────────────────────────────────────────────
-  // Delete festival (admin only)
+  // Ungroup: the festival goes; its shows stay — with their attendance, photos
+  // and setlists — as ordinary shows. Shows without a flyer of their own get a
+  // copy of the festival's, so no poster is lost.
 
   app.delete("/festivals/:slug", { preHandler: [requireAdmin] }, async (req, reply) => {
     const { slug } = req.params as { slug: string };
@@ -531,16 +592,73 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(404).send({ error: "Festival not found." });
     }
 
-    // Its days stay — with their attendance, photos and setlists — as ordinary shows.
-    await db.transaction(async (tx) => {
-      await tx
-        .update(schema.concerts)
-        .set({ type: "concert", eventSeriesId: null, updatedAt: new Date() })
-        .where(eq(schema.concerts.eventSeriesId, festival.id));
-      await tx.delete(schema.eventSeries).where(eq(schema.eventSeries.id, festival.id));
-    });
+    const shows = await db
+      .select({ id: schema.concerts.id, flyerKey: schema.concerts.flyerKey })
+      .from(schema.concerts)
+      .where(eq(schema.concerts.eventSeriesId, festival.id));
 
-    return reply.code(204).send();
+    if (festival.flyerKey) {
+      const ext = festival.flyerKey.match(/\.[a-z0-9]+$/i)?.[0] ?? ".jpg";
+      for (const show of shows.filter((x) => !x.flyerKey)) {
+        const key = `concerts/${show.id}/flyer${ext}`;
+        try {
+          await s3.send(new CopyObjectCommand({ Bucket: bucket, CopySource: `${bucket}/${festival.flyerKey}`, Key: key }));
+          await db.update(schema.concerts).set({ flyerKey: key, flyerHash: festival.flyerHash }).where(eq(schema.concerts.id, show.id));
+        } catch (err) {
+          req.log.warn({ err, show: show.id }, "couldn't copy the festival flyer to a show");
+        }
+      }
+    }
+
+    // Detaching the last show removes the festival (migration 0018), queueing
+    // its flyer file for deletion; a festival with no shows is removed here.
+    await db
+      .update(schema.concerts)
+      .set({ eventSeriesId: null, updatedAt: new Date() })
+      .where(eq(schema.concerts.eventSeriesId, festival.id));
+    const stillThere = await db.query.eventSeries.findFirst({ where: eq(schema.eventSeries.id, festival.id) });
+    if (stillThere) {
+      await db.delete(schema.eventSeries).where(eq(schema.eventSeries.id, festival.id));
+      if (festival.flyerKey) await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: festival.flyerKey })).catch(() => undefined);
+    }
+
+    return reply.send({ ok: true, shows: shows.length });
+  });
+
+  // ── POST /festivals/:slug/shows · DELETE /festivals/:slug/shows/:id ─────────
+  // Couple and decouple: add existing shows to the festival (they take its
+  // name, flyer, and venue if they have none), or take one out (it goes back
+  // to its own name; a festival left with no shows is removed).
+
+  app.post("/festivals/:slug/shows", { preHandler: [requireAdmin] }, async (req, reply) => {
+    const { slug } = req.params as { slug: string };
+    const parsed = z.object({ concertIds: z.array(z.string().uuid()).min(1).max(300) }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "concertIds required." });
+    const festival = await db.query.eventSeries.findFirst({ where: eq(schema.eventSeries.slug, slug) });
+    if (!festival) return reply.code(404).send({ error: "Festival not found." });
+
+    const updated = await db
+      .update(schema.concerts)
+      .set({ eventSeriesId: festival.id, updatedAt: new Date() })
+      .where(inArray(schema.concerts.id, parsed.data.concertIds))
+      .returning({ id: schema.concerts.id });
+    return reply.send({ ok: true, added: updated.length });
+  });
+
+  app.delete("/festivals/:slug/shows/:concertId", { preHandler: [requireAdmin] }, async (req, reply) => {
+    const { slug, concertId } = req.params as { slug: string; concertId: string };
+    const festival = await db.query.eventSeries.findFirst({ where: eq(schema.eventSeries.slug, slug) });
+    if (!festival) return reply.code(404).send({ error: "Festival not found." });
+
+    const [row] = await db
+      .update(schema.concerts)
+      .set({ eventSeriesId: null, updatedAt: new Date() })
+      .where(and(eq(schema.concerts.id, concertId), eq(schema.concerts.eventSeriesId, festival.id)))
+      .returning({ slug: schema.concerts.slug });
+    if (!row) return reply.code(404).send({ error: "That show isn't part of this festival." });
+
+    const festivalRemoved = !(await db.query.eventSeries.findFirst({ where: eq(schema.eventSeries.id, festival.id) }));
+    return reply.send({ ok: true, showSlug: row.slug, festivalRemoved });
   });
 
   // ── PATCH /festivals/:slug/attendance ──────────────────────────────────────
@@ -577,9 +695,11 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── PUT /festivals/:slug/sets ──────────────────────────────────────────────
-  // Replace the lineup. Each entry's date says which day it plays; a date with
-  // no day yet gets one, and a day left with no artists is removed unless it
-  // holds photos or setlists.
+  // Replace the lineup. Each entry's date says which day it plays, and its
+  // concertId (when a date has several shows) which show. Otherwise an artist
+  // stays on the show it was already on that date, or joins the date's first
+  // show; a date with no show yet gets one. A show left with no artists is
+  // removed unless it holds photos or setlists.
 
   const putSetsBody = z.object({
     sets: z
@@ -591,6 +711,8 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
           stageName: z.string().max(128).nullable().optional(),
           setOrder: z.number().int().min(0).nullable().optional(),
           appearanceNotes: z.string().max(1024).nullable().optional(),
+          // The show this set belongs to, when a date has several.
+          concertId: z.string().uuid().nullable().optional(),
         }).refine((d) => d.artistId || d.artistName, "Each entry needs artistId or artistName"),
       )
       .max(300),
@@ -649,53 +771,69 @@ export async function festivalRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const byDate = new Map<string, typeof resolved>();
+    for (const r of resolved) byDate.set(r.date, [...(byDate.get(r.date) ?? []), r]);
+
+    // Which show each set goes on.
+    const byShow = new Map<string, typeof resolved>();
+    const newDates = new Map<string, typeof resolved>();
     for (const r of resolved) {
-      const list = byDate.get(r.date) ?? [];
-      // An artist plays a day once.
+      const onDate = existingDays.filter((d) => d.date === r.date);
+      const target =
+        onDate.find((d) => d.id === r.s.concertId) ??
+        onDate.find((d) => d.artists.some((a) => a.id === r.artistId)) ??
+        onDate[0];
+      const group = target ? byShow : newDates;
+      const key = target ? target.id : r.date;
+      const list = group.get(key) ?? [];
+      // An artist plays a show once.
       if (!list.some((x) => x.artistId === r.artistId)) list.push(r);
-      byDate.set(r.date, list);
+      group.set(key, list);
     }
 
-    // A new day starts with the caller's attendance for the festival as a whole.
+    // A new show starts with the caller's attendance for the festival as a whole.
     const carried = festivalAttendance(existingDays)?.status;
 
+    /** Roles for a show: kept where the artist was already on it; first act headlines otherwise. */
+    const rolesFor = (showId: string | null, entries: typeof resolved) => {
+      const roles = new Map((existingDays.find((d) => d.id === showId)?.artists ?? []).map((a) => [a.id, a.role]));
+      const kept = entries.map(({ artistId }) => roles.get(artistId));
+      if (!kept.some((r) => r === "headliner" || r === "co_headliner")) kept[0] = "headliner";
+      const hasCo = kept.includes("co_headliner");
+      let headlined = false;
+      return kept.map((r) => {
+        if (r !== "headliner") return r === "co_headliner" ? r : "support";
+        if (hasCo || headlined) return "support";
+        headlined = true;
+        return r;
+      });
+    };
+
     await db.transaction(async (tx) => {
-      for (const [date, entries] of byDate) {
-        const day = await ensureFestivalDay(tx, festival, date, userId);
-        const roles = new Map(
-          (existingDays.find((d) => d.id === day.id)?.artists ?? []).map((a) => [a.id, a.role]),
-        );
-        await tx.delete(schema.concertArtists).where(eq(schema.concertArtists.concertId, day.id));
-        // Kept roles where the artist was already on the day; a day with no
-        // top billing gets its first-listed act as headliner. Then the
-        // billing rules: one headliner, never alongside co-headliners.
-        const kept = entries.map(({ artistId }) => roles.get(artistId));
-        if (!kept.some((r) => r === "headliner" || r === "co_headliner")) kept[0] = "headliner";
-        const hasCo = kept.includes("co_headliner");
-        let headlined = false;
-        const dayRoles = kept.map((r) => {
-          if (r !== "headliner") return r === "co_headliner" ? r : "support";
-          if (hasCo || headlined) return "support";
-          headlined = true;
-          return r;
-        });
+      const write = async (showId: string, entries: typeof resolved) => {
+        await tx.delete(schema.concertArtists).where(eq(schema.concertArtists.concertId, showId));
+        const roles = rolesFor(showId, entries);
         await tx.insert(schema.concertArtists).values(
           entries.map(({ s, artistId }, i) => ({
-            concertId: day.id,
+            concertId: showId,
             artistId,
-            role: dayRoles[i] as typeof schema.concertArtists.$inferInsert.role,
+            role: roles[i] as typeof schema.concertArtists.$inferInsert.role,
             setOrder: i,
             stageName: s.stageName ?? null,
             appearanceNotes: s.appearanceNotes ?? null,
           })),
         );
+      };
+      for (const [showId, entries] of byShow) await write(showId, entries);
+      for (const [date, entries] of newDates) {
+        const day = await ensureFestivalDay(tx, festival, date, userId);
+        await write(day.id, entries);
         if (day.created && carried) {
           await tx.insert(schema.concertAttendees).values({ userId, concertId: day.id, status: carried }).onConflictDoNothing();
         }
       }
 
-      // Days no longer in the lineup.
-      for (const d of existingDays.filter((d) => !byDate.has(d.date))) {
+      // Shows left with no artists.
+      for (const d of existingDays.filter((d) => !byShow.has(d.id))) {
         await tx.delete(schema.concertArtists).where(eq(schema.concertArtists.concertId, d.id));
         await tx.execute(sql`
           delete from concerts c where c.id = ${d.id}

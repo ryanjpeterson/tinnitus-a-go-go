@@ -1,20 +1,24 @@
 /**
  * FestivalDetailPage — a festival and the days it's made of.
  *
- * Each day is a show (with its own lineup, attendance, photos and setlists);
- * this page gathers them: the whole lineup, each day's lineup, and which days
- * you went to. Editing the lineup here edits the days.
+ * Its shows (each with its own lineup, attendance, photos and setlists) are
+ * grouped by date into days — a day can hold several separately logged sets.
+ * This page gathers them: the whole lineup, each day, and which days you went
+ * to. Editing the lineup edits the shows; admins can add standalone shows to
+ * the festival, take one out, or ungroup the festival entirely.
  */
 
 import { useState, useRef, useEffect } from "react";
 import { Link, useParams, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { api, type FestivalSet, type ArtistListItem } from "@/lib/api";
+import { api, type FestivalSet, type FestivalDetail, type ArtistListItem } from "@/lib/api";
+import { plural } from "@/lib/format";
+import { billLine } from "@/lib/showTitle";
 import type { AttendanceStatus } from "@tagg/shared";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { Chevron, DateBlock, EmptyState, Hero, Loading, PillTabs, SelectField, ShareButton, StatTile, StatusBadge } from "@/components/ui/kit";
+import { Chevron, DateBlock, EmptyState, EventRow, Hero, Loading, PillTabs, SelectField, ShareButton, Sheet, StatTile, StatusBadge } from "@/components/ui/kit";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
@@ -146,7 +150,10 @@ export function FestivalDetailPage() {
     artistName: string;
     performanceDate: string;
     stageName: string;
+    /** The show the set is on, so a day with several keeps them apart. */
+    concertId?: string;
   }>>([]);
+  const [addShowsOpen, setAddShowsOpen] = useState(false);
   const [savingLineup, setSavingLineup] = useState(false);
 
   // Attendance: set every day at once (single days are set on their show page)
@@ -168,7 +175,7 @@ export function FestivalDetailPage() {
     );
   }
 
-  const { festival, sets, setsByDate, concertsByDate, attendance, stats, otherYears = [] } = q.data;
+  const { festival, sets, setsByDate, concertsByDate, attendance, stats, otherYears = [], days = [] } = q.data;
 
   const startEdit = () => {
     setEditName(festival.name);
@@ -208,6 +215,7 @@ export function FestivalDetailPage() {
       artistName: s.artist.name,
       performanceDate: s.performanceDate ?? "",
       stageName: s.stageName ?? "",
+      concertId: s.concertId,
     })));
     setEditingLineup(true);
   };
@@ -242,6 +250,7 @@ export function FestivalDetailPage() {
           performanceDate: s.performanceDate || null,
           stageName: s.stageName.trim() || null,
           setOrder: i,
+          concertId: s.concertId ?? null,
         })),
       );
       await Promise.all([
@@ -313,8 +322,24 @@ export function FestivalDetailPage() {
     }
   };
 
+  /** Take one show out; the festival goes too if it was the last. */
+  const removeShow = async (concertId: string) => {
+    if (!window.confirm("Take this show out of the festival? It goes back to being its own show.")) return;
+    try {
+      const res = await api.removeShowFromFestival(festival.slug, concertId);
+      await Promise.all([qc.invalidateQueries({ queryKey: ["festivals"] }), qc.invalidateQueries({ queryKey: ["concerts"] })]);
+      if (res.festivalRemoved) {
+        window.alert(`That was the last show, so ${festival.name} has been removed.`);
+        navigate(`/shows/${res.showSlug}`);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Couldn't take the show out.");
+    }
+  };
+
   const handleDeleteFestival = async () => {
-    if (!window.confirm(`Delete ${festival.name}? Its days stay, as ordinary shows.`)) return;
+    const n = stats.shows;
+    if (!window.confirm(`Ungroup ${festival.name}? The festival goes; its ${n} show${n === 1 ? "" : "s"} stay as ordinary shows${festival.flyerUrl ? ", each keeping the flyer" : ""}.`)) return;
     try {
       await api.deleteFestival(festival.slug);
       await Promise.all([
@@ -497,7 +522,7 @@ export function FestivalDetailPage() {
           <div className="flex flex-wrap gap-2">
             {STATUSES.map((st) => {
               // Highlighted when every day already has this status.
-              const all = Object.values(concertsByDate).every((d) => d.status === st.value);
+              const all = days.every((d) => d.shows.every((sh) => sh.status === st.value));
               return (
                 <button
                   key={st.value}
@@ -530,12 +555,15 @@ export function FestivalDetailPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="h-section">Lineup</h2>
           {isAdmin && !editingLineup && (
-            <button
-              onClick={startEditLineup}
-              className="link-action"
-            >
-              {sets.length > 0 ? "Edit lineup" : "+ Add artists"}
-            </button>
+            <div className="flex items-center gap-4">
+              <button onClick={() => setAddShowsOpen(true)} className="link-action">+ Add shows</button>
+              <button
+                onClick={startEditLineup}
+                className="link-action"
+              >
+                {sets.length > 0 ? "Edit lineup" : "+ Add artists"}
+              </button>
+            </div>
           )}
         </div>
 
@@ -625,40 +653,17 @@ export function FestivalDetailPage() {
               </div>
             )}
 
-            {Object.entries(setsByDate).map(([date, dateSets], dayIdx) => {
+            {days.map((day, dayIdx) => {
+              const { date, shows } = day;
               // "lineup" shows the combined list above; a day number shows just that day.
               if (lineupView === "lineup") return null;
               if (lineupView !== "days" && lineupView !== String(dayNumber(date, dayIdx))) return null;
-              const concert = concertsByDate[date];
-              const concertUrl = concert ? `/shows/${concert.slug}` : null;
-
-              return (
-                <div
-                  key={date}
-                  className="card overflow-hidden"
-                >
-                  {/* Day header — a ticket-style row linking to that day's show */}
-                  {concertUrl && date !== "unknown" ? (
-                    <Link to={concertUrl} className="group flex min-h-[64px] items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface-2/70">
-                      <DateBlock date={date} />
-                      <span className="flex-1 text-[15px] font-semibold group-hover:text-accent-lime">
-                        Day {dayNumber(date, dayIdx)}
-                        <span className="block text-sm font-normal text-text-subtle">Open this day</span>
-                      </span>
-                      {concert?.status
-                        ? <StatusBadge status={concert.status} />
-                        : <span className="text-sm text-text-subtle">{dateSets.length} artist{dateSets.length !== 1 ? "s" : ""}</span>}
-                      <Chevron className="text-text-subtle group-hover:text-accent-lime" />
-                    </Link>
-                  ) : (
-                    <div className="flex min-h-[64px] items-center gap-3 border-b border-border px-4 py-3">
-                      {date !== "unknown" ? <DateBlock date={date} /> : <span className="text-[15px] font-semibold">Date TBD</span>}
-                      <span className="flex-1" />
-                      <span className="text-sm text-text-subtle">{dateSets.length} artist{dateSets.length !== 1 ? "s" : ""}</span>
-                    </div>
-                  )}
-                  <div className="flex flex-wrap gap-2 p-4">
-                    {dateSets.map((set: FestivalSet) => (
+              const several = shows.length > 1;
+              const chips = (showId: string, trailing?: React.ReactNode) => {
+                const showSets = sets.filter((x) => x.concertId === showId);
+                return (
+                  <div className="flex flex-wrap items-center gap-2 px-4 pb-4 pt-3">
+                    {showSets.map((set: FestivalSet) => (
                       <Link
                         key={set.id}
                         id={`set-${set.artist.slug}`}
@@ -674,8 +679,65 @@ export function FestivalDetailPage() {
                         {set.stageName && <span className="ml-1.5 text-text-subtle">· {set.stageName}</span>}
                       </Link>
                     ))}
-                    {dateSets.length === 0 && <p className="text-sm text-text-subtle">No artists added for this day yet.</p>}
+                    {showSets.length === 0 && <p className="text-sm text-text-subtle">No artists added yet.</p>}
+                    {trailing && <span className="ml-auto">{trailing}</span>}
                   </div>
+                );
+              };
+              const removeButton = (show: (typeof shows)[number]) => isAdmin && (
+                <button onClick={() => void removeShow(show.id)}
+                  className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold text-text-subtle hover:bg-surface-2 hover:text-accent-pink">
+                  Remove
+                </button>
+              );
+
+              return (
+                <div key={date} className="card overflow-hidden">
+                  {several ? (
+                    <>
+                      {/* A day with several sets: the day, then each set (its own show) */}
+                      <div className="flex min-h-[64px] items-center gap-3 border-b border-border px-4 py-3">
+                        <DateBlock date={date} />
+                        <span className="flex-1 text-[15px] font-semibold">
+                          Day {dayNumber(date, dayIdx)}
+                          <span className="block text-sm font-normal text-text-subtle">{shows.length} sets</span>
+                        </span>
+                      </div>
+                      <div className="divide-y divide-border">
+                        {shows.map((show) => (
+                          <div key={show.id}>
+                            <div className="flex items-center gap-2 pl-4 pr-2 pt-3">
+                              <Link to={`/shows/${show.slug}`} className="group flex min-w-0 flex-1 items-center gap-2">
+                                <span className="truncate text-sm font-semibold group-hover:text-accent-lime">{show.artists[0] ?? "Set"}</span>
+                                {show.status && <StatusBadge status={show.status} />}
+                                <Chevron className="text-text-subtle group-hover:text-accent-lime" />
+                              </Link>
+                              {removeButton(show)}
+                            </div>
+                            {chips(show.id)}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Day header — a ticket-style row linking to that day's show */}
+                      <div className="border-b border-border">
+                        <Link to={`/shows/${shows[0]!.slug}`} className="group flex min-h-[64px] items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2/70">
+                          <DateBlock date={date} />
+                          <span className="flex-1 text-[15px] font-semibold group-hover:text-accent-lime">
+                            Day {dayNumber(date, dayIdx)}
+                            <span className="block text-sm font-normal text-text-subtle">Open this day</span>
+                          </span>
+                          {shows[0]!.status
+                            ? <StatusBadge status={shows[0]!.status} />
+                            : <span className="text-sm text-text-subtle">{plural(shows[0]!.artists.length, "artist")}</span>}
+                          <Chevron className="text-text-subtle group-hover:text-accent-lime" />
+                        </Link>
+                      </div>
+                      {chips(shows[0]!.id, removeButton(shows[0]!))}
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -684,6 +746,10 @@ export function FestivalDetailPage() {
           <p className="text-sm text-text-subtle">No artists added yet.</p>
         )}
       </div>
+
+      {addShowsOpen && (
+        <AddShowsSheet festival={festival} onClose={() => setAddShowsOpen(false)} />
+      )}
 
       {/* The same festival in other years */}
       {otherYears.length > 0 && (
@@ -714,10 +780,84 @@ export function FestivalDetailPage() {
             onClick={() => void handleDeleteFestival()}
             className="text-sm font-semibold text-text-subtle hover:text-accent-pink transition-colors"
           >
-            Delete festival
+            Ungroup festival
           </button>
+          <p className="mt-1 text-xs text-text-subtle">Its shows stay as ordinary shows. A festival whose last show is removed goes on its own.</p>
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Pull standalone shows into the festival: shows from around its dates (a week
+ * either side), at its venue first. Ticked shows take the festival's name,
+ * flyer, and venue if they have none.
+ */
+function AddShowsSheet({ festival, onClose }: { festival: FestivalDetail; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const year = festival.year ?? Number((festival.startDate ?? "").slice(0, 4)) ?? undefined;
+  const q = useQuery({
+    queryKey: ["concerts", { year, forFestival: festival.id }],
+    queryFn: () => api.listConcerts({ year: year || undefined, limit: 500, sort: "date_asc" }),
+  });
+  const shift = (iso: string, days: number) => {
+    const d = new Date(`${iso}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+  const from = festival.startDate ? shift(festival.startDate, -7) : null;
+  const to = festival.endDate ?? festival.startDate ? shift((festival.endDate ?? festival.startDate)!, 7) : null;
+  const candidates = (q.data?.concerts ?? [])
+    .filter((c) => !c.eventSeries && (!from || (c.date >= from && c.date <= to!)))
+    .sort((a, b) => Number(b.venue?.slug === festival.venue?.slug) - Number(a.venue?.slug === festival.venue?.slug) || a.date.localeCompare(b.date));
+
+  const add = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.addShowsToFestival(festival.slug, [...picked]);
+      await Promise.all([qc.invalidateQueries({ queryKey: ["festivals"] }), qc.invalidateQueries({ queryKey: ["concerts"] })]);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't add the shows.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet title="Add shows" subtitle={from ? "Standalone shows from a week either side of the festival." : "Standalone shows from the festival's year."} onClose={onClose}>
+      <div className="space-y-4 p-4 sm:p-5">
+        {q.isLoading ? <Loading /> : candidates.length === 0 ? (
+          <p className="py-6 text-center text-sm text-text-subtle">No standalone shows around these dates.</p>
+        ) : (
+          <div className="card divide-y divide-border overflow-hidden">
+            {candidates.map((c) => (
+              <EventRow
+                key={c.id}
+                to={`/shows/${c.slug}`}
+                date={c.date}
+                title={billLine((c.artists ?? []).map((a) => a.name), 3) || c.headlinerHint || "Show"}
+                subtitle={c.venue?.name}
+                selected={picked.has(c.id)}
+                onSelect={() => setPicked((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+                  return next;
+                })}
+              />
+            ))}
+          </div>
+        )}
+        {error && <p className="text-sm text-accent-pink">{error}</p>}
+        <Button className="w-full" disabled={busy || picked.size === 0} onClick={() => void add()}>
+          {busy ? "Adding…" : picked.size === 0 ? "Tick shows to add" : `Add ${picked.size} show${picked.size === 1 ? "" : "s"}`}
+        </Button>
+      </div>
+    </Sheet>
   );
 }

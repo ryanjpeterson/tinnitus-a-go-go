@@ -443,6 +443,12 @@ export const pushSent = pgTable(
   (t) => ({ pk: primaryKey({ columns: [t.userId, t.concertId, t.kind] }) }),
 );
 
+/** Storage objects no longer referenced by any row (queued by migration 0018's triggers); the API deletes them. */
+export const storageOrphans = pgTable("storage_orphans", {
+  key:       text("key").primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Server-generated secrets kept in the database (e.g. the Web Push VAPID key pair). */
 export const appSecrets = pgTable("app_secrets", {
   key:       text("key").primaryKey(),

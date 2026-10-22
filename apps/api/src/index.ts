@@ -27,6 +27,7 @@ import { searchRoutes } from "./routes/search.js";
 import { calendarRoutes } from "./routes/calendar.js";
 import { pushRoutes } from "./routes/push.js";
 import { startPushReminders } from "./lib/push-reminders.js";
+import { startStorageOrphanSweep } from "./lib/storage-orphans.js";
 
 const app = Fastify({
   logger:
@@ -115,6 +116,7 @@ async function start(): Promise<void> {
 
   await app.listen({ port: env.PORT, host: env.HOST });
   startPushReminders(app.log);
+  startStorageOrphanSweep(app.log);
   app.log.info(`Tinnitus A Go Go API listening on http://${env.HOST}:${env.PORT}`);
 }
 
@@ -123,9 +125,6 @@ function dbRuleMessage(err: unknown): { status: number; message: string } | null
   const e = err as { code?: string; constraint_name?: string; message?: string; cause?: unknown };
   const pg = e.code ? e : (e.cause as typeof e | undefined);
   if (!pg?.code) return null;
-  if (pg.constraint_name === "concerts_festival_date_uq") {
-    return { status: 409, message: "That festival already has a show on that date." };
-  }
   if (pg.constraint_name === "concert_artists_one_headliner_uq") {
     return { status: 422, message: "A lineup can have only one headliner — use co-headliners for equal billing." };
   }

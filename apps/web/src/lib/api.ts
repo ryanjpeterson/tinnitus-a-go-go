@@ -478,8 +478,21 @@ export const api = {
       `/festivals/${slug}`,
       { method: "PATCH", body: JSON.stringify(body) },
     ),
+  /** Ungroup: the festival goes, its shows stay (each without a flyer gets a copy of the festival's). */
   deleteFestival: (slug: string) =>
-    request<void>(`/festivals/${slug}`, { method: "DELETE" }),
+    request<{ ok: true; shows: number }>(`/festivals/${slug}`, { method: "DELETE" }),
+  /** Add existing shows to a festival. */
+  addShowsToFestival: (slug: string, concertIds: string[]) =>
+    request<{ ok: true; added: number }>(`/festivals/${slug}/shows`, { method: "POST", body: JSON.stringify({ concertIds }) }),
+  /** Take a show out of a festival; a festival left with no shows is removed. */
+  removeShowFromFestival: (slug: string, concertId: string) =>
+    request<{ ok: true; showSlug: string; festivalRemoved: boolean }>(`/festivals/${slug}/shows/${concertId}`, { method: "DELETE" }),
+  /** New festival made from existing shows (joins one of the same name if it exists). */
+  groupIntoFestival: (name: string, concertIds: string[]) =>
+    request<{ festivalId: string; slug: string; added: number }>("/festivals", { method: "POST", body: JSON.stringify({ name, concertIds }) }),
+  getFestivalSuggestions: () => request<{ suggestions: FestivalSuggestion[] }>("/admin/data/festival-suggestions"),
+  dismissFestivalSuggestion: (key: [string, string]) =>
+    request<{ ok: true }>("/admin/data/festival-suggestions/dismiss", { method: "POST", body: JSON.stringify({ key }) }),
   patchFestivalAttendance: (
     slug: string,
     body: { status: AttendanceStatus },
@@ -497,6 +510,8 @@ export const api = {
       stageName?: string | null;
       setOrder?: number | null;
       appearanceNotes?: string | null;
+      /** The show this set is on, when a date has several. */
+      concertId?: string | null;
     }>,
   ) =>
     request<{ ok: true; count: number; days: number }>(`/festivals/${slug}/sets`, {
@@ -1104,6 +1119,8 @@ export interface FestivalDetailResponse {
   /** Every day of the festival, in date order — the day's show and your attendance. */
   concertsByDate: Record<string, { id: string; slug: string; status: AttendanceStatus | null; number: number }>;
   attendance: FestivalAttendance | null;
+  /** Days in date order, each with its shows (a date can hold several separately logged sets). */
+  days: { date: string; number: number; shows: { id: string; slug: string; status: AttendanceStatus | null; artists: string[] }[] }[];
   /** The same festival (brand) in other years, newest first. */
   otherYears: { name: string; slug: string; year: number | null; startDate: string | null; flyerUrl: string | null }[];
   stats: {
@@ -1112,6 +1129,8 @@ export interface FestivalDetailResponse {
     totalDays: number;
     /** How many of those days are logged as shows. */
     loggedDays: number;
+    /** How many shows (sets) the festival holds. */
+    shows: number;
   };
 }
 
@@ -1333,4 +1352,14 @@ export interface PushPrefs {
   howWasIt: boolean;
   /** "N years ago today" for shows you attended. */
   anniversaries: boolean;
+}
+
+/** Shows that look like a festival (Data cleanup). */
+export interface FestivalSuggestion {
+  kind: "join" | "new";
+  key: [string, string];
+  festival: { name: string; slug: string } | null;
+  suggestedName: string;
+  venue: string | null;
+  shows: { id: string; slug: string; date: string; title: string | null }[];
 }

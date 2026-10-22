@@ -7,7 +7,9 @@
  */
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AddConcertModal } from "./AddConcertModal";
+import { FestivalPicker } from "@/components/FestivalPicker";
 import { useQuery } from "@tanstack/react-query";
 import { api, type ConcertListItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -126,7 +128,23 @@ export function ConcertsPage() {
   const { user } = useAuth();
   const isAdmin = user?.isAdmin ?? false;
   const { searchParams, page, q, inputQ, onSearch, setFilter, setPage } = useListParams();
+  const navigate = useNavigate();
   const [addOpen, setAddOpen] = useState(false);
+  // Select mode (admin): tick shows, then put them in a festival.
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Map<string, ConcertListItem>>(new Map());
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const toggle = (c: ConcertListItem) => setSelected((prev) => {
+    const next = new Map(prev);
+    if (next.has(c.id)) next.delete(c.id); else next.set(c.id, c);
+    return next;
+  });
+  const stopSelecting = () => { setSelecting(false); setSelected(new Map()); };
+  // "LeBreton Flats 2025" from the first selected show, as a starting point.
+  const suggestedName = (() => {
+    const first = [...selected.values()].sort((a, b) => a.date.localeCompare(b.date))[0];
+    return first ? `${first.venue?.name ?? "Festival"} ${first.date.slice(0, 4)}` : "";
+  })();
 
   const statusParam = searchParams.get("status") as AttendanceStatus | null;
   // ?view= picks the tab; an old ?status= link lands on the tab that holds it.
@@ -159,9 +177,17 @@ export function ConcertsPage() {
         title="Shows"
         count={total}
         actions={isAdmin && (
-          <Button size="md" onClick={() => setAddOpen(true)} className="rounded-full">
-            + Add show
-          </Button>
+          <>
+            <Button size="md" variant={selecting ? "secondary" : "ghost"} className="rounded-full"
+              onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
+              {selecting ? "Done" : "Select"}
+            </Button>
+            {!selecting && (
+              <Button size="md" onClick={() => setAddOpen(true)} className="rounded-full">
+                + Add show
+              </Button>
+            )}
+          </>
         )}
       />
 
@@ -228,6 +254,7 @@ export function ConcertsPage() {
                     {...rowText(c)}
                     imageUrl={c.flyerUrl}
                     status={c.attendance?.status}
+                    {...(selecting ? { selected: selected.has(c.id), onSelect: () => toggle(c) } : {})}
                   />
                 ))}
               </div>
@@ -238,6 +265,26 @@ export function ConcertsPage() {
       )}
 
       {addOpen && <AddConcertModal onClose={() => setAddOpen(false)} />}
+
+      {/* Select mode: what to do with the ticked shows, above the tab bar */}
+      {selecting && (
+        <div className="fixed inset-x-0 z-40 flex justify-center px-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] sm:bottom-6">
+          <div className="flex w-full max-w-md items-center gap-2 rounded-2xl border border-white/10 bg-surface/95 p-2 pl-4 shadow-2xl shadow-black/60 backdrop-blur-xl">
+            <p className="min-w-0 flex-1 truncate text-sm font-semibold">
+              {selected.size === 0 ? "Tick shows to group" : `${selected.size} selected`}
+            </p>
+            <Button size="sm" disabled={selected.size === 0} onClick={() => setPickerOpen(true)}>Add to festival…</Button>
+          </div>
+        </div>
+      )}
+      {pickerOpen && (
+        <FestivalPicker
+          concertIds={[...selected.keys()]}
+          suggestedName={suggestedName}
+          onClose={() => setPickerOpen(false)}
+          onDone={(slug) => { stopSelecting(); navigate(`/festivals/${slug}`); }}
+        />
+      )}
     </div>
   );
 }

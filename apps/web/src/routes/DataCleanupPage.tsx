@@ -2,6 +2,7 @@
  * Admin data cleanup — /admin/data
  *
  *   Duplicates  suggested duplicate venues/artists; pick the one to keep, preview, merge
+ *   Festivals   standalone shows that look like part of a festival; add or group them
  *   Health      setlist finder progress, then problems in the data with one-tap fixes
  *   History     every merge, with undo for the most recent one
  */
@@ -9,15 +10,17 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type DataEntityType, type DupGroup, type HealthCheck, type MergePreview } from "@/lib/api";
+import { api, type DataEntityType, type DupGroup, type FestivalSuggestion, type HealthCheck, type MergePreview } from "@/lib/api";
+import { FestivalPicker } from "@/components/FestivalPicker";
 import { fmtDate, plural } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { EmptyState, List, Loading, PageHeader, Sheet, Tabs } from "@/components/ui/kit";
 
-type View = "duplicates" | "health" | "history";
+type View = "duplicates" | "festivals" | "health" | "history";
 
 const VIEWS: { value: View; label: string }[] = [
   { value: "duplicates", label: "Duplicates" },
+  { value: "festivals", label: "Festivals" },
   { value: "health", label: "Health" },
   { value: "history", label: "History" },
 ];
@@ -328,20 +331,90 @@ function History() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Festivals — shows that look like they belong together
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FestivalSuggestions() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["admin", "festival-suggestions"], queryFn: api.getFestivalSuggestions });
+  const [grouping, setGrouping] = useState<FestivalSuggestion | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const refresh = () => Promise.all([
+    qc.invalidateQueries({ queryKey: ["admin", "festival-suggestions"] }),
+    qc.invalidateQueries({ queryKey: ["festivals"] }),
+    qc.invalidateQueries({ queryKey: ["concerts"] }),
+  ]);
+  const act = async (s: FestivalSuggestion, fn: () => Promise<unknown>) => {
+    setBusy(s.key.join());
+    try { await fn(); await refresh(); }
+    catch (err) { window.alert(err instanceof Error ? err.message : "Something went wrong."); }
+    finally { setBusy(null); }
+  };
+
+  if (q.isLoading) return <Loading />;
+  if (q.isError) return <EmptyState tone="error" title="Couldn't look for festivals." />;
+  const list = q.data!.suggestions;
+  if (list.length === 0) {
+    return <EmptyState title="Nothing to group." body="Standalone shows that look like part of a festival — at a festival's venue around its dates, or a run of different acts at one venue — show up here." />;
+  }
+  return (
+    <div className="space-y-4">
+      {list.map((s) => {
+        const key = s.key.join();
+        return (
+          <div key={key} className="card space-y-3 p-4 sm:p-5">
+            <div>
+              <p className="eyebrow">{s.kind === "join" ? "Part of a festival?" : "A festival?"}</p>
+              <h3 className="mt-1 text-[17px] font-semibold">
+                {s.kind === "join" ? <>Add to <Link to={`/festivals/${s.festival!.slug}`} className="hover:text-accent-lime">{s.festival!.name}</Link></> : `${plural(s.shows.length, "show")} at ${s.venue ?? "one venue"}`}
+              </h3>
+              <p className="meta mt-0.5">{fmtDate(s.shows[0]!.date)}{s.shows.length > 1 && ` – ${fmtDate(s.shows[s.shows.length - 1]!.date)}`}</p>
+            </div>
+            <List>
+              {s.shows.map((sh) => (
+                <Link key={sh.id} to={`/shows/${sh.slug}`} className="flex min-h-[48px] items-center gap-3 px-4 py-2 text-sm hover:bg-surface-2/70">
+                  <span className="w-24 shrink-0 text-text-subtle">{fmtDate(sh.date)}</span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{sh.title ?? "Show"}</span>
+                </Link>
+              ))}
+            </List>
+            <div className="flex flex-wrap gap-2">
+              {s.kind === "join"
+                ? <Button size="sm" disabled={busy === key} onClick={() => void act(s, () => api.addShowsToFestival(s.festival!.slug, s.shows.map((x) => x.id)))}>Add {plural(s.shows.length, "show")}</Button>
+                : <Button size="sm" disabled={busy === key} onClick={() => setGrouping(s)}>Group as festival…</Button>}
+              <Button size="sm" variant="ghost" disabled={busy === key} onClick={() => void act(s, () => api.dismissFestivalSuggestion(s.key))}>
+                {s.kind === "join" ? "Not part of it" : "Not a festival"}
+              </Button>
+            </div>
+          </div>
+        );
+      })}
+      {grouping && (
+        <FestivalPicker
+          concertIds={grouping.shows.map((x) => x.id)}
+          suggestedName={grouping.suggestedName}
+          onClose={() => setGrouping(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function DataCleanupPage() {
   const [params, setParams] = useSearchParams();
   const raw = params.get("tab");
-  const view: View = raw === "health" || raw === "history" ? raw : "duplicates";
+  const view: View = raw === "health" || raw === "history" || raw === "festivals" ? raw : "duplicates";
 
   return (
     <div className="space-y-5">
       <PageHeader eyebrow="Admin" title="Data cleanup" />
       <Tabs value={view} options={VIEWS}
         onChange={(v) => setParams(v === "duplicates" ? {} : { tab: v }, { replace: true })} />
-      {view === "duplicates" ? <Duplicates /> : view === "health" ? <Health /> : <History />}
+      {view === "duplicates" ? <Duplicates /> : view === "festivals" ? <FestivalSuggestions /> : view === "health" ? <Health /> : <History />}
     </div>
   );
 }

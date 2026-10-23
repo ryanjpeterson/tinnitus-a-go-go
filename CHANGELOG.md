@@ -7,6 +7,10 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Changed
+
+- **Upcoming opens on All** — the Upcoming tab now shows attending and interested shows together by default (Past still opens on Attended).
+
 ### Added — Couple and decouple festivals
 
 - **Group shows into a festival** — on Shows, tap **Select**, tick shows, then **Add to festival…**: pick an existing festival, or create one (named from the venue and year to start with). Its dates and venue come from the shows. A show's page has **Add to festival** too.

@@ -1,58 +1,115 @@
 /**
  * Admin brand & theme — /admin/brand
  *
- * Four colours drive the whole UI (lib/theme.ts): accent, highlight,
- * background and logo. Changes preview live across the app while you're on
- * this page and are only kept when saved. Logo and favicon can be replaced
- * with uploads (they otherwise follow the colours).
+ * Pick a look from bold templates (each card is a miniature of the app in
+ * that theme), then fine-tune any of the four colours with the inline picker.
+ * Everything previews live across the app; the save bar appears when there's
+ * something unsaved, and leaving the page without saving puts the saved
+ * theme back. Logo and favicon can be replaced with uploads.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { applyTheme, contrast, DEFAULT_THEME, isHex, themeHex, type Theme } from "@/lib/theme";
+import { applyTheme, contrast, DEFAULT_THEME, themeHex, type Theme } from "@/lib/theme";
 import { useBrand } from "@/lib/useBrand";
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/Wordmark";
-import { LinkCard, PageHeader, StatTile, StatusBadge } from "@/components/ui/kit";
+import { ColorPicker } from "@/components/ColorPicker";
+import { PageHeader } from "@/components/ui/kit";
 
-const FIELDS: { key: keyof Theme; label: string; hint: string }[] = [
-  { key: "accent", label: "Accent", hint: "Buttons, active tabs, “attended”, the logo's second colour" },
-  { key: "highlight", label: "Highlight", hint: "Dates, “on this day”, map pins, alerts" },
-  { key: "background", label: "Background", hint: "Page colour — cards, borders and text follow it (a light colour switches to dark text)" },
-  { key: "logo", label: "Logo", hint: "The logo's main colour and the favicon" },
+// ─────────────────────────────────────────────────────────────────────────────
+// Templates
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TEMPLATES: { name: string; vibe: string; theme: Theme }[] = [
+  { name: "Tinnitus", vibe: "The original", theme: DEFAULT_THEME },
+  { name: "Neon night", vibe: "Cyan + magenta", theme: { accent: "#2EF2FF", highlight: "#FF2ED1", background: "#0A0A12", logo: "#FF2ED1" } },
+  { name: "Acid", vibe: "Loud yellow", theme: { accent: "#F5FF2E", highlight: "#FF5A1F", background: "#0D0D0B", logo: "#F5FF2E" } },
+  { name: "Sunset strip", vibe: "Orange on plum", theme: { accent: "#FF8A3D", highlight: "#FF3D7F", background: "#1A0F1F", logo: "#FFC23D" } },
+  { name: "Deep sea", vibe: "Teal + coral", theme: { accent: "#3DFFC5", highlight: "#FF7A59", background: "#071A1F", logo: "#3DFFC5" } },
+  { name: "Ultraviolet", vibe: "Purple haze", theme: { accent: "#B48CFF", highlight: "#FF5FA2", background: "#120F1C", logo: "#FF5FA2" } },
+  { name: "Ember", vibe: "Gold + fire", theme: { accent: "#FFB23D", highlight: "#FF3D3D", background: "#17110D", logo: "#FF6B3D" } },
+  { name: "Blackout", vibe: "Monochrome", theme: { accent: "#F2F2F2", highlight: "#FF3D3D", background: "#000000", logo: "#F2F2F2" } },
+  { name: "Daylight", vibe: "Light, green", theme: { accent: "#1F7A4D", highlight: "#D6336C", background: "#F6F4EF", logo: "#D6336C" } },
+  { name: "Gig poster", vibe: "Cream + red", theme: { accent: "#D7261E", highlight: "#1E4FD7", background: "#F3EAD6", logo: "#D7261E" } },
 ];
 
-const PRESETS: { name: string; theme: Theme }[] = [
-  { name: "Tinnitus", theme: DEFAULT_THEME },
-  { name: "Ocean", theme: { accent: "#3DFFE8", highlight: "#FF8C3A", background: "#0E1620", logo: "#3DFFE8" } },
-  { name: "Ember", theme: { accent: "#FFB23D", highlight: "#FF3D3D", background: "#17120F", logo: "#FF6B3D" } },
-  { name: "Violet", theme: { accent: "#B48CFF", highlight: "#FF5FA2", background: "#13111A", logo: "#FF5FA2" } },
-  { name: "Daylight", theme: { accent: "#1F7A4D", highlight: "#D6336C", background: "#F6F4EF", logo: "#D6336C" } },
+const same = (a: Theme, b: Theme) => (Object.keys(a) as (keyof Theme)[]).every((k) => a[k].toUpperCase() === b[k].toUpperCase());
+
+/** A miniature of the app in a theme: top bar with logo, title, a card, buttons, a date. */
+function ThemeCard({ name, vibe, theme, selected, onPick }: { name: string; vibe: string; theme: Theme; selected: boolean; onPick: () => void }) {
+  const c = themeHex(theme);
+  return (
+    <button type="button" onClick={onPick} aria-pressed={selected}
+      className={`group block w-full overflow-hidden rounded-2xl text-left transition-transform active:scale-[0.97] ${selected ? "ring-[3px] ring-offset-2 ring-offset-bg" : "ring-1 ring-border hover:ring-text-subtle"}`}
+      style={selected ? { ["--tw-ring-color" as string]: theme.accent } : undefined}>
+      <div className="space-y-2.5 p-3" style={{ background: theme.background, color: c.text }}>
+        <div className="flex items-center justify-between">
+          <span className="font-display text-[15px] leading-none" style={{ color: theme.logo }}>
+            TINNITUS<span className="block text-[10px]" style={{ color: theme.accent }}>a-go-go</span>
+          </span>
+          <span className="h-5 w-5 rounded-full" style={{ background: theme.accent }} />
+        </div>
+        <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: theme.highlight }}>On this day</p>
+        <div className="rounded-lg p-2" style={{ background: c.surface, border: `1px solid ${c.border}` }}>
+          <div className="flex items-center gap-2">
+            <span className="w-6 text-center leading-none">
+              <span className="block text-[7px] font-bold" style={{ color: theme.highlight }}>JUL</span>
+              <span className="block font-display text-sm">12</span>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block h-1.5 w-4/5 rounded-full" style={{ background: c.text }} />
+              <span className="mt-1 block h-1.5 w-1/2 rounded-full" style={{ background: c["text-subtle"] }} />
+            </span>
+          </div>
+        </div>
+        <div className="flex gap-1.5">
+          <span className="rounded-full px-2.5 py-1 text-[9px] font-bold" style={{ background: theme.accent, color: c["on-accent"] }}>Save</span>
+          <span className="rounded-full px-2.5 py-1 text-[9px] font-bold" style={{ background: c["surface-2"], color: c.text }}>Cancel</span>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-2 border-t border-border bg-surface px-3 py-2">
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-semibold">{name}</span>
+          <span className="block truncate text-[11px] text-text-subtle">{vibe}</span>
+        </span>
+        {selected && <span className="shrink-0 text-xs font-bold text-accent-lime">✓</span>}
+      </div>
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FIELDS: { key: keyof Theme; label: string; hint: string; swatches: string[] }[] = [
+  { key: "accent", label: "Accent", hint: "Buttons, active tabs, “attended”, big numbers",
+    swatches: ["#A8FF3E", "#2EF2FF", "#F5FF2E", "#FF8A3D", "#B48CFF", "#3DFFC5", "#F2F2F2", "#1F7A4D"] },
+  { key: "highlight", label: "Highlight", hint: "Dates, “on this day”, map pins, warnings",
+    swatches: ["#FF3D6E", "#FF2ED1", "#FF5A1F", "#FF3D3D", "#FF7A59", "#FF5FA2", "#1E4FD7", "#FFC23D"] },
+  { key: "background", label: "Background", hint: "The page — cards, borders and text follow it",
+    swatches: ["#141416", "#000000", "#0A0A12", "#1A0F1F", "#071A1F", "#17110D", "#F6F4EF", "#F3EAD6"] },
+  { key: "logo", label: "Logo", hint: "The logo's main colour and the favicon",
+    swatches: ["#F87171", "#FF2ED1", "#F5FF2E", "#FFC23D", "#3DFFC5", "#FF5FA2", "#F2F2F2", "#D7261E"] },
 ];
 
 export function BrandPage() {
   const qc = useQueryClient();
   const brand = useBrand();
   const [draft, setDraft] = useState<Theme>(brand.theme);
-  const [text, setText] = useState<Theme>(brand.theme);
+  const [editing, setEditing] = useState<keyof Theme>("accent");
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const dirty = (Object.keys(draft) as (keyof Theme)[]).some((k) => draft[k].toUpperCase() !== brand.theme[k].toUpperCase());
+  const dirty = !same(draft, brand.theme);
 
   // Live preview while editing; leaving the page puts the saved theme back.
   useEffect(() => { applyTheme(draft); }, [draft]);
   const saved = useRef(brand.theme);
   saved.current = brand.theme;
   useEffect(() => () => applyTheme(saved.current), []);
-
-  const set = (key: keyof Theme, value: string) => {
-    setText((t) => ({ ...t, [key]: value }));
-    const v = value.startsWith("#") ? value : `#${value}`;
-    if (isHex(v)) setDraft((d) => ({ ...d, [key]: v.toUpperCase() }));
-  };
-  const load = (t: Theme) => { setDraft(t); setText(t); };
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["brand"] });
   const save = async () => {
@@ -61,112 +118,101 @@ export function BrandPage() {
     try {
       await api.setTheme(draft);
       await refresh();
-      setNote("Saved — everyone sees the new colours.");
+      setNote("Saved — everyone sees the new look.");
     } catch (err) {
       setNote(err instanceof Error ? err.message : "Couldn't save.");
     } finally {
       setSaving(false);
     }
   };
-  const resetDefaults = async () => {
-    if (!window.confirm("Go back to the default colours for everyone?")) return;
-    await api.resetTheme();
-    await refresh();
-    load(DEFAULT_THEME);
-    setNote("Back to the default colours.");
-  };
 
-  // Readability checks (WCAG): body text needs 4.5:1; an accent fill or line needs 3:1.
+  // Readability (WCAG): body text 4.5:1; accent / highlight 3:1 on the page; text on buttons 4.5:1.
   const hex = themeHex(draft);
-  const checks = [
-    { label: "Text on background", ratio: contrast(hex.text!, draft.background), min: 4.5 },
-    { label: "Accent on background", ratio: contrast(draft.accent, draft.background), min: 3 },
-    { label: "Highlight on background", ratio: contrast(draft.highlight, draft.background), min: 3 },
-    { label: "Text on accent buttons", ratio: contrast(hex["on-accent"]!, draft.accent), min: 4.5 },
-  ];
+  const warnings = [
+    contrast(hex.text!, draft.background) < 4.5 && "Body text is hard to read on this background.",
+    contrast(draft.accent, draft.background) < 3 && "The accent blends into the background.",
+    contrast(draft.highlight, draft.background) < 3 && "The highlight blends into the background.",
+    contrast(hex["on-accent"]!, draft.accent) < 4.5 && "Button text is hard to read on the accent.",
+  ].filter((w): w is string => !!w);
+
+  const field = FIELDS.find((f) => f.key === editing)!;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-8 pb-24">
       <PageHeader eyebrow="Admin" title="Brand & theme" />
 
-      <section className="card space-y-4 p-4 sm:p-5">
-        <div>
-          <h2 className="h-section">Colours</h2>
-          <p className="meta mt-1">Everything else — cards, borders, text, tints, the map, share images — is worked out from these four.</p>
+      {/* 1. Templates */}
+      <section className="space-y-3">
+        <div className="px-0.5">
+          <h2 className="h-section">Pick a look</h2>
+          <p className="meta mt-1">Tap one to try it — the whole app changes. Nothing's saved until you say so.</p>
         </div>
-        <div className="space-y-3">
-          {FIELDS.map((f) => (
-            <label key={f.key} className="flex items-center gap-3">
-              <input type="color" value={draft[f.key]} onChange={(e) => set(f.key, e.target.value)}
-                className="h-12 w-12 shrink-0 cursor-pointer rounded-xl border border-border bg-transparent p-1" aria-label={`${f.label} colour`} />
-              <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-semibold">{f.label}</span>
-                <span className="block text-xs text-text-subtle">{f.hint}</span>
-              </span>
-              <input value={text[f.key]} onChange={(e) => set(f.key, e.target.value.trim())} maxLength={7} spellCheck={false}
-                className={`field h-11 w-28 font-mono text-sm uppercase ${isHex(text[f.key].startsWith("#") ? text[f.key] : `#${text[f.key]}`) ? "" : "border-accent-pink"}`} />
-            </label>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {TEMPLATES.map((t) => (
+            <ThemeCard key={t.name} {...t} selected={same(draft, t.theme)} onPick={() => setDraft(t.theme)} />
           ))}
-        </div>
-
-        <div>
-          <p className="eyebrow mb-2">Presets</p>
-          <div className="flex flex-wrap gap-2">
-            {PRESETS.map((p) => (
-              <button key={p.name} onClick={() => load(p.theme)}
-                className="flex h-10 items-center gap-2 rounded-full border border-border bg-surface-2 pl-1.5 pr-3.5 text-sm font-semibold hover:border-accent-lime">
-                <span className="flex -space-x-1">
-                  {[p.theme.background, p.theme.accent, p.theme.highlight].map((c, i) => (
-                    <span key={i} className="h-6 w-6 rounded-full border border-black/30" style={{ background: c }} />
-                  ))}
-                </span>
-                {p.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid gap-2 sm:grid-cols-2">
-          {checks.map((c) => (
-            <p key={c.label} className={`rounded-xl px-3 py-2 text-sm ${c.ratio >= c.min ? "bg-surface-2 text-text-muted" : "bg-rose-950 text-accent-pink"}`}>
-              {c.ratio >= c.min ? "✓" : "!"} {c.label} <span className="font-mono">{c.ratio.toFixed(1)}:1</span>
-              {c.ratio < c.min && <span className="block text-xs">Hard to read — aim for {c.min}:1 or more.</span>}
-            </p>
-          ))}
-        </div>
-
-        {note && <p className="text-sm font-semibold text-accent-lime">{note}</p>}
-        <div className="flex flex-wrap gap-2">
-          <Button disabled={!dirty || saving} onClick={() => void save()}>{saving ? "Saving…" : "Save colours"}</Button>
-          <Button variant="secondary" disabled={!dirty} onClick={() => load(brand.theme)}>Discard changes</Button>
-          <Button variant="ghost" onClick={() => void resetDefaults()}>Back to defaults</Button>
         </div>
       </section>
 
-      {/* A slice of the UI in the draft colours */}
+      {/* 2. Fine-tune */}
       <section className="space-y-3">
-        <h2 className="h-section px-0.5">Preview</h2>
-        <div className="card space-y-4 p-4 sm:p-5">
-          <Wordmark size="md" />
-          <p className="eyebrow text-accent-pink">On this day</p>
-          <p className="h-page">The damage</p>
-          <div className="grid grid-cols-2 gap-3">
-            <StatTile label="Shows attended" value={171} accent="lime" />
-            <StatTile label="Artists seen" value={412} />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button>Primary</Button>
-            <Button variant="secondary">Secondary</Button>
-            <Button variant="ghost">Ghost</Button>
-            <StatusBadge status="attended" />
-            <StatusBadge status="attending" />
-          </div>
-          <input className="field h-11 w-full" placeholder="A text field" />
+        <div className="px-0.5">
+          <h2 className="h-section">Make it yours</h2>
+          <p className="meta mt-1">Pick a colour to change, then drag.</p>
         </div>
-        <LinkCard to="/admin/style" eyebrow="Reference" title="Style guide" sub="Every component in the current colours" />
+        <div className="card space-y-5 p-4 sm:p-5">
+          <div className="grid grid-cols-4 gap-2" role="tablist">
+            {FIELDS.map((f) => {
+              const active = f.key === editing;
+              return (
+                <button key={f.key} type="button" role="tab" aria-selected={active} onClick={() => setEditing(f.key)}
+                  className={`flex flex-col items-center gap-1.5 rounded-2xl border p-2 transition-colors ${active ? "border-text-base bg-surface-2" : "border-border hover:border-text-subtle"}`}>
+                  <span className="h-10 w-10 rounded-full border-2 border-black/30 shadow-inner sm:h-12 sm:w-12" style={{ background: draft[f.key] }} />
+                  <span className="text-xs font-semibold">{f.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-sm text-text-muted">{field.hint}</p>
+          <ColorPicker
+            value={draft[editing]}
+            swatches={field.swatches}
+            onChange={(hexValue) => setDraft((d) => ({ ...d, [editing]: hexValue }))}
+          />
+          {warnings.length > 0 && (
+            <div className="rounded-xl bg-rose-950 px-3 py-2 text-sm text-accent-pink">
+              {warnings.map((w) => <p key={w}>! {w}</p>)}
+            </div>
+          )}
+        </div>
       </section>
 
       <BrandAssets logoUrl={brand.logoUrl} faviconUrl={brand.faviconUrl} onChange={refresh} />
+
+      <Link to="/admin/style" className="card flex items-center justify-between gap-3 p-4 hover:border-accent-lime">
+        <span>
+          <span className="eyebrow block">Reference</span>
+          <span className="mt-0.5 block text-[15px] font-semibold">Style guide — every component in these colours</span>
+        </span>
+        <span className="text-text-subtle">›</span>
+      </Link>
+
+      {/* Save bar — floats above the tab bar while there's something unsaved */}
+      {(dirty || note) && (
+        <div className="fixed inset-x-0 z-40 flex justify-center px-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] sm:bottom-6">
+          <div className="flex w-full max-w-md items-center gap-2 rounded-2xl border border-border bg-surface/95 p-2 pl-4 shadow-2xl shadow-black/50 backdrop-blur-xl">
+            <p className="min-w-0 flex-1 truncate text-sm font-semibold">{dirty ? "Unsaved look" : note}</p>
+            {dirty ? (
+              <>
+                <Button size="sm" variant="ghost" onClick={() => setDraft(brand.theme)}>Undo</Button>
+                <Button size="sm" disabled={saving} onClick={() => void save()}>{saving ? "Saving…" : "Save"}</Button>
+              </>
+            ) : (
+              <Button size="sm" variant="ghost" onClick={() => setNote(null)}>OK</Button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -209,16 +255,18 @@ function BrandAssets({ logoUrl, faviconUrl, onChange }: { logoUrl: string | null
   );
 
   return (
-    <section className="card space-y-4 p-4 sm:p-5">
-      <div>
+    <section className="space-y-3">
+      <div className="px-0.5">
         <h2 className="h-section">Logo & favicon</h2>
-        <p className="meta mt-1">The built-in ones follow the colours above. Upload SVG, PNG or WebP (under 1 MB) to replace either.</p>
+        <p className="meta mt-1">The built-in ones follow your colours. Upload SVG, PNG or WebP (under 1 MB) to replace either.</p>
       </div>
-      {row("logo", "Logo", "Built-in — logo + accent colours", logoUrl,
-        logoUrl ? <img src={logoUrl} alt="" className="max-h-full max-w-full object-contain" /> : <Wordmark size="sm" />)}
-      {row("favicon", "Favicon", "Built-in — recoloured from the theme", faviconUrl,
-        <img src={faviconUrl ?? (document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.href ?? "/favicon.svg")} alt="" className="h-10 w-10" />)}
-      {error && <p className="text-sm text-accent-pink">{error}</p>}
+      <div className="card space-y-4 p-4 sm:p-5">
+        {row("logo", "Logo", "Built-in — logo + accent colours", logoUrl,
+          logoUrl ? <img src={logoUrl} alt="" className="max-h-full max-w-full object-contain" /> : <Wordmark size="sm" />)}
+        {row("favicon", "Favicon", "Built-in — recoloured from the theme", faviconUrl,
+          <img src={faviconUrl ?? (document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.href ?? "/favicon.svg")} alt="" className="h-10 w-10" />)}
+        {error && <p className="text-sm text-accent-pink">{error}</p>}
+      </div>
     </section>
   );
 }

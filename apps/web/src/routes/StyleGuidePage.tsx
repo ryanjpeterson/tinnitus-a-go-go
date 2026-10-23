@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/Wordmark";
+import { ColorPicker } from "@/components/ColorPicker";
 import {
   DateBlock, EmptyState, EntityRow, EventRow, LinkCard, List, ListGroupLabel, Loading, MediaCard, PageHeader, Pager,
   PillTabs, RankedList, SearchField, Section, SelectField, Sheet, StatGrid, StatTile, StatusBadge, Tabs, VenueViewSwitch,
@@ -58,6 +59,7 @@ export function StyleGuidePage() {
   const [page, setPage] = useState(2);
   const [sheet, setSheet] = useState(false);
   const [picked, setPicked] = useState(false);
+  const [colour, setColour] = useState("#A8FF3E");
 
   return (
     <div className="space-y-10">
@@ -127,6 +129,12 @@ export function StyleGuidePage() {
           <Tabs value={tab} onChange={setTab} options={[{ value: "one", label: "Tabs" }, { value: "two", label: "Segmented" }]} />
           <PillTabs value={pill} onChange={setPill} options={[{ value: "a", label: "PillTabs" }, { value: "b", label: "Filter" }, { value: "c", label: "Chips" }]} />
           <VenueViewSwitch view="list" />
+        </div>
+      </Block>
+
+      <Block title="ColorPicker" note="Inline and touch-friendly — never the native colour input.">
+        <div className="card max-w-md p-5">
+          <ColorPicker value={colour} onChange={setColour} swatches={["#A8FF3E", "#2EF2FF", "#F5FF2E", "#FF8A3D", "#B48CFF", "#3DFFC5", "#F2F2F2", "#FF3D6E"]} />
         </div>
       </Block>
 

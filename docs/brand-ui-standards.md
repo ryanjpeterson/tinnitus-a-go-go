@@ -183,6 +183,7 @@ buttons ≥ 4.5:1.
 | `Loading` | Skeleton shaped like a page (never a bare spinner) |
 | `ShareButton` | Story-sized share image |
 | `VenueViewSwitch` | List ⇄ map switch |
+| `ColorPicker` (`components/ColorPicker.tsx`) | Inline colour picker: colour field, hue slider, 8 quick swatches, hex. Never the native `<input type=color>` — it opens a different dialog on every platform |
 | `Button` (`ui/button.tsx`) | `primary` (one per view), `secondary`, `ghost`, `danger`; `sm`/`md`/`lg` |
 
 CSS classes for plain elements: `.card`, `.field`, `.btn …`, `.chip`,
@@ -211,6 +212,8 @@ Style guide page, and list it here.
 - **Errors:** inline, near what failed, in the highlight colour; keep the
   user's input.
 - **Offline / pending:** a slim banner under the top bar.
+- **Unsaved changes:** a floating save bar above the dock (*Undo* / *Save*) appears only while there is something to save; editors preview live.
+- **Choosing a look:** show choices as miniatures of the real thing (theme templates), not names in a list.
 
 ---
 
@@ -249,3 +252,5 @@ Style guide page, and list it here.
 
 - **2026-10-23** — First version: theme engine (four colours → tokens), light
   backgrounds, admin Brand & theme page, Style guide page, reuse checklist.
+- **2026-10-23** — Brand page rebuilt: template gallery (10 themes shown as
+  app miniatures), `ColorPicker` component, floating save bar pattern.

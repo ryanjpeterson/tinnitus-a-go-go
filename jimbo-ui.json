@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "2.0.0",
   "webRoot": "apps/web",
   "reference": {
     "web/index.html": "apps/web/index.html",
@@ -8,11 +8,6 @@
     "web/src/routes/BrandPage.tsx": "apps/web/src/routes/BrandPage.tsx",
     "web/src/routes/StyleGuidePage.tsx": "apps/web/src/routes/StyleGuidePage.tsx",
     "web/src/components/Wordmark.tsx": "apps/web/src/components/Wordmark.tsx",
-    "web/src/lib/useBrand.ts": "apps/web/src/lib/useBrand.ts",
-    "web/src/lib/shareCard.ts": "apps/web/src/lib/shareCard.ts",
-    "web/src/components/UploadIndicator.tsx": "apps/web/src/components/UploadIndicator.tsx",
-    "web/src/components/PhotoCarousel.tsx": "apps/web/src/components/PhotoCarousel.tsx",
-    "api/src/routes/theme.ts": "apps/api/src/routes/theme.ts",
-    "api/drizzle/0019_brand_theme.sql": "apps/api/drizzle/0019_brand_theme.sql"
+    "web/src/lib/useBrand.ts": "apps/web/src/lib/useBrand.ts"
   }
 }

@@ -1,13 +1,13 @@
 /**
  * Theme engine — three brand colours in, every colour token out.
  *
- *   accent      primary colour (buttons, active tabs, "attended", the logo's TINNITUS)
- *   highlight   secondary colour (dates, "on this day", alerts, the logo's a-go-go)
+ *   accent      primary colour (buttons, active tabs, "done" states, the logo's main word)
+ *   highlight   secondary colour (dates, badges, alerts, the logo's second line)
  *   background  page colour; surfaces, borders and text are derived from it,
  *               and a light background flips the text to dark
  *
  * Tokens are CSS variables holding "R G B" channels, so Tailwind classes keep
- * their opacity modifiers (`bg-accent-lime/15`). The defaults live in
+ * their opacity modifiers (`bg-accent/15`). The defaults live in
  * globals.css too, so the app looks right before any script runs; index.html
  * applies the last-used theme from localStorage before first paint.
  *
@@ -120,7 +120,7 @@ export function deriveColors(theme: Theme): Record<string, RGB> {
     accent,
     "accent-hover": mix(accent, light ? BLACK : WHITE, 0.22),
     "on-accent": onColor(accent),
-    // Tints for the "attended" style and other accent washes (were Tailwind's lime-950/900/700).
+    // Accent washes (done/selected chips, banner glows).
     "accent-950": mix(bg, accent, 0.1),
     "accent-900": mix(bg, accent, 0.28),
     "accent-700": mix(bg, accent, 0.5),

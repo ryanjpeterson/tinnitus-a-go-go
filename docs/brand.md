@@ -3,8 +3,11 @@
 Tinnitus A Go Go is built on **jimbo-ui**, Ryan's shared brand and UI system
 ([github.com/ryanjpeterson/jimbo-ui](https://github.com/ryanjpeterson/jimbo-ui)).
 The full rules — theme engine, templates, tokens, type, shell, components and
-patterns — live in its guide (`skills/jimbo-ui/guide.md`). Tinnitus is the
-reference app: its code is what jimbo-ui's `reference/` folder is copied from.
+patterns — live in its guide (`skills/jimbo-ui/guide.md`). jimbo-ui itself is
+generic; Tinnitus has its own versions of the reference files (kit, shell,
+wordmark, Brand and Style guide pages), extended with its domain pieces:
+attendance statuses, the venue list/map switch, share images, the photo
+carousel and the upload ring.
 
 The version Tinnitus is on is in [`jimbo-ui.json`](../jimbo-ui.json). To pick up
 a newer one, ask Claude to "update to the latest jimbo-ui".
@@ -18,7 +21,7 @@ a newer one, ask Claude to "update to the latest jimbo-ui".
 | Wordmark — TINNITUS (accent, outlined in the text colour) over a-go-go (highlight) | `apps/web/src/components/Wordmark.tsx` |
 | Favicon, app icons, splash screens | `apps/web/public/` |
 | Tabs: Home · Shows · Artists · Festivals · Venues | `apps/web/src/routes/AppShell.tsx` |
-| Attendance status colours | `STATUS` in `apps/web/src/components/ui/kit.tsx` |
+| Attendance status colours | `STATUS` in `apps/web/src/components/ui/kit.tsx` (jimbo-ui's tones: attended = accent, attending = yellow, interested = purple, missed = red, cancelled = muted) |
 
 ## Rules for changing the look
 
@@ -26,5 +29,5 @@ a newer one, ask Claude to "update to the latest jimbo-ui".
   jimbo-ui on every update — don't edit them here. Change jimbo-ui, release,
   then update.
 - Changes to Tinnitus-only UI (pages, the kit's Tinnitus parts) are made here.
-  If one should apply to every app, release it in jimbo-ui too (the skill's
-  release workflow copies it back).
+  If one should apply to every app, release it in jimbo-ui too — as a generic
+  pattern with neutral names and examples, never Tinnitus code or content.

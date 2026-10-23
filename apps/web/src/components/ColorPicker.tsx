@@ -135,7 +135,7 @@ export function ColorPicker({ value, onChange, swatches }: {
           maxLength={7}
           spellCheck={false}
           aria-label="Hex colour"
-          className={`field ml-auto h-10 w-32 font-mono text-sm uppercase ${isHex(text.startsWith("#") ? text : `#${text}`) ? "" : "border-accent-pink"}`}
+          className={`field ml-auto h-10 w-32 font-mono text-sm uppercase ${isHex(text.startsWith("#") ? text : `#${text}`) ? "" : "border-highlight"}`}
         />
       </label>
     </div>

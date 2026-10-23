@@ -75,21 +75,21 @@
   /* Text input / select / textarea surface. */
   .field {
     @apply rounded-xl border border-border bg-surface-2 px-4 text-[15px] text-text-base placeholder:text-text-subtle
-      transition-colors focus:border-accent-lime focus:outline-none focus:ring-2 focus:ring-accent-lime/20
+      transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20
       disabled:opacity-50;
   }
   /* Buttons: pill-shaped, one height per size, three tones. */
   .btn {
     @apply inline-flex h-11 shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-full px-5
       text-[15px] font-semibold transition-colors
-      focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime/50
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50
       disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:text-sm;
   }
   .btn-sm {
     @apply h-9 px-3.5 text-sm sm:h-8;
   }
   .btn-primary {
-    @apply bg-accent-lime text-on-accent hover:bg-accent-lime-hover;
+    @apply bg-accent text-on-accent hover:bg-accent-hover;
   }
   .btn-secondary {
     @apply border border-border bg-surface-2 text-text-base hover:border-text-subtle;
@@ -98,16 +98,16 @@
     @apply text-text-muted hover:bg-surface-2 hover:text-text-base;
   }
   .btn-danger {
-    @apply text-text-muted hover:bg-red-950/40 hover:text-accent-pink;
+    @apply text-text-muted hover:bg-red-950/40 hover:text-highlight;
   }
-  /* Small rounded tag: artist names, filters, counts. */
+  /* Small rounded tag: names, filters, counts. */
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-sm font-medium
       text-text-muted;
   }
   /* Inline text action ("Edit", "Remove", "+ Add"). */
   .link-action {
-    @apply text-sm font-semibold text-text-muted transition-colors hover:text-accent-lime;
+    @apply text-sm font-semibold text-text-muted transition-colors hover:text-accent;
   }
 }
 

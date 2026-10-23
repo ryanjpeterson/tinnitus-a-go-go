@@ -16,7 +16,7 @@ const t = (name: string, vibe: string, accent: string, highlight: string, backgr
 
 const GROUPS: { label: string; templates: Template[] }[] = [
   { label: "Dark", templates: [
-    t("Tinnitus", "Lime + hot pink — the original", "#A8FF3E", "#FF3D6E", "#141416"),
+    t("Volt", "Lime + hot pink", "#A8FF3E", "#FF3D6E", "#141416"),
     t("Neon night", "Cyan + magenta", "#2EF2FF", "#FF2ED1", "#0A0A12"),
     t("Acid", "Loud yellow", "#F5FF2E", "#FF5A1F", "#0D0D0B"),
     t("Sunset strip", "Orange on plum", "#FF8A3D", "#FF3D7F", "#1A0F1F"),

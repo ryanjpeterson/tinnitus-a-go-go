@@ -19,7 +19,9 @@ import { requireAdmin } from "../auth/middleware.js";
 import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
 
-const COLOR_KEYS = { accent: "theme.accent", highlight: "theme.highlight", background: "theme.background", logo: "theme.logo" } as const;
+const COLOR_KEYS = { accent: "theme.accent", highlight: "theme.highlight", background: "theme.background" } as const;
+/** Colours the theme used to have — cleared on save and reset. */
+const RETIRED_KEYS = ["theme.logo"];
 const ASSET_KEYS = { logo: "theme.logo_file", favicon: "theme.favicon_file" } as const;
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Colours are #RRGGBB");
 
@@ -48,7 +50,6 @@ async function readTheme() {
       accent: get(COLOR_KEYS.accent),
       highlight: get(COLOR_KEYS.highlight),
       background: get(COLOR_KEYS.background),
-      logo: get(COLOR_KEYS.logo),
     },
     logoKey: get(ASSET_KEYS.logo),
     faviconKey: get(ASSET_KEYS.favicon),
@@ -76,17 +77,18 @@ export async function themeRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.put("/admin/theme", { preHandler: [requireAdmin] }, async (req, reply) => {
-    const parsed = z.object({ accent: hex, highlight: hex, background: hex, logo: hex }).safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: "accent, highlight, background and logo must be #RRGGBB colours." });
-    const labels = { accent: "Accent colour", highlight: "Highlight colour", background: "Background colour", logo: "Logo colour" };
+    const parsed = z.object({ accent: hex, highlight: hex, background: hex }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "accent, highlight and background must be #RRGGBB colours." });
+    const labels = { accent: "Accent colour", highlight: "Highlight colour", background: "Background colour" };
     for (const k of Object.keys(COLOR_KEYS) as (keyof typeof COLOR_KEYS)[]) {
       await setValue(COLOR_KEYS[k], parsed.data[k].toUpperCase(), labels[k]);
     }
+    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, RETIRED_KEYS));
     return reply.send({ theme: parsed.data });
   });
 
   app.delete("/admin/theme", { preHandler: [requireAdmin] }, async (_req, reply) => {
-    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, Object.values(COLOR_KEYS)));
+    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, [...Object.values(COLOR_KEYS), ...RETIRED_KEYS]));
     return reply.send({ ok: true });
   });
 

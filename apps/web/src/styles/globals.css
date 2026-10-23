@@ -26,7 +26,6 @@
     --c-highlight-950: 44 24 31;
     --c-highlight-900: 86 31 47;
     --c-highlight-800: 114 36 57;
-    --c-logo: 248 113 113;
     color-scheme: dark;
   }
   html, body, #root { height: 100%; }

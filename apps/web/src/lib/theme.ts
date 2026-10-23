@@ -1,11 +1,10 @@
 /**
- * Theme engine — four brand colours in, every colour token out.
+ * Theme engine — three brand colours in, every colour token out.
  *
- *   accent      primary action colour (buttons, active tabs, "attended")
- *   highlight   secondary colour (dates, "on this day", alerts)
+ *   accent      primary colour (buttons, active tabs, "attended", the logo's TINNITUS)
+ *   highlight   secondary colour (dates, "on this day", alerts, the logo's a-go-go)
  *   background  page colour; surfaces, borders and text are derived from it,
  *               and a light background flips the text to dark
- *   logo        the logo's (and favicon's) main colour
  *
  * Tokens are CSS variables holding "R G B" channels, so Tailwind classes keep
  * their opacity modifiers (`bg-accent-lime/15`). The defaults live in
@@ -19,14 +18,12 @@ export interface Theme {
   accent: string;
   highlight: string;
   background: string;
-  logo: string;
 }
 
 export const DEFAULT_THEME: Theme = {
   accent: "#A8FF3E",
   highlight: "#FF3D6E",
   background: "#141416",
-  logo: "#F87171",
 };
 
 export const THEME_STORAGE_KEY = "tagg.theme";
@@ -98,7 +95,6 @@ export function deriveColors(theme: Theme): Record<string, RGB> {
     "highlight-950": mix(bg, highlight, 0.1),
     "highlight-900": mix(bg, highlight, 0.28),
     "highlight-800": mix(bg, highlight, 0.4),
-    logo: hexToRgb(theme.logo),
   };
 }
 
@@ -160,7 +156,7 @@ export async function applyFavicon(theme: Theme, customUrl: string | null): Prom
     faviconTemplate = template;
     const svg = template
       .replace(/#0B0B0C/gi, theme.background)
-      .replace(/#f87171/gi, theme.logo);
+      .replace(/#A8FF3E/gi, theme.accent);
     link.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
   } catch { /* keep the static icon */ }
 }

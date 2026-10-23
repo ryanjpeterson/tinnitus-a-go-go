@@ -37,7 +37,6 @@ export default {
         // Accent and highlight washes (the "attended" chip, banner glows).
         lime: { 700: tok("accent-700"), 900: tok("accent-900"), 950: tok("accent-950") },
         rose: { 800: tok("highlight-800"), 900: tok("highlight-900"), 950: tok("highlight-950") },
-        logo: tok("logo"),
         danger: "#FF5252",
       },
       fontFamily: {

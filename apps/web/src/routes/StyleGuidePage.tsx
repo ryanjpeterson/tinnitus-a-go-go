@@ -34,7 +34,6 @@ const TOKENS: { name: string; use: string }[] = [
   { name: "highlight", use: "Dates, alerts, pins" },
   { name: "on-highlight", use: "Text on highlight fills" },
   { name: "highlight-950", use: "Highlight wash (warnings)" },
-  { name: "logo", use: "Logo and favicon" },
 ];
 
 function Block({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
@@ -68,11 +67,11 @@ export function StyleGuidePage() {
         The shared building blocks, live in the current theme. Rules and the reuse checklist: <code className="font-mono text-text-base">docs/brand-ui-standards.md</code>.
       </p>
 
-      <Block title="Brand" note="Logo (follows the logo + accent colours unless replaced) and the four source colours.">
+      <Block title="Brand" note="Logo (accent + highlight unless replaced) and the three source colours.">
         <div className="card flex flex-wrap items-center gap-6 p-5">
           <Wordmark size="lg" />
           <div className="flex flex-wrap gap-3">
-            {(["accent", "highlight", "background", "logo"] as const).map((k) => (
+            {(["accent", "highlight", "background"] as const).map((k) => (
               <div key={k} className="text-center">
                 <div className="h-14 w-14 rounded-2xl border border-border" style={{ background: theme[k] }} />
                 <p className="mt-1 text-xs font-semibold capitalize">{k}</p>

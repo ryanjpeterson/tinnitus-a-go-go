@@ -16,7 +16,10 @@ export interface Brand { theme: Theme; logoUrl: string | null; faviconUrl: strin
 function cached(): Brand | undefined {
   try {
     const raw = localStorage.getItem(BRAND_CACHE_KEY);
-    return raw ? (JSON.parse(raw) as Brand) : undefined;
+    if (!raw) return undefined;
+    const b = JSON.parse(raw) as Brand;
+    // Re-shape through the defaults so a copy cached by an older version (extra or missing colours) can't leak through.
+    return { ...b, theme: withDefaults(b.theme ?? {}) };
   } catch {
     return undefined;
   }
@@ -28,7 +31,6 @@ export function withDefaults(t: Partial<Record<keyof Theme, string | null>>): Th
     accent: t.accent || DEFAULT_THEME.accent,
     highlight: t.highlight || DEFAULT_THEME.highlight,
     background: t.background || DEFAULT_THEME.background,
-    logo: t.logo || DEFAULT_THEME.logo,
   };
 }
 

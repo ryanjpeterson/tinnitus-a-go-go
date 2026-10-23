@@ -10,6 +10,9 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 ### Changed
 
 - **Brand & theme page rebuilt** — instead of four native colour inputs and a static preview: a **Pick a look** gallery of ten bold templates (Tinnitus, Neon night, Acid, Sunset strip, Deep sea, Ultraviolet, Ember, Blackout, Daylight, Gig poster), each drawn as a miniature of the app in that theme — tap to try it across the whole app; and **Make it yours**, where you tap the colour to change (accent, highlight, background, logo) and drag in a touch-friendly picker (colour field, hue slider, quick swatches, hex). A save bar floats above the tab bar whenever there's something unsaved (*Undo* / *Save*).
+- **More templates: mid and light** — 25 templates in **Dark**, **Mid** and **Light** groups: new mid tones (Slate, Denim, Forest, Burgundy, Dusk, Concrete, Fog, Sage, Clay) and light ones (Newsprint, Mint, Blush, Sky, Lemonade, Peach) join Daylight and Gig poster. Every template passes the readability checks.
+- **The logo uses the theme's two colours** — TINNITUS is the accent (primary) and a-go-go the highlight (secondary); the separate Logo colour is gone, so the theme is three colours. TINNITUS's outline follows the text colour, so it reads on light themes; the favicon mark uses the accent. Count badges use the readable text colour for the highlight instead of fixed white.
+- **Brand & UI standards guide rewritten as a full recipe** — the derivation formulas, every template's values, shell sizes, layers, surface recipes, motion and fonts, so another app can be built to look and behave the same.
 
 ### Fixed
 
@@ -18,7 +21,7 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 ### Added — Brand theme and UI standards guide
 
 - **Brand & theme** (Account → Brand & theme) — colour pickers for the **accent** (green), **highlight** (pink), **background** and **logo** colours. Changes preview live across the app and only stick when saved; theme templates, readability checks (WCAG contrast) and **Back to defaults**.
-- **Everything follows the four colours** — a new theme engine (`src/lib/theme.ts`) derives every colour token — surfaces, borders, text, tints, the "attended" style, button text — as CSS variables, and Tailwind's colours point at them. Light backgrounds work: surfaces step darker and text turns dark. The maps' style and pins, share images, charts and the browser's theme colour follow too. The last theme is applied before the page paints, so there's no flash of the default colours.
+- **Everything follows the brand colours** — a new theme engine (`src/lib/theme.ts`) derives every colour token — surfaces, borders, text, tints, the "attended" style, button text — as CSS variables, and Tailwind's colours point at them. Light backgrounds work: surfaces step darker and text turns dark. The maps' style and pins, share images, charts and the browser's theme colour follow too. The last theme is applied before the page paints, so there's no flash of the default colours.
 - **Logo and favicon** — the built-in wordmark and favicon recolour with the theme; either can be replaced by an upload (SVG, PNG, WebP or JPEG under 1 MB; SVGs with scripts are refused) and reset to the built-in one.
 - **Style guide** (`/admin/style`) — every shared component, live in the current theme.
 - **Brand & UI standards guide** — [docs/brand-ui-standards.md](docs/brand-ui-standards.md): voice, colour tokens, type, layout, components, patterns, accessibility, and a checklist for reusing this layout in other apps with different colours. Kept up to date with UI changes.

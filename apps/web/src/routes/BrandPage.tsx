@@ -1,8 +1,8 @@
 /**
  * Admin brand & theme — /admin/brand
  *
- * Pick a look from bold templates (each card is a miniature of the app in
- * that theme), then fine-tune any of the four colours with the inline picker.
+ * Pick a look from bold dark, mid and light templates (each card is a miniature of the app in
+ * that theme), then fine-tune any of the three colours with the inline picker.
  * Everything previews live across the app; the save bar appears when there's
  * something unsaved, and leaving the page without saving puts the saved
  * theme back. Logo and favicon can be replaced with uploads.
@@ -23,20 +23,47 @@ import { PageHeader } from "@/components/ui/kit";
 // Templates
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TEMPLATES: { name: string; vibe: string; theme: Theme }[] = [
-  { name: "Tinnitus", vibe: "The original", theme: DEFAULT_THEME },
-  { name: "Neon night", vibe: "Cyan + magenta", theme: { accent: "#2EF2FF", highlight: "#FF2ED1", background: "#0A0A12", logo: "#FF2ED1" } },
-  { name: "Acid", vibe: "Loud yellow", theme: { accent: "#F5FF2E", highlight: "#FF5A1F", background: "#0D0D0B", logo: "#F5FF2E" } },
-  { name: "Sunset strip", vibe: "Orange on plum", theme: { accent: "#FF8A3D", highlight: "#FF3D7F", background: "#1A0F1F", logo: "#FFC23D" } },
-  { name: "Deep sea", vibe: "Teal + coral", theme: { accent: "#3DFFC5", highlight: "#FF7A59", background: "#071A1F", logo: "#3DFFC5" } },
-  { name: "Ultraviolet", vibe: "Purple haze", theme: { accent: "#B48CFF", highlight: "#FF5FA2", background: "#120F1C", logo: "#FF5FA2" } },
-  { name: "Ember", vibe: "Gold + fire", theme: { accent: "#FFB23D", highlight: "#FF3D3D", background: "#17110D", logo: "#FF6B3D" } },
-  { name: "Blackout", vibe: "Monochrome", theme: { accent: "#F2F2F2", highlight: "#FF3D3D", background: "#000000", logo: "#F2F2F2" } },
-  { name: "Daylight", vibe: "Light, green", theme: { accent: "#1F7A4D", highlight: "#D6336C", background: "#F6F4EF", logo: "#D6336C" } },
-  { name: "Gig poster", vibe: "Cream + red", theme: { accent: "#D7261E", highlight: "#1E4FD7", background: "#F3EAD6", logo: "#D7261E" } },
+type Template = { name: string; vibe: string; theme: Theme };
+const t = (name: string, vibe: string, accent: string, highlight: string, background: string): Template =>
+  ({ name, vibe, theme: { accent, highlight, background } });
+
+// Every template passes the page's readability checks (text 4.5:1, accent and highlight 3:1, button text 4.5:1).
+const TEMPLATE_GROUPS: { label: string; templates: Template[] }[] = [
+  { label: "Dark", templates: [
+    { name: "Tinnitus", vibe: "The original", theme: DEFAULT_THEME },
+    t("Neon night", "Cyan + magenta", "#2EF2FF", "#FF2ED1", "#0A0A12"),
+    t("Acid", "Loud yellow", "#F5FF2E", "#FF5A1F", "#0D0D0B"),
+    t("Sunset strip", "Orange on plum", "#FF8A3D", "#FF3D7F", "#1A0F1F"),
+    t("Deep sea", "Teal + coral", "#3DFFC5", "#FF7A59", "#071A1F"),
+    t("Ultraviolet", "Purple haze", "#B48CFF", "#FF5FA2", "#120F1C"),
+    t("Ember", "Gold + fire", "#FFB23D", "#FF3D3D", "#17110D"),
+    t("Blackout", "Monochrome", "#F2F2F2", "#FF3D3D", "#000000"),
+  ] },
+  { label: "Mid", templates: [
+    t("Slate", "Frost + sand", "#88C0D0", "#EBCB8B", "#2E3440"),
+    t("Denim", "Yellow on blue", "#FFD23F", "#EE6C4D", "#23395B"),
+    t("Forest", "Gold + clay", "#E9C46A", "#F4A261", "#1F3A2E"),
+    t("Burgundy", "Rosé + butter", "#F7B2BD", "#FFD166", "#4A1C2B"),
+    t("Dusk", "Peach + mint", "#FFB4A2", "#9DE0AD", "#3D3B6B"),
+    t("Concrete", "Grey + lemon", "#FFE066", "#FF8FA3", "#55585E"),
+    t("Fog", "Navy + red", "#1E3A8A", "#B91C1C", "#C8CDD4"),
+    t("Sage", "Pine + wine", "#1F3D2B", "#8B1E3F", "#B7C9B0"),
+    t("Clay", "Plum + teal", "#3B1F5C", "#0F4C5C", "#D9B8A0"),
+  ] },
+  { label: "Light", templates: [
+    t("Daylight", "Green + pink", "#1F7A4D", "#D6336C", "#F6F4EF"),
+    t("Gig poster", "Cream + red", "#D7261E", "#1E4FD7", "#F3EAD6"),
+    t("Newsprint", "Black + red", "#111111", "#E11D48", "#FFFFFF"),
+    t("Mint", "Teal + rust", "#0F766E", "#C2410C", "#E6F4EE"),
+    t("Blush", "Raspberry + violet", "#BE185D", "#6D28D9", "#FCE8EE"),
+    t("Sky", "Cobalt + pink", "#1D4ED8", "#DB2777", "#E8F0FB"),
+    t("Lemonade", "Violet + red", "#7C3AED", "#DC2626", "#FFF7CC"),
+    t("Peach", "Rust + teal", "#C2410C", "#0E7490", "#FFE8D6"),
+  ] },
 ];
 
-const same = (a: Theme, b: Theme) => (Object.keys(a) as (keyof Theme)[]).every((k) => a[k].toUpperCase() === b[k].toUpperCase());
+const KEYS: (keyof Theme)[] = ["accent", "highlight", "background"];
+const same = (a: Theme, b: Theme) => KEYS.every((k) => a[k].toUpperCase() === b[k].toUpperCase());
 
 /** A miniature of the app in a theme: top bar with logo, title, a card, buttons, a date. */
 function ThemeCard({ name, vibe, theme, selected, onPick }: { name: string; vibe: string; theme: Theme; selected: boolean; onPick: () => void }) {
@@ -47,8 +74,8 @@ function ThemeCard({ name, vibe, theme, selected, onPick }: { name: string; vibe
       style={selected ? { ["--tw-ring-color" as string]: theme.accent } : undefined}>
       <div className="space-y-2.5 p-3" style={{ background: theme.background, color: c.text }}>
         <div className="flex items-center justify-between">
-          <span className="font-display text-[15px] leading-none" style={{ color: theme.logo }}>
-            TINNITUS<span className="block text-[10px]" style={{ color: theme.accent }}>a-go-go</span>
+          <span className="font-display text-[15px] leading-none" style={{ color: theme.accent }}>
+            TINNITUS<span className="block text-[10px]" style={{ color: theme.highlight }}>a-go-go</span>
           </span>
           <span className="h-5 w-5 rounded-full" style={{ background: theme.accent }} />
         </div>
@@ -86,14 +113,12 @@ function ThemeCard({ name, vibe, theme, selected, onPick }: { name: string; vibe
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FIELDS: { key: keyof Theme; label: string; hint: string; swatches: string[] }[] = [
-  { key: "accent", label: "Accent", hint: "Buttons, active tabs, “attended”, big numbers",
+  { key: "accent", label: "Accent", hint: "The logo’s TINNITUS, buttons, active tabs, “attended”, big numbers",
     swatches: ["#A8FF3E", "#2EF2FF", "#F5FF2E", "#FF8A3D", "#B48CFF", "#3DFFC5", "#F2F2F2", "#1F7A4D"] },
-  { key: "highlight", label: "Highlight", hint: "Dates, “on this day”, map pins, warnings",
+  { key: "highlight", label: "Highlight", hint: "The logo’s a-go-go, dates, “on this day”, map pins, warnings",
     swatches: ["#FF3D6E", "#FF2ED1", "#FF5A1F", "#FF3D3D", "#FF7A59", "#FF5FA2", "#1E4FD7", "#FFC23D"] },
   { key: "background", label: "Background", hint: "The page — cards, borders and text follow it",
     swatches: ["#141416", "#000000", "#0A0A12", "#1A0F1F", "#071A1F", "#17110D", "#F6F4EF", "#F3EAD6"] },
-  { key: "logo", label: "Logo", hint: "The logo's main colour and the favicon",
-    swatches: ["#F87171", "#FF2ED1", "#F5FF2E", "#FFC23D", "#3DFFC5", "#FF5FA2", "#F2F2F2", "#D7261E"] },
 ];
 
 export function BrandPage() {
@@ -147,11 +172,16 @@ export function BrandPage() {
           <h2 className="h-section">Pick a look</h2>
           <p className="meta mt-1">Tap one to try it — the whole app changes. Nothing's saved until you say so.</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {TEMPLATES.map((t) => (
-            <ThemeCard key={t.name} {...t} selected={same(draft, t.theme)} onPick={() => setDraft(t.theme)} />
-          ))}
-        </div>
+        {TEMPLATE_GROUPS.map((g) => (
+          <div key={g.label} className="space-y-2 pt-1">
+            <p className="eyebrow px-0.5">{g.label}</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {g.templates.map((tpl) => (
+                <ThemeCard key={tpl.name} {...tpl} selected={same(draft, tpl.theme)} onPick={() => setDraft(tpl.theme)} />
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* 2. Fine-tune */}
@@ -161,7 +191,7 @@ export function BrandPage() {
           <p className="meta mt-1">Pick a colour to change, then drag.</p>
         </div>
         <div className="card space-y-5 p-4 sm:p-5">
-          <div className="grid grid-cols-4 gap-2" role="tablist">
+          <div className="grid grid-cols-3 gap-2" role="tablist">
             {FIELDS.map((f) => {
               const active = f.key === editing;
               return (
@@ -261,7 +291,7 @@ function BrandAssets({ logoUrl, faviconUrl, onChange }: { logoUrl: string | null
         <p className="meta mt-1">The built-in ones follow your colours. Upload SVG, PNG or WebP (under 1 MB) to replace either.</p>
       </div>
       <div className="card space-y-4 p-4 sm:p-5">
-        {row("logo", "Logo", "Built-in — logo + accent colours", logoUrl,
+        {row("logo", "Logo", "Built-in — accent + highlight colours", logoUrl,
           logoUrl ? <img src={logoUrl} alt="" className="max-h-full max-w-full object-contain" /> : <Wordmark size="sm" />)}
         {row("favicon", "Favicon", "Built-in — recoloured from the theme", faviconUrl,
           <img src={faviconUrl ?? (document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.href ?? "/favicon.svg")} alt="" className="h-10 w-10" />)}

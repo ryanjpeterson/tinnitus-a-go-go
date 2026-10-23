@@ -1,11 +1,12 @@
 # Tinnitus brand
 
-Tinnitus A Go Go is built on **jimbo-ui**, Ryan's shared brand and UI system
+Tinnitus A Go Go is built on **jimbo.ui** (repo `jimbo-ui`), Ryan's shared brand and UI system
 ([github.com/ryanjpeterson/jimbo-ui](https://github.com/ryanjpeterson/jimbo-ui)).
 The full rules — theme engine, templates, tokens, type, shell, components and
 patterns — live in its guide (`skills/jimbo-ui/guide.md`). jimbo-ui itself is
 generic; Tinnitus has its own versions of the reference files (kit, shell,
-wordmark, Brand and Style guide pages), extended with its domain pieces:
+Brand and Style guide pages), extended with its domain pieces — and its own
+logo, where jimbo.ui apps use the app's name as header text —
 attendance statuses, the venue list/map switch, share images, the photo
 carousel and the upload ring.
 

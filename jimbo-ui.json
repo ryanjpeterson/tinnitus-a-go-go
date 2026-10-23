@@ -1,5 +1,5 @@
 {
-  "version": "2.0.0",
+  "version": "3.0.0",
   "webRoot": "apps/web",
   "reference": {
     "web/index.html": "apps/web/index.html",
@@ -7,7 +7,6 @@
     "web/src/routes/AppShell.tsx": "apps/web/src/routes/AppShell.tsx",
     "web/src/routes/BrandPage.tsx": "apps/web/src/routes/BrandPage.tsx",
     "web/src/routes/StyleGuidePage.tsx": "apps/web/src/routes/StyleGuidePage.tsx",
-    "web/src/components/Wordmark.tsx": "apps/web/src/components/Wordmark.tsx",
     "web/src/lib/useBrand.ts": "apps/web/src/lib/useBrand.ts"
   }
 }

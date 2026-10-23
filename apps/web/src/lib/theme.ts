@@ -1,8 +1,8 @@
 /**
  * Theme engine — three brand colours in, every colour token out.
  *
- *   accent      primary colour (buttons, active tabs, "done" states, the logo's main word)
- *   highlight   secondary colour (dates, badges, alerts, the logo's second line)
+ *   accent      primary colour (buttons, active tabs, "done" states, the dot in the name)
+ *   highlight   secondary colour (dates, badges, alerts)
  *   background  page colour; surfaces, borders and text are derived from it,
  *               and a light background flips the text to dark
  *

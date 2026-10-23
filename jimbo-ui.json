@@ -1,5 +1,5 @@
 {
-  "version": "3.0.0",
+  "version": "3.1.0",
   "webRoot": "apps/web",
   "reference": {
     "web/index.html": "apps/web/index.html",

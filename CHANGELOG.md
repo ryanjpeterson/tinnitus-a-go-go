@@ -9,6 +9,7 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ### Changed
 
+- **Updated to jimbo.ui 3.1.0: a fourth colour and new templates** — a **support** colour (sky blue by default) now colours page labels above titles, avatar initials and third place in top lists; it's optional, and older saved themes get one worked out from their other colours. The Brand page has **Everyday**, **Flags** and **Holidays** template sets and four colour tabs, and warns if support text is hard to read. The theme API accepts and returns an optional `support`. Top lists' second place now uses the highlight instead of a fixed cyan.
 - **Updated to jimbo.ui 3.0.0** — the shared system is now branded jimbo.ui and uses header text instead of a logo; Tinnitus keeps its own TINNITUS / a-go-go logo, so nothing changes on screen.
 - **Updated to jimbo-ui 2.0.0** — jimbo-ui is now fully generic, so the shared files carry no Tinnitus names; the default theme's card on the Brand page is called **Volt** (same colours). Tinnitus keeps its own kit, shell, wordmark and favicon. No visible change otherwise.
 - **Updated to jimbo-ui 1.1.0: stronger contrast on every theme** — cards, fields, borders and grey labels now step just far enough from the background to stay clearly visible, so mid and light themes (Denim, Slate, Daylight…) no longer look washed out; card borders are full strength; the Concrete template is a little darker. Sheets now cover the whole screen (a gap at the top on some pages is gone).

@@ -14,7 +14,7 @@ import {
   DateBlock, EmptyState, EntityRow, EventRow, LinkCard, List, ListGroupLabel, Loading, MediaCard, PageHeader, Pager,
   PillTabs, RankedList, SearchField, Section, SelectField, Sheet, StatGrid, StatTile, StatusBadge, Tabs, VenueViewSwitch,
 } from "@/components/ui/kit";
-import { themeHex } from "@/lib/theme";
+import { fullTheme, THEME_KEYS, themeHex } from "@/lib/theme";
 import { useBrand } from "@/lib/useBrand";
 
 const TOKENS: { name: string; use: string }[] = [
@@ -34,6 +34,9 @@ const TOKENS: { name: string; use: string }[] = [
   { name: "highlight", use: "Dates, alerts, pins" },
   { name: "on-highlight", use: "Text on highlight fills" },
   { name: "highlight-950", use: "Highlight wash (warnings)" },
+  { name: "support", use: "Page labels, avatars, third place" },
+  { name: "on-support", use: "Text on support fills" },
+  { name: "support-900", use: "Support wash (avatars)" },
 ];
 
 function Block({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
@@ -49,7 +52,7 @@ function Block({ title, note, children }: { title: string; note?: string; childr
 }
 
 export function StyleGuidePage() {
-  const { theme } = useBrand();
+  const theme = fullTheme(useBrand().theme);
   const hex = themeHex(theme);
   const [tab, setTab] = useState<"one" | "two">("one");
   const [pill, setPill] = useState<"a" | "b" | "c">("a");
@@ -67,11 +70,11 @@ export function StyleGuidePage() {
         The shared building blocks, live in the current theme. The rules: the jimbo-ui guide (<code className="font-mono text-text-base">docs/brand.md</code> says where).
       </p>
 
-      <Block title="Brand" note="Logo (accent + highlight unless replaced) and the three source colours.">
+      <Block title="Brand" note="Logo (accent + highlight unless replaced) and the four source colours.">
         <div className="card flex flex-wrap items-center gap-6 p-5">
           <Wordmark size="lg" />
           <div className="flex flex-wrap gap-3">
-            {(["accent", "highlight", "background"] as const).map((k) => (
+            {THEME_KEYS.map((k) => (
               <div key={k} className="text-center">
                 <div className="h-14 w-14 rounded-2xl border border-border" style={{ background: theme[k] }} />
                 <p className="mt-1 text-xs font-semibold capitalize">{k}</p>
@@ -148,7 +151,7 @@ export function StyleGuidePage() {
           <StatTile label="StatTile · lime" value={171} accent="lime" />
           <StatTile label="StatTile · pink" value={51} accent="pink" />
           <StatTile label="StatTile · muted" value={17} sub="with a sub line" />
-          <StatTile label="Years active" value={17} />
+          <StatTile label="StatTile · support" value={17} accent="support" />
         </StatGrid>
       </Block>
 

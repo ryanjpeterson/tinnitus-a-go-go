@@ -19,7 +19,7 @@ import { requireAdmin } from "../auth/middleware.js";
 import { s3, bucket } from "../lib/s3.js";
 import { env } from "../lib/env.js";
 
-const COLOR_KEYS = { accent: "theme.accent", highlight: "theme.highlight", background: "theme.background" } as const;
+const COLOR_KEYS = { accent: "theme.accent", highlight: "theme.highlight", background: "theme.background", support: "theme.support" } as const;
 /** Colours the theme used to have — cleared on save and reset. */
 const RETIRED_KEYS = ["theme.logo"];
 const ASSET_KEYS = { logo: "theme.logo_file", favicon: "theme.favicon_file" } as const;
@@ -50,6 +50,7 @@ async function readTheme() {
       accent: get(COLOR_KEYS.accent),
       highlight: get(COLOR_KEYS.highlight),
       background: get(COLOR_KEYS.background),
+      support: get(COLOR_KEYS.support),
     },
     logoKey: get(ASSET_KEYS.logo),
     faviconKey: get(ASSET_KEYS.favicon),
@@ -77,13 +78,16 @@ export async function themeRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.put("/admin/theme", { preHandler: [requireAdmin] }, async (req, reply) => {
-    const parsed = z.object({ accent: hex, highlight: hex, background: hex }).safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: "accent, highlight and background must be #RRGGBB colours." });
-    const labels = { accent: "Accent colour", highlight: "Highlight colour", background: "Background colour" };
+    // support is optional (jimbo.ui 3.1): without one, the app derives it from the other three.
+    const parsed = z.object({ accent: hex, highlight: hex, background: hex, support: hex.optional() }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "accent, highlight and background must be #RRGGBB colours (support too, if given)." });
+    const labels = { accent: "Accent colour", highlight: "Highlight colour", background: "Background colour", support: "Support colour" };
     for (const k of Object.keys(COLOR_KEYS) as (keyof typeof COLOR_KEYS)[]) {
-      await setValue(COLOR_KEYS[k], parsed.data[k].toUpperCase(), labels[k]);
+      const v = parsed.data[k];
+      if (v) await setValue(COLOR_KEYS[k], v.toUpperCase(), labels[k]);
     }
-    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, RETIRED_KEYS));
+    const cleared = parsed.data.support ? [] : [COLOR_KEYS.support];
+    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, [...RETIRED_KEYS, ...cleared]));
     return reply.send({ theme: parsed.data });
   });
 

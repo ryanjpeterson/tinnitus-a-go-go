@@ -22,5 +22,11 @@
   --c-highlight-950: 44 24 31;
   --c-highlight-900: 86 31 47;
   --c-highlight-800: 114 36 57;
+  --c-support: 46 197 255;
+  --c-support-hover: 88 209 255;
+  --c-on-support: 20 20 22;
+  --c-support-950: 23 38 45;
+  --c-support-900: 27 70 87;
+  --c-support-700: 33 109 139;
   color-scheme: dark;
 }

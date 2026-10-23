@@ -46,9 +46,18 @@ export default {
           900:     tok("highlight-900"),
           800:     tok("highlight-800"),
         },
-        // Text on an accent / highlight fill: dark or light, whichever reads.
+        // support: the optional third colour (page eyebrows, avatars, glows).
+        support: {
+          DEFAULT: tok("support"),
+          hover:   tok("support-hover"),
+          950:     tok("support-950"),
+          900:     tok("support-900"),
+          700:     tok("support-700"),
+        },
+        // Text on an accent / highlight / support fill: dark or light, whichever reads.
         "on-accent": tok("on-accent"),
         "on-highlight": tok("on-highlight"),
+        "on-support": tok("on-support"),
         // Legacy wash names (lime = accent, rose = highlight).
         lime: { 700: tok("accent-700"), 900: tok("accent-900"), 950: tok("accent-950") },
         rose: { 800: tok("highlight-800"), 900: tok("highlight-900"), 950: tok("highlight-950") },

@@ -1,8 +1,10 @@
 /**
- * Theme engine — three brand colours in, every colour token out.
+ * Theme engine — up to four brand colours in, every colour token out.
  *
  *   accent      primary colour (buttons, active tabs, "done" states, the dot in the name)
  *   highlight   secondary colour (dates, badges, alerts)
+ *   support     third colour, optional (page eyebrows, avatars, third rank, glows);
+ *               derived from the other three when a theme leaves it out
  *   background  page colour; surfaces, borders and text are derived from it,
  *               and a light background flips the text to dark
  *
@@ -21,7 +23,15 @@ export interface Theme {
   accent: string;
   highlight: string;
   background: string;
+  /** Optional: themes saved before 3.1 have three colours, and get one derived (`deriveSupport`). */
+  support?: string;
 }
+
+/** A theme with all four colours filled in. */
+export type FullTheme = Required<Theme>;
+
+/** The colour keys in editor order. */
+export const THEME_KEYS = ["accent", "highlight", "support", "background"] as const;
 
 export const DEFAULT_THEME: Theme = BRAND.defaultTheme;
 
@@ -91,11 +101,53 @@ function fadeTo(from: RGB, to: RGB, against: RGB, target: number, max: number): 
   return lo;
 }
 
+type HSL = [number, number, number];
+function rgbToHsl([r, g, b]: RGB): HSL {
+  const [R, G, B] = [r / 255, g / 255, b / 255];
+  const max = Math.max(R, G, B), min = Math.min(R, G, B), l = (max + min) / 2, d = max - min;
+  if (!d) return [0, 0, l];
+  const s = d / (1 - Math.abs(2 * l - 1));
+  const h = max === R ? ((G - B) / d + 6) % 6 : max === G ? (B - R) / d + 2 : (R - G) / d + 4;
+  return [h * 60, s, l];
+}
+function hslToRgb([h, s, l]: HSL): RGB {
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => { const k = (n + h / 30) % 12; return 255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))); };
+  return [f(0), f(8), f(4)];
+}
+
+/**
+ * A support colour for a theme that doesn't set one: the hue furthest from
+ * both the accent and the highlight, as saturated as they are, made light or
+ * dark enough to reach 4.5:1 on the page.
+ */
+export function deriveSupport(theme: Theme): string {
+  const bg = hexToRgb(theme.background);
+  const [ha, sa, la] = rgbToHsl(hexToRgb(theme.accent));
+  const [hh, sh] = rgbToHsl(hexToRgb(theme.highlight));
+  const gap = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
+  let hue = 0, best = -1;
+  for (let h = 0; h < 360; h += 5) {
+    const d = Math.min(sa > 0.15 ? gap(h, ha) : 180, sh > 0.15 ? gap(h, hh) : 180);
+    if (d > best) { best = d; hue = h; }
+  }
+  const sat = Math.max(0.55, (sa + sh) / 2);
+  const light = luminance(bg) > 0.4;
+  // Walk lightness away from the page until the colour reads on it.
+  let l = la;
+  for (let i = 0; i < 40 && contrast(hslToRgb([hue, sat, l]), bg) < 4.5; i++) l = light ? l - 0.02 : l + 0.02;
+  return rgbToHex(hslToRgb([hue, sat, Math.max(0.05, Math.min(0.95, l))]));
+}
+
+/** The theme with its support colour filled in. */
+export const fullTheme = (theme: Theme): FullTheme => ({ ...theme, support: theme.support ?? deriveSupport(theme) });
+
 /** Every derived colour, as RGB, keyed by CSS variable name (without the --c- prefix). */
 export function deriveColors(theme: Theme): Record<string, RGB> {
   const bg = hexToRgb(theme.background);
   const accent = hexToRgb(theme.accent);
   const highlight = hexToRgb(theme.highlight);
+  const support = hexToRgb(fullTheme(theme).support);
   const light = luminance(bg) > 0.4;
   // Surfaces step away from the background — lighter on dark themes, darker on
   // light ones — as far as it takes to read as separate layers on this background.
@@ -130,6 +182,12 @@ export function deriveColors(theme: Theme): Record<string, RGB> {
     "highlight-950": mix(bg, highlight, 0.1),
     "highlight-900": mix(bg, highlight, 0.28),
     "highlight-800": mix(bg, highlight, 0.4),
+    support,
+    "support-hover": mix(support, light ? BLACK : WHITE, 0.2),
+    "on-support": onColor(support),
+    "support-950": mix(bg, support, 0.1),
+    "support-900": mix(bg, support, 0.28),
+    "support-700": mix(bg, support, 0.5),
   };
 }
 
@@ -177,7 +235,7 @@ export function applyTheme(theme: Theme): void {
   root.style.colorScheme = scheme;
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme.background);
   try {
-    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(fullTheme(theme)));
     localStorage.setItem(THEME_VARS_KEY, JSON.stringify({ vars, scheme, background: theme.background }));
   } catch { /* storage unavailable */ }
 }

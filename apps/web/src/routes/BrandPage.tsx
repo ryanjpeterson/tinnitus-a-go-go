@@ -12,23 +12,23 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { applyTheme, contrast, themeHex, type Theme } from "@/lib/theme";
-import { TEMPLATE_GROUPS } from "@/lib/themes";
+import { applyTheme, contrast, fullTheme, themeHex, type FullTheme, type Theme } from "@/lib/theme";
+import { sameTheme, TEMPLATE_SETS } from "@/lib/themes";
 import { useBrand } from "@/lib/useBrand";
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/Wordmark";
 import { ColorPicker } from "@/components/ColorPicker";
-import { PageHeader } from "@/components/ui/kit";
+import { PageHeader, Tabs } from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Templates
 // ─────────────────────────────────────────────────────────────────────────────
 
-const KEYS: (keyof Theme)[] = ["accent", "highlight", "background"];
-const same = (a: Theme, b: Theme) => KEYS.every((k) => a[k].toUpperCase() === b[k].toUpperCase());
+const same = sameTheme;
 
 /** A miniature of the app in a theme: top bar with logo, title, a card, buttons, a date. */
-function ThemeCard({ name, vibe, theme, selected, onPick }: { name: string; vibe: string; theme: Theme; selected: boolean; onPick: () => void }) {
+function ThemeCard({ name, vibe, theme: input, selected, onPick }: { name: string; vibe: string; theme: Theme; selected: boolean; onPick: () => void }) {
+  const theme = fullTheme(input);
   const c = themeHex(theme);
   return (
     <button type="button" onClick={onPick} aria-pressed={selected}
@@ -39,9 +39,9 @@ function ThemeCard({ name, vibe, theme, selected, onPick }: { name: string; vibe
           <span className="font-display text-[15px] leading-none" style={{ color: theme.accent }}>
             TINNITUS<span className="block text-[10px]" style={{ color: theme.highlight }}>a-go-go</span>
           </span>
-          <span className="h-5 w-5 rounded-full" style={{ background: theme.accent }} />
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold" style={{ background: theme.support, color: c["on-support"] }}>A</span>
         </div>
-        <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: theme.highlight }}>On this day</p>
+        <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: theme.support }}>On this day</p>
         <div className="rounded-lg p-2" style={{ background: c.surface, border: `1px solid ${c.border}` }}>
           <div className="flex items-center gap-2">
             <span className="w-6 text-center leading-none">
@@ -74,20 +74,23 @@ function ThemeCard({ name, vibe, theme, selected, onPick }: { name: string; vibe
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FIELDS: { key: keyof Theme; label: string; hint: string; swatches: string[] }[] = [
+const FIELDS: { key: keyof FullTheme; label: string; short?: string; hint: string; swatches: string[] }[] = [
   { key: "accent", label: "Accent", hint: "The logo’s TINNITUS, buttons, active tabs, “attended”, big numbers",
     swatches: ["#A8FF3E", "#2EF2FF", "#F5FF2E", "#FF8A3D", "#B48CFF", "#3DFFC5", "#F2F2F2", "#1F7A4D"] },
   { key: "highlight", label: "Highlight", hint: "The logo’s a-go-go, dates, “on this day”, map pins, warnings",
     swatches: ["#FF3D6E", "#FF2ED1", "#FF5A1F", "#FF3D3D", "#FF7A59", "#FF5FA2", "#1E4FD7", "#FFC23D"] },
-  { key: "background", label: "Background", hint: "The page — cards, borders and text follow it",
+  { key: "support", label: "Support", hint: "Page labels, avatars, third place — the third voice",
+    swatches: ["#2EC5FF", "#FFE53D", "#B98CFF", "#3DDCC8", "#5CF2B8", "#8CFF4F", "#1D4ED8", "#0F766E"] },
+  { key: "background", label: "Background", short: "Page", hint: "The page — cards, borders and text follow it",
     swatches: ["#141416", "#000000", "#0A0A12", "#1A0F1F", "#071A1F", "#17110D", "#F6F4EF", "#F3EAD6"] },
 ];
 
 export function BrandPage() {
   const qc = useQueryClient();
   const brand = useBrand();
-  const [draft, setDraft] = useState<Theme>(brand.theme);
-  const [editing, setEditing] = useState<keyof Theme>("accent");
+  const [draft, setDraft] = useState<FullTheme>(fullTheme(brand.theme));
+  const [editing, setEditing] = useState<keyof FullTheme>("accent");
+  const [set, setSet] = useState(() => TEMPLATE_SETS.find((s) => s.groups.some((g) => g.templates.some((x) => same(x.theme, brand.theme))))?.label ?? TEMPLATE_SETS[0]!.label);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const dirty = !same(draft, brand.theme);
@@ -119,6 +122,7 @@ export function BrandPage() {
     contrast(hex.text!, draft.background) < 4.5 && "Body text is hard to read on this background.",
     contrast(draft.accent, draft.background) < 3 && "The accent blends into the background.",
     contrast(draft.highlight, draft.background) < 3 && "The highlight blends into the background.",
+    contrast(draft.support, hex.surface!) < 4.5 && "Support text is hard to read on cards.",
     contrast(hex["on-accent"]!, draft.accent) < 4.5 && "Button text is hard to read on the accent.",
   ].filter((w): w is string => !!w);
 
@@ -134,12 +138,13 @@ export function BrandPage() {
           <h2 className="h-section">Pick a look</h2>
           <p className="meta mt-1">Tap one to try it — the whole app changes. Nothing's saved until you say so.</p>
         </div>
-        {TEMPLATE_GROUPS.map((g) => (
+        <Tabs value={set} onChange={setSet} options={TEMPLATE_SETS.map((s) => ({ value: s.label, label: s.label }))} />
+        {TEMPLATE_SETS.find((s) => s.label === set)!.groups.map((g) => (
           <div key={g.label} className="space-y-2 pt-1">
-            <p className="eyebrow px-0.5">{g.label}</p>
+            {g.label !== set && <p className="eyebrow px-0.5">{g.label}</p>}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {g.templates.map((tpl) => (
-                <ThemeCard key={tpl.name} {...tpl} selected={same(draft, tpl.theme)} onPick={() => setDraft(tpl.theme)} />
+                <ThemeCard key={tpl.name} {...tpl} selected={same(draft, tpl.theme)} onPick={() => setDraft(fullTheme(tpl.theme))} />
               ))}
             </div>
           </div>
@@ -153,14 +158,16 @@ export function BrandPage() {
           <p className="meta mt-1">Pick a colour to change, then drag.</p>
         </div>
         <div className="card space-y-5 p-4 sm:p-5">
-          <div className="grid grid-cols-3 gap-2" role="tablist">
+          <div className="grid grid-cols-4 gap-2" role="tablist">
             {FIELDS.map((f) => {
               const active = f.key === editing;
               return (
                 <button key={f.key} type="button" role="tab" aria-selected={active} onClick={() => setEditing(f.key)}
-                  className={`flex flex-col items-center gap-1.5 rounded-2xl border p-2 transition-colors ${active ? "border-text-base bg-surface-2" : "border-border hover:border-text-subtle"}`}>
+                  className={`flex min-w-0 flex-col items-center gap-1.5 rounded-2xl border p-2 transition-colors ${active ? "border-text-base bg-surface-2" : "border-border hover:border-text-subtle"}`}>
                   <span className="h-10 w-10 rounded-full border-2 border-black/30 shadow-inner sm:h-12 sm:w-12" style={{ background: draft[f.key] }} />
-                  <span className="text-xs font-semibold">{f.label}</span>
+                  <span className="max-w-full truncate text-xs font-semibold">
+                    {f.short ? <><span className="sm:hidden">{f.short}</span><span className="hidden sm:inline">{f.label}</span></> : f.label}
+                  </span>
                 </button>
               );
             })}
@@ -196,7 +203,7 @@ export function BrandPage() {
             <p className="min-w-0 flex-1 truncate text-sm font-semibold">{dirty ? "Unsaved look" : note}</p>
             {dirty ? (
               <>
-                <Button size="sm" variant="ghost" onClick={() => setDraft(brand.theme)}>Undo</Button>
+                <Button size="sm" variant="ghost" onClick={() => setDraft(fullTheme(brand.theme))}>Undo</Button>
                 <Button size="sm" disabled={saving} onClick={() => void save()}>{saving ? "Saving…" : "Save"}</Button>
               </>
             ) : (

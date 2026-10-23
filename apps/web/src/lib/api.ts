@@ -168,7 +168,7 @@ export const api = {
   getSearchIndex: () => request<SearchIndex>("/search/index"),
   // Brand theme (colours, logo, favicon)
   getTheme: () => request<{ theme: Partial<Record<"accent" | "highlight" | "background" | "logo", string | null>>; logoUrl: string | null; faviconUrl: string | null }>("/public/theme"),
-  setTheme: (theme: { accent: string; highlight: string; background: string }) =>
+  setTheme: (theme: { accent: string; highlight: string; background: string; support?: string }) =>
     request<{ theme: typeof theme }>("/admin/theme", { method: "PUT", body: JSON.stringify(theme) }),
   resetTheme: () => request<{ ok: true }>("/admin/theme", { method: "DELETE" }),
   uploadBrandAsset: (asset: "logo" | "favicon", file: File) => {

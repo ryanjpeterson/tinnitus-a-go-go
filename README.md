@@ -362,7 +362,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   ├── uploads.ts        background upload queue (pause, resume, retry)
 │   │       │   ├── gestures.ts       pull to refresh, horizontal swipes
 │   │       │   ├── shareCard.ts      story-sized share images
-│   │       │   ├── theme.ts          theme engine: three brand colours → every colour token
+│   │       │   ├── theme.ts          theme engine: four brand colours → every colour token
 │   │       │   ├── useBrand.ts       loads, applies and caches the brand theme
 │   │       │   ├── offline.ts        cache warming + Save everything (HTTPS only)
 │   │       │   ├── outbox.ts         attendance edits made offline, synced later
@@ -408,8 +408,9 @@ own, and `jimbo-ui.json` records the version this app is on. Files marked
 The **Style guide** page (`/admin/style`) shows every component live in the
 current theme.
 
-In short: three brand colours (accent, highlight, background; defaults
-`#A8FF3E`, `#FF3D6E`, `#141416`), picked from 25 dark / mid / light templates
+In short: four brand colours (accent, highlight, background and support;
+defaults `#A8FF3E`, `#FF3D6E`, `#141416`, `#2EC5FF`), picked from the
+Everyday (dark / mid / light), Flags and Holidays templates
 or fine-tuned in **Account → Brand & theme**,
 feed `src/lib/theme.ts`, which derives every colour token (surfaces, borders,
 text, tints — light backgrounds flip to dark text) as CSS variables. Tailwind
@@ -508,7 +509,7 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `GET`  | `/public/concerts`      | Paginated public concert log. Query: `status`, `year`, `q`, `page` |
 | `GET`  | `/public/concerts/:id`  | Full read-only concert detail (artists, venue, flyer, notes)       |
 | `GET`  | `/public/copy`          | All editable site-text key/value pairs (no UI uses this at the moment) |
-| `GET`  | `/public/theme`         | Brand theme: the three colours (null = default) plus uploaded logo / favicon URLs |
+| `GET`  | `/public/theme`         | Brand theme: the four colours (null = default; support is optional) plus uploaded logo / favicon URLs |
 
 ### Concerts
 
@@ -969,7 +970,7 @@ An installable web app (add it to your phone's Home Screen). Phone-first layout:
 ### Admin
 - **Import & export** — CSV import (queued in the worker); export your log as CSV (with setlists), JSON or Markdown.
 - **Data cleanup** — suggested duplicate venues and artists with merge preview, merge history with undo, data health checks with one-tap fixes, setlist finder progress; similar names flagged when adding a show.
-- **Brand & theme** — 25 dark, mid and light templates and a colour picker for the accent, highlight and background colours (the logo uses the accent and highlight), a live preview across the app and readability checks; everything else is derived from them (a light background switches to dark text). Upload a logo or favicon, or keep the built-in ones, which recolour with the theme. The **Style guide** shows every component in the current colours.
+- **Brand & theme** — Everyday (dark, mid, light), Flags and Holidays templates and a colour picker for the accent, highlight, support and background colours (the logo uses the accent and highlight), a live preview across the app and readability checks; everything else is derived from them (a light background switches to dark text). Upload a logo or favicon, or keep the built-in ones, which recolour with the theme. The **Style guide** shows every component in the current colours.
 - Invites (accounts are invite-only), service health links.
 
 ### Needs HTTPS (dormant on plain http)

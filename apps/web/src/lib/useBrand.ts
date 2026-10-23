@@ -25,12 +25,15 @@ function cached(): Brand | undefined {
   }
 }
 
-/** Server values over the defaults (unset colours fall back). */
+/** Server values over the defaults (unset colours fall back; a saved theme without support gets a derived one). */
 export function withDefaults(t: Partial<Record<keyof Theme, string | null>>): Theme {
+  if (!t.accent && !t.highlight && !t.background) return DEFAULT_THEME;
+  const support = t.support || undefined;
   return {
     accent: t.accent || DEFAULT_THEME.accent,
     highlight: t.highlight || DEFAULT_THEME.highlight,
     background: t.background || DEFAULT_THEME.background,
+    ...(support ? { support } : {}),
   };
 }
 

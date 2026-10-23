@@ -11,7 +11,8 @@
     background-color: rgb(var(--c-bg));
     background-image:
       radial-gradient(ellipse at top, rgb(var(--c-accent) / 0.06), transparent 60%),
-      radial-gradient(ellipse at bottom, rgb(var(--c-highlight) / 0.04), transparent 60%);
+      radial-gradient(ellipse at bottom left, rgb(var(--c-support) / 0.05), transparent 55%),
+      radial-gradient(ellipse at bottom right, rgb(var(--c-highlight) / 0.04), transparent 55%);
     background-attachment: fixed;
     /* iOS safe area support. Top/bottom insets are handled by the header and
        the mobile bottom nav — padding body vertically on top of height: 100%

@@ -55,12 +55,41 @@ export function luminance(hex: string | RGB): number {
 }
 
 /** WCAG contrast ratio between two colours (1 – 21). */
-export function contrast(a: string, b: string): number {
+export function contrast(a: string | RGB, b: string | RGB): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
   return (hi + 0.05) / (lo + 0.05);
 }
 
 export const isHex = (v: string): boolean => /^#[0-9a-f]{6}$/i.test(v);
+
+/**
+ * Contrast targets (WCAG ratios) the derived colours are stepped to meet on
+ * every background, measured on cards — the surface most text sits on.
+ */
+export const CONTRAST_TARGETS = { card: 1.16, card2: 1.14, border: 1.55, muted: 5, subtle: 3.8 } as const;
+
+/** Smallest t in [min, max] where mix(from, to, t) reaches `target` contrast with `against` (it grows with t). */
+function stepTo(from: RGB, to: RGB, against: RGB, target: number, min: number, max: number): number {
+  if (contrast(mix(from, to, min), against) >= target) return min;
+  if (contrast(mix(from, to, max), against) < target) return max;
+  let lo = min, hi = max;
+  for (let i = 0; i < 24; i++) {
+    const t = (lo + hi) / 2;
+    if (contrast(mix(from, to, t), against) >= target) hi = t; else lo = t;
+  }
+  return hi;
+}
+
+/** Largest t in [0, max] where mix(from, to, t) still keeps `target` contrast with `against` (it shrinks with t). */
+function fadeTo(from: RGB, to: RGB, against: RGB, target: number, max: number): number {
+  if (contrast(mix(from, to, max), against) >= target) return max;
+  let lo = 0, hi = max;
+  for (let i = 0; i < 24; i++) {
+    const t = (lo + hi) / 2;
+    if (contrast(mix(from, to, t), against) >= target) lo = t; else hi = t;
+  }
+  return lo;
+}
 
 /** Every derived colour, as RGB, keyed by CSS variable name (without the --c- prefix). */
 export function deriveColors(theme: Theme): Record<string, RGB> {
@@ -68,19 +97,26 @@ export function deriveColors(theme: Theme): Record<string, RGB> {
   const accent = hexToRgb(theme.accent);
   const highlight = hexToRgb(theme.highlight);
   const light = luminance(bg) > 0.4;
-  // Surfaces step away from the background: lighter on dark themes, darker on light ones.
+  // Surfaces step away from the background — lighter on dark themes, darker on
+  // light ones — as far as it takes to read as separate layers on this background.
   const away = light ? BLACK : WHITE;
-  const text: RGB = light ? [20, 20, 22] : [244, 241, 235];
+  const T = CONTRAST_TARGETS;
+  const cardT = stepTo(bg, away, bg, T.card, light ? 0.04 : 0.05, 0.3);
+  const surface = mix(bg, away, cardT);
+  const surface2 = mix(bg, away, stepTo(bg, away, surface, T.card2, cardT + 0.03, 0.45));
+  const border = mix(bg, away, stepTo(bg, away, surface, T.border, cardT + 0.06, 0.6));
+  const text: RGB = light ? [17, 17, 19] : [250, 248, 244];
   const onColor = (c: RGB): RGB => (luminance(c) > 0.35 ? [20, 20, 22] : [255, 255, 255]);
   return {
     bg,
-    "bg-deep": mix(bg, away, 0.017),
-    surface: mix(bg, away, light ? 0.04 : 0.034),
-    "surface-2": mix(bg, away, light ? 0.075 : 0.072),
-    border: mix(bg, away, light ? 0.14 : 0.119),
+    "bg-deep": mix(bg, away, cardT * 0.35),
+    surface,
+    "surface-2": surface2,
+    border,
     text,
-    "text-muted": mix(text, bg, 0.38),
-    "text-subtle": mix(text, bg, 0.58),
+    // Secondary text fades toward the page only as far as it stays readable on cards.
+    "text-muted": mix(text, bg, fadeTo(text, bg, surface, T.muted, 0.4)),
+    "text-subtle": mix(text, bg, fadeTo(text, bg, surface, T.subtle, 0.6)),
     accent,
     "accent-hover": mix(accent, light ? BLACK : WHITE, 0.22),
     "on-accent": onColor(accent),
@@ -102,8 +138,11 @@ export function themeHex(theme: Theme): Record<string, string> {
   return Object.fromEntries(Object.entries(deriveColors(theme)).map(([k, v]) => [k, rgbToHex(v)]));
 }
 
+/** A Google Maps style rule (the shape of google.maps.MapTypeStyle, without needing its types). */
+export interface MapStyle { featureType?: string; elementType?: string; stylers: Record<string, string | number>[] }
+
 /** Map style for Google Maps, tinted from the theme (dark or light). */
-export function mapStyles(theme: Theme): google.maps.MapTypeStyle[] {
+export function mapStyles(theme: Theme): MapStyle[] {
   const c = themeHex(theme);
   const bg = hexToRgb(theme.background);
   const accent = hexToRgb(theme.accent);

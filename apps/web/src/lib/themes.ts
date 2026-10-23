@@ -31,7 +31,7 @@ const GROUPS: { label: string; templates: Template[] }[] = [
     t("Forest", "Gold + clay", "#E9C46A", "#F4A261", "#1F3A2E"),
     t("Burgundy", "Rosé + butter", "#F7B2BD", "#FFD166", "#4A1C2B"),
     t("Dusk", "Peach + mint", "#FFB4A2", "#9DE0AD", "#3D3B6B"),
-    t("Concrete", "Grey + lemon", "#FFE066", "#FF8FA3", "#55585E"),
+    t("Concrete", "Grey + lemon", "#FFE066", "#FF8FA3", "#45484D"),
     t("Fog", "Navy + red", "#1E3A8A", "#B91C1C", "#C8CDD4"),
     t("Sage", "Pine + wine", "#1F3D2B", "#8B1E3F", "#B7C9B0"),
     t("Clay", "Plum + teal", "#3B1F5C", "#0F4C5C", "#D9B8A0"),

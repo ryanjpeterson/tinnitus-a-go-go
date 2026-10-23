@@ -3,13 +3,13 @@
    with jimbo-ui's scripts/tokens.mjs. src/lib/theme.ts overrides them at runtime. */
 :root {
   --c-bg: 20 20 22;
-  --c-bg-deep: 24 24 26;
-  --c-surface: 28 28 30;
-  --c-surface-2: 37 37 39;
-  --c-border: 48 48 50;
-  --c-text: 244 241 235;
-  --c-text-muted: 159 157 154;
-  --c-text-subtle: 114 113 111;
+  --c-bg-deep: 25 25 27;
+  --c-surface: 34 34 36;
+  --c-surface-2: 44 44 46;
+  --c-border: 65 65 66;
+  --c-text: 250 248 244;
+  --c-text-muted: 158 157 155;
+  --c-text-subtle: 125 124 123;
   --c-accent: 168 255 62;
   --c-accent-hover: 187 255 104;
   --c-on-accent: 20 20 22;

@@ -644,7 +644,8 @@ export function Sheet({ title, subtitle, onClose, children, wide = false }: {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  return (
+  // Portalled to <body>, so a parent's spacing (space-y margins) or transform can't shift the backdrop.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-6"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -673,7 +674,8 @@ export function Sheet({ title, subtitle, onClose, children, wide = false }: {
         </header>
         <div className="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

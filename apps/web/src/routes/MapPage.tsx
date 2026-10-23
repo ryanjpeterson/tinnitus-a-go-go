@@ -10,42 +10,17 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { APIProvider, ControlPosition, Map, Marker, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { api, type VenueMapItem } from "@/lib/api";
+import { mapStyles, markerIcon } from "@/lib/theme";
+import { useBrand } from "@/lib/useBrand";
 import { Chevron, EmptyState, Loading, PageHeader, SearchField, VenueViewSwitch } from "@/components/ui/kit";
 
 const API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) ?? "";
 
 // Dark map style — minimal with green accents
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const DARK_STYLES: any[] = [
-  { elementType: "geometry",              stylers: [{ color: "#141416" }] },
-  { elementType: "labels.text.fill",      stylers: [{ color: "#4a6b3a" }] },
-  { elementType: "labels.text.stroke",    stylers: [{ color: "#0e0e10" }] },
-  { featureType: "administrative",        elementType: "geometry",           stylers: [{ color: "#1C1C1F" }] },
-  { featureType: "administrative",        elementType: "labels.text.fill",   stylers: [{ color: "#4a6b3a" }] },
-  { featureType: "landscape",             elementType: "geometry",           stylers: [{ color: "#141416" }] },
-  { featureType: "poi",                   stylers: [{ visibility: "off" }] },
-  { featureType: "road",                  elementType: "geometry",           stylers: [{ color: "#1f2a1f" }] },
-  { featureType: "road",                  elementType: "labels.text.fill",   stylers: [{ color: "#4a6b3a" }] },
-  { featureType: "road.arterial",         elementType: "geometry",           stylers: [{ color: "#243024" }] },
-  { featureType: "road.highway",          elementType: "geometry",           stylers: [{ color: "#2a3d2a" }] },
-  { featureType: "road.highway",          elementType: "geometry.stroke",    stylers: [{ color: "#141416" }] },
-  { featureType: "transit",               stylers: [{ visibility: "off" }] },
-  { featureType: "water",                 elementType: "geometry.fill",      stylers: [{ color: "#0a1a0f" }] },
-  { featureType: "water",                 elementType: "labels.text.fill",   stylers: [{ color: "#2d4a2d" }] },
-];
 
-// Pink circle marker icons as data URLs
-const PINK_MARKER_ICON = "data:image/svg+xml," + encodeURIComponent(`
-  <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="10" cy="10" r="8" fill="#FF3D6E" stroke="#ff6b8a" stroke-width="2"/>
-  </svg>
-`);
 
-const PINK_MARKER_ICON_SELECTED = "data:image/svg+xml," + encodeURIComponent(`
-  <svg width="28" height="28" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="14" cy="14" r="11" fill="#FF3D6E" stroke="#ff8fa8" stroke-width="3"/>
-  </svg>
-`);
+
 
 // Venue info popup
 function VenuePopup({ venue, here, onSelect, onClose }: {
@@ -125,6 +100,7 @@ function MapContent({ venues, selected, onSelect }: {
   selected: VenueMapItem | null;
   onSelect: (v: VenueMapItem | null) => void;
 }) {
+  const { theme: brandTheme } = useBrand();
   // Marker images anchor at their bottom-centre by default, which drew every
   // dot ~10 px north of its venue; anchor the circles at their centre instead.
   const core = useMapsLibrary("core");
@@ -133,7 +109,7 @@ function MapContent({ venues, selected, onSelect }: {
   const icon = (selectedHere: boolean) => {
     const size = selectedHere ? 28 : 20;
     return {
-      url: selectedHere ? PINK_MARKER_ICON_SELECTED : PINK_MARKER_ICON,
+      url: markerIcon(brandTheme, selectedHere),
       size: new core.Size(size, size),
       scaledSize: new core.Size(size, size),
       anchor: new core.Point(size / 2, size / 2),
@@ -344,6 +320,7 @@ function getBounds(venues: VenueMapItem[]): { center: { lat: number; lng: number
 }
 
 export function MapPage() {
+  const { theme: brandTheme } = useBrand();
   const venuesQuery = useQuery({
     queryKey: ["venues/map"],
     queryFn: () => api.listVenuesForMap(),
@@ -402,7 +379,7 @@ export function MapPage() {
           <Map
             defaultCenter={center}
             defaultZoom={zoom}
-            styles={DARK_STYLES}
+            styles={mapStyles(brandTheme)}
             disableDefaultUI={false}
             zoomControl={true}
             // Mid-right, clear of the floating tab bar on phones.

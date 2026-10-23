@@ -276,6 +276,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   ├── search.ts         /search/index — compact index searched on the device
 │   │       │   ├── calendar.ts       private .ics calendar feed + its token
 │   │       │   ├── push.ts           Web Push subscribe / unsubscribe / test / preferences
+│   │       │   ├── theme.ts          brand theme: colours, logo and favicon uploads
 │   │       │   ├── offline.ts        /offline/bundle — every page's response in four requests
 │   │       │   ├── export.ts         your log as CSV, JSON or Markdown
 │   │       │   ├── setlistfm.ts      setlist.fm proxy (search, by artist, by id/URL)
@@ -334,7 +335,9 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   ├── AccountPage.tsx       profile, password, calendar feed, admin links, (HTTPS only:
 │   │       │   │                         notifications, offline saving)
 │   │       │   ├── ImportsPage.tsx       admin: CSV import + CSV / JSON / Markdown export
-│   │       │   ├── DataCleanupPage.tsx   admin: duplicates, merges + undo, data health, setlist finder
+│   │       │   ├── DataCleanupPage.tsx   admin: duplicates, festival suggestions, merges + undo, data health, setlist finder
+│   │       │   ├── BrandPage.tsx         admin: theme colours (live preview, presets, contrast checks), logo, favicon
+│   │       │   ├── StyleGuidePage.tsx    admin: every component, live in the current theme
 │   │       │   ├── LoginPage, SignupPage, VerifyEmailPage
 │   │       │   └── RequireAuth, RequireAdmin     route guards
 │   │       ├── components/
@@ -359,6 +362,8 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   ├── uploads.ts        background upload queue (pause, resume, retry)
 │   │       │   ├── gestures.ts       pull to refresh, horizontal swipes
 │   │       │   ├── shareCard.ts      story-sized share images
+│   │       │   ├── theme.ts          theme engine: four brand colours → every colour token
+│   │       │   ├── useBrand.ts       loads, applies and caches the brand theme
 │   │       │   ├── offline.ts        cache warming + Save everything (HTTPS only)
 │   │       │   ├── outbox.ts         attendance edits made offline, synced later
 │   │       │   ├── push.ts           Web Push on this device (HTTPS only)
@@ -375,6 +380,8 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │
 ├── packages/shared/              shared by api, web and worker: Zod schemas and types (attendance
 │                                 statuses, roles), CSV parsing, slugify, queue names
+├── docs/
+│   └── brand-ui-standards.md     brand & UI standards guide (reuse checklist for other apps)
 ├── scripts/
 │   ├── backup.sh                 Postgres dump + MinIO mirror with rotation (TAGG_BACKUP_DIR)
 │   ├── setup-tailscale.sh        Tailscale overlay setup helper
@@ -392,27 +399,18 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 
 ## Design system
 
-| Token | Value | Usage |
-| ----- | ----- | ----- |
-| `bg` | `#141416` | Page background |
-| `surface` | `#1C1C1F` | Cards, panels |
-| `surface-2` | `#252528` | Inputs, hover states |
-| `border` | `#303034` | All borders |
-| `text-base` | `#E8E8E8` | Primary text |
-| `text-muted` | `#A0A0A0` | Secondary text |
-| `text-subtle` | `#5A5A5C` | Tertiary / placeholder |
-| `accent-lime` | `#A8FF3E` | Primary action, links, selection, save buttons |
-| `accent-pink` | `#FF3D6E` | Alerts, destructive, on-this-day card, secondary accent |
-| `accent-cyan` | `#3DFFE8` | Available for future use |
-| `accent-orange` | `#FF8C3A` | Available for future use |
+The full guide — brand, colour tokens, type, layout, components, patterns and a
+checklist for reusing this layout in other apps — is
+**[docs/brand-ui-standards.md](./docs/brand-ui-standards.md)**. The **Style
+guide** page (`/admin/style`) shows every component live in the current theme.
 
-Body gradient: subtle lime bloom top, pink bloom bottom. `::selection` uses lime on dark.
-
-**Layout and components.** Pages are assembled from `src/components/ui/kit.tsx` plus a few component classes in `globals.css` (`.card`, `.eyebrow`, `.h-page`, `.h-section`, `.field`). Mobile first: a sticky app bar and bottom tab bar, full-width rows with 44px+ tap targets, 16px form fields, and nothing that scrolls sideways — filters become selects on phones and wrap as pills on desktop. Lists of shows use `EventRow` (ticket-style date block, title, venue, status dot, chevron); detail pages open with a `Hero` (blurred image backdrop, thumbnail, bold title); every modal is a `Sheet` (bottom sheet on phones, centered dialog on desktop).
-
-**Type and controls.** Two typefaces only: Archivo 800 for headings (sentence case), Inter for everything else with tabular figures so counts and dates line up. No monospace in the UI and nothing under 11px. The scale is `.h-page`, `.h-section`, body 15px, `.meta` 14px, `.eyebrow` 11px caps. Controls come from `globals.css`: `.btn` + `.btn-primary|secondary|ghost|danger` (+ `.btn-sm`), `.field` for inputs/selects/textareas, `.label`, `.chip`, `.link-action`. The `Button`, `Input`, `Label` and `Card` components are thin wrappers over the same classes.
-
-The logo (`Wordmark.tsx`) is an Illustrator-exported SVG (190 × 92.3 viewBox) embedded directly as React path data — no external font dependency. "TINNITUS" renders in white fill with `#a8ff3e` stroke; "a-go-go" in `#f87171` (red). The favicon (`public/favicon.svg`) uses the same path data scaled into a 32 × 32 dark rounded-rect. All auth, landing, admin, and imports pages render the `<Wordmark />` component.
+In short: four brand colours (accent, highlight, background, logo; defaults
+`#A8FF3E`, `#FF3D6E`, `#141416`, `#F87171`), set in **Account → Brand & theme**,
+feed `src/lib/theme.ts`, which derives every colour token (surfaces, borders,
+text, tints — light backgrounds flip to dark text) as CSS variables. Tailwind
+colours point at those variables, so components never use raw hex. The logo and
+favicon follow the theme unless an uploaded logo/favicon replaces them.
+Archivo 800 for headings, Inter for everything else.
 
 ---
 
@@ -505,6 +503,7 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | `GET`  | `/public/concerts`      | Paginated public concert log. Query: `status`, `year`, `q`, `page` |
 | `GET`  | `/public/concerts/:id`  | Full read-only concert detail (artists, venue, flyer, notes)       |
 | `GET`  | `/public/copy`          | All editable site-text key/value pairs (no UI uses this at the moment) |
+| `GET`  | `/public/theme`         | Brand theme: the four colours (null = default) plus uploaded logo / favicon URLs |
 
 ### Concerts
 
@@ -644,6 +643,10 @@ Data cleanup (`/admin/data` in the app):
 | `GET`   | `/admin/imports/:id`    | Get full status, row counts, and error samples for one import job  |
 | `GET`   | `/admin/copy`           | List all CMS copy items ordered by section + key                   |
 | `PATCH` | `/admin/copy/:key`      | Update the value of a single copy key. Body: `{ value: string }`   |
+| `PUT`    | `/admin/theme`         | Set the brand colours `{ accent, highlight, background, logo }` (#RRGGBB) |
+| `DELETE` | `/admin/theme`         | Back to the default colours                                       |
+| `POST`   | `/admin/theme/:asset`  | Upload a `logo` or `favicon` (SVG/PNG/WebP/JPEG ≤ 1 MB; SVGs with scripts or embedded content are refused) |
+| `DELETE` | `/admin/theme/:asset`  | Remove it (back to the built-in, theme-coloured one)              |
 
 ---
 
@@ -726,7 +729,7 @@ docker compose exec api pnpm db:migrate
 | `event_series` | Festival: name, slug, year, `brand` (the festival across years, e.g. "Bluesfest" — filled from the name when empty), venue, dates, flyer. A container — its lineup and attendance live on its day shows (`concerts` with `type = 'festival_day'`) |
 | `photos` | Concert photos/videos: MinIO key, kind (`photo`, `ticket`, `video`, …), dimensions, set_order, content_hash, processing variants |
 | `photo_artists` | Junction: which artists appear in which photos (`photo_id`, `artist_id`) |
-| `site_copy` | CMS key/value store for editable UI copy (key PK, value, description, section, updated_at) |
+| `site_copy` | Key/value settings (key PK, value, description, section, updated_at). Section `theme` holds the brand colours and the uploaded logo/favicon storage keys |
 | `setlists` | Saved setlist.fm links per artist per concert: concert FK, artist FK, setlistfm_id (full URL or ID) |
 | `setlist_songs` | Individual songs in a setlist: position, song_name, is_cover, cover_artist, notes |
 | `imports` | CSV import job queue: status, row counts, error samples |
@@ -766,13 +769,14 @@ Applied migrations:
 | `0011_data_cleanup.sql` | `merge_log` (each duplicate merge with an undo snapshot) and `duplicate_dismissals` ("not a duplicate" pairs) |
 | `0012_setlist_lookups.sql` | `setlist_lookups`: which (show, artist) pairs the automatic setlist finder has searched, with attempts and result |
 | `0013_artist_photos.sql` | `enriched_at` and `image_source` on artists (automatic photos; hourly enrichment moves through the list) |
+| `0019_brand_theme.sql` | Creates `site_copy` if it's missing (0008 never ran on some installs) — the brand theme lives there |
 | `0018_couple_decouple_festivals.sql` | Shows join and leave festivals freely: several shows per festival date allowed, venue inherited on joining, a festival whose last show leaves is removed (its flyer moves to that show or is queued in `storage_orphans`), festival suggestions can be dismissed |
 | `0017_notification_prefs.sql` | `users.push_prefs`: which push notifications each user wants (tonight, how was it, anniversaries — all on by default) |
 | `0016_brands_calendar_push_cleanup.sql` | `event_series.brand` (+ trigger) and consistent festival names (Ottawa Bluesfest → Bluesfest, year added where missing); `users.calendar_token`; `push_subscriptions`, `push_sent`, `app_secrets`; removes unused `event_series.image_key`, `concert_attendees.rating` / `rsvp_at`, `tags` / `concert_tags`, and the `dismissed` status (any rows become `missed`) |
 | `0015_show_integrity_and_slugs.sql` | Database-enforced show rules: `type` derived from the festival link (+ check), one show per festival per date, festival dates/venue/year widened to cover its days, one headliner per lineup (no headliner + co-headliner mix), `headliner_hint` maintained from the lineup, readable unique `slug` on every show |
 | `0014_festival_days_single_source.sql` | Festival days become the only source for festival lineups and attendance: `stage_name` on `concert_artists`; anything only `festival_sets` / `festival_attendees` held is copied onto the days, then both tables are dropped |
 
-0005–0018 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
+0005–0019 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
 
 ```bash
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0010_setlist_song_sets.sql
@@ -784,6 +788,7 @@ docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/ap
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0016_brands_calendar_push_cleanup.sql
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0017_notification_prefs.sql
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0018_couple_decouple_festivals.sql
+docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0019_brand_theme.sql
 docker compose exec api npx tsx src/scripts/cache-setlists.ts
 ```
 
@@ -959,13 +964,14 @@ An installable web app (add it to your phone's Home Screen). Phone-first layout:
 ### Admin
 - **Import & export** — CSV import (queued in the worker); export your log as CSV (with setlists), JSON or Markdown.
 - **Data cleanup** — suggested duplicate venues and artists with merge preview, merge history with undo, data health checks with one-tap fixes, setlist finder progress; similar names flagged when adding a show.
+- **Brand & theme** — colour pickers for the accent, highlight, background and logo colours, with presets, a live preview across the app and readability checks; everything else is derived from them (a light background switches to dark text). Upload a logo or favicon, or keep the built-in ones, which recolour with the theme. The **Style guide** shows every component in the current colours.
 - Invites (accounts are invite-only), service health links.
 
 ### Needs HTTPS (dormant on plain http)
 - **Notifications** (Tonight, How was it?, show anniversaries — each switchable), **offline mode** (pages and photos kept on the device, Save everything), and **offline attendance edits**. Browsers only allow these over HTTPS; see [Installed app: HTTPS and the production build](#installed-app-https-and-the-production-build). On plain http they're hidden.
 
 ### Maps
-- Google Maps with a custom dark style and branded pins when `VITE_GOOGLE_MAPS_API_KEY` is set; an OpenStreetMap link otherwise.
+- Google Maps with a style and pins generated from the brand theme when `VITE_GOOGLE_MAPS_API_KEY` is set; an OpenStreetMap link otherwise.
 
 ---
 

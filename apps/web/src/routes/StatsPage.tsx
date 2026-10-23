@@ -133,7 +133,7 @@ function Heatmap({ heatmap, byYear }: {
 // Day of week + month mini bars — tall version
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function MiniVBars({ data, labels, color = "#A8FF3E" }: {
+export function MiniVBars({ data, labels, color = "rgb(var(--c-accent))" }: {
   data: number[]; labels: string[]; color?: string;
 }) {
   const max = Math.max(...data, 1);
@@ -380,10 +380,10 @@ export function StatsPage() {
       {/* ── When do you go? ─────────────────────────────────────────────── */}
       <div className="grid gap-6 sm:grid-cols-2 sm:gap-4">
         <Section title="Day of the week">
-          <MiniVBars data={dowCounts} labels={DOW_LABELS} color="#A8FF3E" />
+          <MiniVBars data={dowCounts} labels={DOW_LABELS} color="rgb(var(--c-accent))" />
         </Section>
         <Section title="Month of the year">
-          <MiniVBars data={monthCounts} labels={MONTH_SHORT} color="#FF3D6E" />
+          <MiniVBars data={monthCounts} labels={MONTH_SHORT} color="rgb(var(--c-highlight))" />
         </Section>
       </div>
 

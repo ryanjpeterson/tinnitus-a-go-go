@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { warmCache } from "@/lib/offline";
 import { startOutbox } from "@/lib/outbox";
 import { startUploads } from "@/lib/uploads";
+import { useApplyBrand } from "@/lib/useBrand";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth-context";
 import { LoginPage } from "@/routes/LoginPage";
@@ -20,6 +21,12 @@ const queryClient = new QueryClient({
   },
 });
 
+/** Applies the brand theme (colours, favicon) — needs the query client, so it sits inside the provider. */
+function BrandTheme(): null {
+  useApplyBrand();
+  return null;
+}
+
 export default function App() {
   // Fill the offline cache with the main lists once per session.
   useEffect(() => { warmCache(); }, []);
@@ -30,6 +37,7 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <BrandTheme />
       <AuthProvider>
         <BrowserRouter>
           <Routes>

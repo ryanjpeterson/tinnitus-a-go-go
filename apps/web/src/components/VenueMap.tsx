@@ -11,6 +11,8 @@
  */
 
 import { APIProvider, Map, Marker } from "@vis.gl/react-google-maps";
+import { mapStyles, markerIcon } from "@/lib/theme";
+import { useBrand } from "@/lib/useBrand";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -29,30 +31,8 @@ const API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)
  * assert the type as `object[]` here to avoid a hard @types/google.maps dep.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const DARK_STYLES: any[] = [
-  { elementType: "geometry",              stylers: [{ color: "#141416" }] },
-  { elementType: "labels.text.fill",      stylers: [{ color: "#4a6b3a" }] },
-  { elementType: "labels.text.stroke",    stylers: [{ color: "#0e0e10" }] },
-  { featureType: "administrative",        elementType: "geometry",           stylers: [{ color: "#1C1C1F" }] },
-  { featureType: "administrative",        elementType: "labels.text.fill",   stylers: [{ color: "#4a6b3a" }] },
-  { featureType: "landscape",             elementType: "geometry",           stylers: [{ color: "#141416" }] },
-  { featureType: "poi",                   stylers: [{ visibility: "off" }] },
-  { featureType: "road",                  elementType: "geometry",           stylers: [{ color: "#1f2a1f" }] },
-  { featureType: "road",                  elementType: "labels.text.fill",   stylers: [{ color: "#4a6b3a" }] },
-  { featureType: "road.arterial",         elementType: "geometry",           stylers: [{ color: "#243024" }] },
-  { featureType: "road.highway",          elementType: "geometry",           stylers: [{ color: "#2a3d2a" }] },
-  { featureType: "road.highway",          elementType: "geometry.stroke",    stylers: [{ color: "#141416" }] },
-  { featureType: "transit",               stylers: [{ visibility: "off" }] },
-  { featureType: "water",                 elementType: "geometry.fill",      stylers: [{ color: "#0a1a0f" }] },
-  { featureType: "water",                 elementType: "labels.text.fill",   stylers: [{ color: "#2d4a2d" }] },
-];
 
-// Pink circle marker icon as data URL
-const PINK_MARKER_ICON = "data:image/svg+xml," + encodeURIComponent(`
-  <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="10" cy="10" r="8" fill="#FF3D6E" stroke="#ff6b8a" stroke-width="2"/>
-  </svg>
-`);
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -67,6 +47,7 @@ interface VenueMapProps {
 }
 
 export function VenueMap({ lat, lng, venueName, compact = false }: VenueMapProps) {
+  const { theme: brandTheme } = useBrand();
   const position = { lat, lng };
   const osmUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
 
@@ -106,12 +87,12 @@ export function VenueMap({ lat, lng, venueName, compact = false }: VenueMapProps
         <Map
           defaultCenter={position}
           defaultZoom={16}
-          styles={DARK_STYLES}
+          styles={mapStyles(brandTheme)}
           disableDefaultUI={true}
           gestureHandling={compact ? "none" : "cooperative"}
           clickableIcons={false}
         >
-          <Marker position={position} title={venueName} icon={PINK_MARKER_ICON} />
+          <Marker position={position} title={venueName} icon={markerIcon(brandTheme)} />
         </Map>
       </div>
     </APIProvider>

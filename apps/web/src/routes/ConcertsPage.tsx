@@ -44,7 +44,7 @@ const VIEW_TABS: { value: View; label: string }[] = [
 // Past opens on Attended; Upcoming on All (attending and interested together).
 const DEFAULT_STATUS: Record<View, StatusValue> = { past: "attended", upcoming: "all" };
 
-const ALL_OPTION = { value: "all" as StatusValue, label: "All", activeClass: "border-accent-lime bg-accent-lime text-bg" };
+const ALL_OPTION = { value: "all" as StatusValue, label: "All", activeClass: "border-accent-lime bg-accent-lime text-on-accent" };
 const STATUS_OPTIONS: Record<View, { value: StatusValue; label: string; activeClass: string }[]> = {
   upcoming: [
     ALL_OPTION,

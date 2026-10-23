@@ -1,28 +1,43 @@
+/** A theme token: `rgb(var(--c-name) / <alpha>)`. */
+const tok = (name) => `rgb(var(--c-${name}) / <alpha-value>)`;
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   darkMode: "class",
   theme: {
     extend: {
+      // Every colour is a theme token (CSS variable of "R G B" channels, set by
+      // src/lib/theme.ts from four brand colours) so opacity modifiers like
+      // bg-accent-lime/15 keep working. Defaults: src/styles/globals.css.
       colors: {
-        bg: "#141416",
-        surface: "#1C1C1F",
-        "surface-2": "#252528",
-        border: "#303034",
+        bg: tok("bg"),
+        "bg-deep": tok("bg-deep"),
+        surface: tok("surface"),
+        "surface-2": tok("surface-2"),
+        border: tok("border"),
         text: {
-          base: "#F4F1EB",
-          muted: "#9C9A93",
-          subtle: "#6B6963",
+          base: tok("text"),
+          muted: tok("text-muted"),
+          subtle: tok("text-subtle"),
         },
         accent: {
-          lime:         "#A8FF3E",
-          "lime-hover": "#BFFF60",
-          pink:         "#FF3D6E",
-          "pink-hover": "#FF6589",
+          // Names kept from the original brand; "lime" is the accent, "pink" the highlight.
+          lime:         tok("accent"),
+          "lime-hover": tok("accent-hover"),
+          pink:         tok("highlight"),
+          "pink-hover": tok("highlight-hover"),
           cyan:         "#3DFFE8",
           "cyan-hover": "#70FFF0",
           orange:       "#FF8C3A",
         },
+        // Text on an accent / highlight fill: dark or light, whichever reads.
+        "on-accent": tok("on-accent"),
+        "on-highlight": tok("on-highlight"),
+        // Accent and highlight washes (the "attended" chip, banner glows).
+        lime: { 700: tok("accent-700"), 900: tok("accent-900"), 950: tok("accent-950") },
+        rose: { 800: tok("highlight-800"), 900: tok("highlight-900"), 950: tok("highlight-950") },
+        logo: tok("logo"),
         danger: "#FF5252",
       },
       fontFamily: {

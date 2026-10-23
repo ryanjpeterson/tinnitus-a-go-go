@@ -8,7 +8,19 @@
     <meta name="description" content="Tinnitus A Go Go — a multi-user concert log for people who still believe the next show is worth the ringing." />
 
     <!-- PWA meta tags -->
-    <meta name="theme-color" content="#0B0B0C" />
+    <meta name="theme-color" content="#141416" />
+    <!-- Apply the last-used brand theme before first paint (see src/lib/theme.ts). -->
+    <script>
+      try {
+        var t = JSON.parse(localStorage.getItem("tagg.themeVars") || "null");
+        if (t) {
+          var r = document.documentElement;
+          for (var k in t.vars) r.style.setProperty(k, t.vars[k]);
+          r.style.colorScheme = t.scheme;
+          document.querySelector('meta[name="theme-color"]').setAttribute("content", t.background);
+        }
+      } catch (e) {}
+    </script>
     <meta name="mobile-web-app-capable" content="yes" />
 
     <!-- iOS PWA meta tags -->

@@ -3,12 +3,38 @@
 @tailwind utilities;
 
 @layer base {
+  /* Theme tokens — "R G B" channels. These are the defaults; src/lib/theme.ts
+     derives and overrides them from the four brand colours set in admin. */
+  :root {
+    --c-bg: 20 20 22;
+    --c-bg-deep: 24 24 26;
+    --c-surface: 28 28 30;
+    --c-surface-2: 37 37 39;
+    --c-border: 48 48 50;
+    --c-text: 244 241 235;
+    --c-text-muted: 159 157 154;
+    --c-text-subtle: 114 113 111;
+    --c-accent: 168 255 62;
+    --c-accent-hover: 187 255 104;
+    --c-on-accent: 20 20 22;
+    --c-accent-950: 35 44 26;
+    --c-accent-900: 61 86 33;
+    --c-accent-700: 94 138 42;
+    --c-highlight: 255 61 110;
+    --c-highlight-hover: 255 100 139;
+    --c-on-highlight: 255 255 255;
+    --c-highlight-950: 44 24 31;
+    --c-highlight-900: 86 31 47;
+    --c-highlight-800: 114 36 57;
+    --c-logo: 248 113 113;
+    color-scheme: dark;
+  }
   html, body, #root { height: 100%; }
   body {
-    background-color: #141416;
+    background-color: rgb(var(--c-bg));
     background-image:
-      radial-gradient(ellipse at top, rgba(168, 255, 62, 0.06), transparent 60%),
-      radial-gradient(ellipse at bottom, rgba(255, 61, 110, 0.04), transparent 60%);
+      radial-gradient(ellipse at top, rgb(var(--c-accent) / 0.06), transparent 60%),
+      radial-gradient(ellipse at bottom, rgb(var(--c-highlight) / 0.04), transparent 60%);
     background-attachment: fixed;
     /* iOS safe area support. Top/bottom insets are handled by the header and
        the mobile bottom nav — padding body vertically on top of height: 100%
@@ -28,7 +54,7 @@
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
   }
-  ::selection { background: #A8FF3E; color: #141416; }
+  ::selection { background: rgb(var(--c-accent)); color: rgb(var(--c-on-accent)); }
 
   /* Headings: Archivo at a heavy weight with slightly tight tracking.
      Utilities like font-bold still override this where needed. */
@@ -50,7 +76,7 @@
 @layer components {
   /* The one card surface every section, list and tile sits on. */
   .card {
-    @apply rounded-2xl border border-white/[0.07] bg-gradient-to-b from-surface to-[#18181B]
+    @apply rounded-2xl border border-border/60 bg-gradient-to-b from-surface to-bg-deep
       shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_12px_32px_-16px_rgba(0,0,0,0.7)];
   }
   .eyebrow {
@@ -86,7 +112,7 @@
     @apply h-9 px-3.5 text-sm sm:h-8;
   }
   .btn-primary {
-    @apply bg-accent-lime text-bg hover:bg-accent-lime-hover;
+    @apply bg-accent-lime text-on-accent hover:bg-accent-lime-hover;
   }
   .btn-secondary {
     @apply border border-border bg-surface-2 text-text-base hover:border-text-subtle;

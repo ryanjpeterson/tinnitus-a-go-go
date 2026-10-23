@@ -718,7 +718,7 @@ function PhotoGallery({
                 {tagging && isSelected && (
                   <div className="absolute inset-0 rounded bg-accent-lime/20 pointer-events-none flex items-center justify-center">
                     <div className="w-7 h-7 rounded-full bg-accent-lime flex items-center justify-center shadow-lg">
-                      <span className="text-bg text-base leading-none font-bold">✓</span>
+                      <span className="text-on-accent text-base leading-none font-bold">✓</span>
                     </div>
                   </div>
                 )}
@@ -735,7 +735,7 @@ function PhotoGallery({
                           key={artistId}
                           onClick={(e) => { e.stopPropagation(); void handleRemoveTagFromPhoto(p.id, artistId); }}
                           title={`Remove ${artist.name} tag`}
-                          className="text-xs bg-accent-lime/80 text-bg rounded px-0.5 leading-4 hover:bg-accent-pink/80 hover:text-white transition-colors"
+                          className="text-xs bg-accent-lime/80 text-on-accent rounded px-0.5 leading-4 hover:bg-accent-pink/80 hover:text-white transition-colors"
                         >
                           {initials}
                         </button>
@@ -774,7 +774,7 @@ function PhotoGallery({
                     className={clsx(
                       "absolute bottom-1 left-1 z-10 flex h-7 items-center rounded-full px-1.5 text-sm transition-opacity",
                       p.kind === "ticket"
-                        ? "bg-accent-lime text-bg opacity-100"
+                        ? "bg-accent-lime text-on-accent opacity-100"
                         : "bg-black/60 text-white opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-70",
                     )}
                     title={p.kind === "ticket" ? (isAdmin ? "Ticket stub — tap to make it a photo" : "Ticket stub") : "Mark as ticket stub"}
@@ -1233,7 +1233,7 @@ function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
                   className={clsx(
                     "px-3 py-1.5 text-xs  transition-colors",
                     form.type === t
-                      ? "bg-accent-lime text-bg font-bold"
+                      ? "bg-accent-lime text-on-accent font-bold"
                       : "bg-surface-2 text-text-muted hover:text-text-base",
                   )}
                 >
@@ -1408,7 +1408,7 @@ function AttendanceEditor({ concertId, attendance }: { concertId: string; attend
           className={clsx(
             "text-xs  px-4 py-1.5 rounded font-bold transition-opacity disabled:opacity-50",
             hasChanges
-              ? "bg-accent-lime text-bg hover:opacity-90"
+              ? "bg-accent-lime text-on-accent hover:opacity-90"
               : "bg-surface-2 text-text-muted"
           )}
         >

@@ -77,7 +77,7 @@ function YearPicker({ years, current }: { years: YearReviewResponse["years"]; cu
           return (
             <Link key={y.year} to={`/year/${y.year}`} title={`${y.count} show${y.count === 1 ? "" : "s"}`}
               className={`h-9 rounded-full border px-3.5 text-sm font-semibold leading-9 transition-colors ${
-                active ? "border-accent-lime bg-accent-lime text-bg" : "border-border text-text-muted hover:border-text-subtle hover:text-text-base"
+                active ? "border-accent-lime bg-accent-lime text-on-accent" : "border-border text-text-muted hover:border-text-subtle hover:text-text-base"
               }`}>
               {y.year}
             </Link>
@@ -323,10 +323,10 @@ export function YearReviewPage() {
       {/* ── When ─────────────────────────────────────────────────────────── */}
       <div className="grid gap-6 sm:grid-cols-2 sm:gap-4">
         <Section title="Month by month">
-          <MiniVBars data={monthCounts} labels={MONTH_SHORT} color="#A8FF3E" />
+          <MiniVBars data={monthCounts} labels={MONTH_SHORT} color="rgb(var(--c-accent))" />
         </Section>
         <Section title="Day of the week">
-          <MiniVBars data={dowCounts} labels={DOW_LABELS} color="#FF3D6E" />
+          <MiniVBars data={dowCounts} labels={DOW_LABELS} color="rgb(var(--c-highlight))" />
         </Section>
       </div>
 

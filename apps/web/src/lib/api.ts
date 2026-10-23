@@ -166,6 +166,17 @@ export const api = {
   listTickets: () => request<{ tickets: TicketStub[] }>("/photos/tickets"),
   /** Everything searchable, filtered on the device (kept offline by the service worker). */
   getSearchIndex: () => request<SearchIndex>("/search/index"),
+  // Brand theme (colours, logo, favicon)
+  getTheme: () => request<{ theme: Partial<Record<"accent" | "highlight" | "background" | "logo", string | null>>; logoUrl: string | null; faviconUrl: string | null }>("/public/theme"),
+  setTheme: (theme: { accent: string; highlight: string; background: string; logo: string }) =>
+    request<{ theme: typeof theme }>("/admin/theme", { method: "PUT", body: JSON.stringify(theme) }),
+  resetTheme: () => request<{ ok: true }>("/admin/theme", { method: "DELETE" }),
+  uploadBrandAsset: (asset: "logo" | "favicon", file: File) => {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    return request<{ url: string }>(`/admin/theme/${asset}`, { method: "POST", body: form, rawBody: true });
+  },
+  removeBrandAsset: (asset: "logo" | "favicon") => request<{ ok: true }>(`/admin/theme/${asset}`, { method: "DELETE" }),
   getDeepStats: (localDate?: string) =>
     request<DeepStatsResponse>(
       `/concerts/deep-stats${localDate ? `?localDate=${encodeURIComponent(localDate)}` : ""}`,

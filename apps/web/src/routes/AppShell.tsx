@@ -28,6 +28,8 @@ import { RequireAuth } from "./RequireAuth";
 import { YearReviewIndex, YearReviewPage } from "./YearReviewPage";
 import { SearchSheet } from "./SearchSheet";
 import { TicketsPage } from "./TicketsPage";
+import { BrandPage } from "./BrandPage";
+import { StyleGuidePage } from "./StyleGuidePage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AppShell — main layout for public content with optional auth
@@ -159,7 +161,7 @@ export function AppShell() {
                 onClick={() => setGlobalAddOpen(true)}
                 aria-label="Add show"
                 title="Add show ( N )"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-lime text-bg transition-transform hover:brightness-110 active:scale-95"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-lime text-on-accent transition-transform hover:brightness-110 active:scale-95"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.75" strokeLinecap="round" aria-hidden="true">
                   <path d="M12 5v14M5 12h14" />
@@ -173,7 +175,7 @@ export function AppShell() {
                   aria-label="Account"
                   className="flex h-10 items-center gap-2 rounded-full border border-border pl-1 pr-1 transition-colors hover:border-accent-lime sm:pr-3.5"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-lime font-display text-sm text-bg">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-lime font-display text-sm text-on-accent">
                     {(user?.username ?? "?").slice(0, 1).toUpperCase()}
                   </span>
                   <span className="hidden text-sm font-semibold sm:inline">{user?.username}</span>
@@ -249,6 +251,8 @@ export function AppShell() {
           <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
           <Route path="/admin/imports" element={<RequireAdmin><ImportsPage /></RequireAdmin>} />
           <Route path="/admin/data" element={<RequireAdmin><DataCleanupPage /></RequireAdmin>} />
+          <Route path="/admin/brand" element={<RequireAdmin><BrandPage /></RequireAdmin>} />
+          <Route path="/admin/style" element={<RequireAdmin><StyleGuidePage /></RequireAdmin>} />
 
           {/* Fallback for unmatched paths */}
           <Route path="*" element={<Navigate to="/" replace />} />

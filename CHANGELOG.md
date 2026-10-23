@@ -7,6 +7,19 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Added — Brand theme and UI standards guide
+
+- **Brand & theme** (Account → Brand & theme) — colour pickers (and hex fields) for the **accent** (green), **highlight** (pink), **background** and **logo** colours. Changes preview live across the app and only stick when saved; presets (Tinnitus, Ocean, Ember, Violet, Daylight), readability checks (WCAG contrast) and **Back to defaults**.
+- **Everything follows the four colours** — a new theme engine (`src/lib/theme.ts`) derives every colour token — surfaces, borders, text, tints, the "attended" style, button text — as CSS variables, and Tailwind's colours point at them. Light backgrounds work: surfaces step darker and text turns dark. The maps' style and pins, share images, charts and the browser's theme colour follow too. The last theme is applied before the page paints, so there's no flash of the default colours.
+- **Logo and favicon** — the built-in wordmark and favicon recolour with the theme; either can be replaced by an upload (SVG, PNG, WebP or JPEG under 1 MB; SVGs with scripts are refused) and reset to the built-in one.
+- **Style guide** (`/admin/style`) — every shared component, live in the current theme.
+- **Brand & UI standards guide** — [docs/brand-ui-standards.md](docs/brand-ui-standards.md): voice, colour tokens, type, layout, components, patterns, accessibility, and a checklist for reusing this layout in other apps with different colours. Kept up to date with UI changes.
+- Requires migration `0019_brand_theme.sql` (creates the settings table the theme is stored in, which was missing on some installs).
+
+### Fixed
+
+- `GET /public/copy` returned an error where the settings table had never been created.
+
 ### Changed
 
 - **Upcoming opens on All** — the Upcoming tab now shows attending and interested shows together by default (Past still opens on Attended).

@@ -76,7 +76,7 @@ function DuplicateGroup({ type, group }: { type: DataEntityType; group: DupGroup
           return (
             <label key={r.id} className="flex min-h-[64px] cursor-pointer items-center gap-3 px-4 py-3 hover:bg-surface-2/60">
               <input type="radio" name={`keep-${group.records[0]!.id}`} checked={r.id === keepId}
-                onChange={() => setKeepId(r.id)} className="h-5 w-5 shrink-0 accent-[#A8FF3E]" />
+                onChange={() => setKeepId(r.id)} className="h-5 w-5 shrink-0 accent-[rgb(var(--c-accent))]" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-semibold">{r.name}</span>
                 <span className="meta block truncate">

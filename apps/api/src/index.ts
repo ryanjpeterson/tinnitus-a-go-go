@@ -26,6 +26,7 @@ import { statsRoutes } from "./routes/stats.js";
 import { searchRoutes } from "./routes/search.js";
 import { calendarRoutes } from "./routes/calendar.js";
 import { pushRoutes } from "./routes/push.js";
+import { themeRoutes } from "./routes/theme.js";
 import { startPushReminders } from "./lib/push-reminders.js";
 import { startStorageOrphanSweep } from "./lib/storage-orphans.js";
 
@@ -108,6 +109,7 @@ async function start(): Promise<void> {
   await app.register(searchRoutes);
   await app.register(calendarRoutes);
   await app.register(pushRoutes);
+  await app.register(themeRoutes);
 
   // 404 handler
   app.setNotFoundHandler((_req, reply) => {

@@ -310,7 +310,7 @@ export function EventRow({ to, date, title, subtitle, meta, imageUrl, status, sh
         className={cn(rowBase, "w-full text-left", selected && "bg-accent-lime/10")}>
         <span className={cn(
           "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-          selected ? "border-accent-lime bg-accent-lime text-bg" : "border-border",
+          selected ? "border-accent-lime bg-accent-lime text-on-accent" : "border-border",
         )}>
           {selected && (
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
@@ -565,7 +565,7 @@ export function Tabs<T extends string>({ value, onChange, options }: {
               "h-10 truncate rounded-full font-semibold transition-colors sm:h-9 sm:px-4 sm:text-sm",
               // Four or more tabs: tighter on phones so every label fits.
               options.length > 3 ? "px-2.5 text-sm" : "px-4 text-[15px]",
-              active ? "bg-accent-lime text-bg" : "text-text-muted hover:text-text-base",
+              active ? "bg-accent-lime text-on-accent" : "text-text-muted hover:text-text-base",
             )}>
             {o.label}
           </button>
@@ -589,7 +589,7 @@ export function PillTabs<T extends string>({ value, onChange, options }: {
           <button key={o.value} onClick={() => onChange(o.value)}
             className={cn(
               "h-10 rounded-full border px-4 text-sm font-semibold transition-colors",
-              active ? (o.activeClass ?? "border-accent-lime bg-accent-lime text-bg") : "border-border text-text-muted hover:border-text-subtle hover:text-text-base",
+              active ? (o.activeClass ?? "border-accent-lime bg-accent-lime text-on-accent") : "border-border text-text-muted hover:border-text-subtle hover:text-text-base",
             )}>
             {o.label}
           </button>
@@ -733,7 +733,7 @@ export function VenueViewSwitch({ view, floating = false }: { view: "list" | "ma
     <Link to={to} replace aria-current={active ? "page" : undefined}
       className={cn(
         "flex h-9 items-center rounded-full px-4 text-sm font-semibold transition-colors",
-        active ? "bg-accent-lime text-bg" : "text-text-muted hover:text-text-base",
+        active ? "bg-accent-lime text-on-accent" : "text-text-muted hover:text-text-base",
       )}>
       {label}
     </Link>

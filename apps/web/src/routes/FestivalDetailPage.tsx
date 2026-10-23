@@ -406,21 +406,21 @@ export function FestivalDetailPage() {
         badge={attendance && <StatusBadge status={attendance.status} className="h-9 px-4 text-sm" />}
         actions={
           <>
-            {isAdmin && !editing && <Button variant="secondary" className="rounded-full" onClick={startEdit}>Edit festival</Button>}
+            {isAdmin && !editing && <Button variant="secondary" onClick={startEdit}>Edit festival</Button>}
             {isAdmin && (
-              <label className={`inline-flex h-10 cursor-pointer items-center rounded-full border border-border bg-surface-2 px-4 text-sm font-semibold transition-colors hover:bg-surface ${flyerBusy ? "pointer-events-none opacity-50" : ""}`}>
+              <label className={`inline-flex h-10 cursor-pointer items-center rounded-control border border-border bg-surface-2 px-4 text-sm font-semibold transition-colors hover:bg-surface ${flyerBusy ? "pointer-events-none opacity-50" : ""}`}>
                 {uploadingFlyer ? "Uploading…" : festival.flyerUrl ? "Replace flyer" : "Upload flyer"}
                 <input ref={flyerFileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
                   onChange={(e) => void handleFlyerUpload(e)} disabled={flyerBusy} />
               </label>
             )}
-            {isAdmin && <Button variant="ghost" className="rounded-full" disabled={flyerBusy} onClick={() => setShowFlyerUrlInput((v) => !v)}>Flyer URL</Button>}
+            {isAdmin && <Button variant="ghost" disabled={flyerBusy} onClick={() => setShowFlyerUrlInput((v) => !v)}>Flyer URL</Button>}
             {isAdmin && festival.flyerUrl && (
-              <Button variant="ghost" className="rounded-full text-text-muted hover:text-accent-pink" disabled={flyerBusy} onClick={handleDeleteFlyer}>Remove flyer</Button>
+              <Button variant="ghost" className="text-text-muted hover:text-accent-pink" disabled={flyerBusy} onClick={handleDeleteFlyer}>Remove flyer</Button>
             )}
             {festival.sourceUrl && (
               <a href={festival.sourceUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="ghost" className="rounded-full">Event page ↗</Button>
+                <Button variant="ghost">Event page ↗</Button>
               </a>
             )}
             <ShareButton card={() => ({
@@ -503,7 +503,7 @@ export function FestivalDetailPage() {
       {/* Stats */}
       {/* Festivals aren't rated — just how big they were, and how much of it you saw. */}
       <div className={clsx("grid gap-3", attendance && stats.totalDays > 1 ? "grid-cols-3" : "grid-cols-2")}>
-        <StatTile label="Artists" value={stats.totalArtists} accent="lime" />
+        <StatTile label="Artists" value={stats.totalArtists} accent="accent" />
         <StatTile label="Days" value={stats.totalDays} />
         {attendance && stats.totalDays > 1 && (
           <StatTile label="Days attended" value={`${attendance.daysAttended}/${stats.totalDays}`} />
@@ -530,7 +530,7 @@ export function FestivalDetailPage() {
                   disabled={savingAttendance !== null}
                   onClick={() => void setEveryDay(st.value)}
                   className={clsx(
-                    "h-10 min-w-[96px] rounded-full border px-4 text-sm font-semibold transition-colors disabled:opacity-60",
+                    "h-10 min-w-[96px] rounded-control border px-4 text-sm font-semibold transition-colors disabled:opacity-60",
                     all ? st.active : "border-border text-text-muted hover:border-accent-lime",
                   )}
                 >
@@ -639,7 +639,7 @@ export function FestivalDetailPage() {
                       id={`set-${set.artist.slug}`}
                       to={`/artists/${set.artist.slug}`}
                       className={clsx(
-                        "inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition-all scroll-mt-24",
+                        "inline-flex items-center gap-2 rounded-control border px-3.5 py-2 text-sm font-medium transition-all scroll-mt-24",
                         highlightedSet === `set-${set.artist.slug}`
                           ? "border-accent-lime bg-lime-950 text-accent-lime ring-2 ring-accent-lime/50"
                           : "border-border bg-surface-2 text-text-muted hover:border-accent-lime hover:text-accent-lime",
@@ -669,7 +669,7 @@ export function FestivalDetailPage() {
                         id={`set-${set.artist.slug}`}
                         to={`/artists/${set.artist.slug}`}
                         className={clsx(
-                          "rounded-full border px-3.5 py-2 text-sm font-medium transition-all scroll-mt-24",
+                          "rounded-control border px-3.5 py-2 text-sm font-medium transition-all scroll-mt-24",
                           highlightedSet === `set-${set.artist.slug}`
                             ? "border-accent-lime bg-lime-950 text-accent-lime ring-2 ring-accent-lime/50"
                             : "border-border bg-surface-2 text-text-muted hover:border-accent-lime hover:text-accent-lime",
@@ -686,7 +686,7 @@ export function FestivalDetailPage() {
               };
               const removeButton = (show: (typeof shows)[number]) => isAdmin && (
                 <button onClick={() => void removeShow(show.id)}
-                  className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold text-text-subtle hover:bg-surface-2 hover:text-accent-pink">
+                  className="shrink-0 rounded-control px-2.5 py-1 text-xs font-semibold text-text-subtle hover:bg-surface-2 hover:text-accent-pink">
                   Remove
                 </button>
               );
@@ -703,7 +703,7 @@ export function FestivalDetailPage() {
                           <span className="block text-sm font-normal text-text-subtle">{shows.length} sets</span>
                         </span>
                       </div>
-                      <div className="divide-y divide-border">
+                      <div className="divide-etched">
                         {shows.map((show) => (
                           <div key={show.id}>
                             <div className="flex items-center gap-2 pl-4 pr-2 pt-3">
@@ -835,7 +835,7 @@ function AddShowsSheet({ festival, onClose }: { festival: FestivalDetail; onClos
         {q.isLoading ? <Loading /> : candidates.length === 0 ? (
           <p className="py-6 text-center text-sm text-text-subtle">No standalone shows around these dates.</p>
         ) : (
-          <div className="card divide-y divide-border overflow-hidden">
+          <div className="card divide-etched overflow-hidden">
             {candidates.map((c) => (
               <EventRow
                 key={c.id}

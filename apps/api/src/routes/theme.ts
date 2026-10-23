@@ -24,6 +24,10 @@ const COLOR_KEYS = { accent: "theme.accent", highlight: "theme.highlight", backg
 const RETIRED_KEYS = ["theme.logo"];
 const ASSET_KEYS = { logo: "theme.logo_file", favicon: "theme.favicon_file" } as const;
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Colours are #RRGGBB");
+/** Type styles (jimbo.ui): headings and body each sans, mono or serif; stored as JSON. */
+const FONTS_KEY = "theme.fonts";
+const fontStyle = z.enum(["sans", "mono", "serif"]);
+const fonts = z.object({ headings: fontStyle.optional(), body: fontStyle.optional() });
 
 const ASSET_TYPES: Record<string, string> = {
   "image/svg+xml": ".svg",
@@ -42,6 +46,11 @@ async function setValue(key: string, value: string, description: string): Promis
     .onConflictDoUpdate({ target: schema.siteCopy.key, set: { value, updatedAt: new Date() } });
 }
 
+function parseFonts(raw: string | null): z.infer<typeof fonts> | null {
+  if (!raw) return null;
+  try { const f = fonts.safeParse(JSON.parse(raw)); return f.success ? f.data : null; } catch { return null; }
+}
+
 async function readTheme() {
   const rows = await db.select().from(schema.siteCopy).where(sql`${schema.siteCopy.section} = 'theme'`);
   const get = (k: string) => rows.find((r) => r.key === k)?.value || null;
@@ -51,6 +60,7 @@ async function readTheme() {
       highlight: get(COLOR_KEYS.highlight),
       background: get(COLOR_KEYS.background),
       support: get(COLOR_KEYS.support),
+      fonts: parseFonts(get(FONTS_KEY)),
     },
     logoKey: get(ASSET_KEYS.logo),
     faviconKey: get(ASSET_KEYS.favicon),
@@ -78,21 +88,28 @@ export async function themeRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.put("/admin/theme", { preHandler: [requireAdmin] }, async (req, reply) => {
-    // support is optional (jimbo.ui 3.1): without one, the app derives it from the other three.
-    const parsed = z.object({ accent: hex, highlight: hex, background: hex, support: hex.optional() }).safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: "accent, highlight and background must be #RRGGBB colours (support too, if given)." });
+    // Highlight and support are optional (jimbo.ui 0.5–0.6): what's left out, the app infers from the
+    // accent and background. Store only what's sent; fonts default to sans.
+    const parsed = z.object({ accent: hex, background: hex, highlight: hex.optional(), support: hex.optional(), fonts: fonts.optional() }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "accent and background must be #RRGGBB colours (highlight and support too, if given); fonts are sans, mono or serif." });
     const labels = { accent: "Accent colour", highlight: "Highlight colour", background: "Background colour", support: "Support colour" };
     for (const k of Object.keys(COLOR_KEYS) as (keyof typeof COLOR_KEYS)[]) {
       const v = parsed.data[k];
       if (v) await setValue(COLOR_KEYS[k], v.toUpperCase(), labels[k]);
     }
-    const cleared = parsed.data.support ? [] : [COLOR_KEYS.support];
+    const cleared: string[] = [
+      ...(parsed.data.highlight ? [] : [COLOR_KEYS.highlight]),
+      ...(parsed.data.support ? [] : [COLOR_KEYS.support]),
+    ];
+    const f = parsed.data.fonts;
+    if (f && (f.headings || f.body)) await setValue(FONTS_KEY, JSON.stringify(f), "Type styles");
+    else cleared.push(FONTS_KEY);
     await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, [...RETIRED_KEYS, ...cleared]));
     return reply.send({ theme: parsed.data });
   });
 
   app.delete("/admin/theme", { preHandler: [requireAdmin] }, async (_req, reply) => {
-    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, [...Object.values(COLOR_KEYS), ...RETIRED_KEYS]));
+    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, [...Object.values(COLOR_KEYS), FONTS_KEY, ...RETIRED_KEYS]));
     return reply.send({ ok: true });
   });
 

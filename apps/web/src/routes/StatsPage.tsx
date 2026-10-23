@@ -236,7 +236,7 @@ function Milestones({ milestones }: { milestones: DeepStatsResponse["milestones"
     <div className="relative">
       {/* Timeline spine behind the badges */}
       <div className="absolute bottom-8 left-[37px] top-8 w-px bg-border" />
-      <div className="divide-y divide-border">
+      <div className="divide-etched">
         {milestones.map((m) => {
           const sub = showSubtitle(m.info);
           return (
@@ -332,7 +332,7 @@ export function StatsPage() {
 
       {/* ── Overview tiles ──────────────────────────────────────────────── */}
       <StatGrid>
-        <StatTile label="Shows attended" value={d.totalShows} accent="lime" />
+        <StatTile label="Shows attended" value={d.totalShows} accent="accent" />
         <StatTile label="Artists seen" value={d.totalArtists} />
         <StatTile label="Venues" value={d.totalVenues} />
         <StatTile label="Years active" value={d.yearsActive} />

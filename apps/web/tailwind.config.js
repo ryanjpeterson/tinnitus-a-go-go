@@ -1,6 +1,11 @@
 // Part of jimbo-ui (foundation — don't edit here; change jimbo-ui and update).
 /** A theme token: `rgb(var(--c-name) / <alpha>)`. */
 const tok = (name) => `rgb(var(--c-${name}) / <alpha-value>)`;
+/** A brand colour and its derived tokens (see src/lib/theme.ts). */
+const family = (name) => ({
+  DEFAULT: tok(name),
+  ...Object.fromEntries(["hover", "lighter", "light", "dark", "darker", "top", "bottom", "950", "900", "800", "700"].map((k) => [k, tok(`${name}-${k}`)])),
+});
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -9,7 +14,7 @@ export default {
   theme: {
     extend: {
       // Every colour is a theme token (CSS variable of "R G B" channels, set by
-      // src/lib/theme.ts from three brand colours) so opacity modifiers like
+      // src/lib/theme.ts from the brand colours) so opacity modifiers like
       // bg-accent/15 keep working. Defaults: src/styles/globals.css.
       colors: {
         bg: tok("bg"),
@@ -22,15 +27,13 @@ export default {
           muted: tok("text-muted"),
           subtle: tok("text-subtle"),
         },
-        // accent / highlight: the theme's primary and secondary colours, with
-        // hover shades and washes (bg-accent, text-highlight, bg-accent-950…).
+        // accent / highlight / support: the theme's brand colours, each with hover,
+        // shades (lighter … darker), a lit two-stop fill (top → bottom, for
+        // bg-gradient-to-b) and washes mixed into the page (950 … 700):
+        // bg-accent, text-highlight-light, from-support-top, bg-accent-950…
         accent: {
-          DEFAULT:      tok("accent"),
-          hover:        tok("accent-hover"),
-          950:          tok("accent-950"),
-          900:          tok("accent-900"),
-          700:          tok("accent-700"),
-          // Legacy names from before 2.0 (lime = accent, pink = highlight); kept so older apps still build.
+          ...family("accent"),
+          // Legacy names from before 0.3 (lime = accent, pink = highlight); kept so older apps still build.
           lime:         tok("accent"),
           "lime-hover": tok("accent-hover"),
           pink:         tok("highlight"),
@@ -39,21 +42,8 @@ export default {
           "cyan-hover": "#70FFF0",
           orange:       "#FF8C3A",
         },
-        highlight: {
-          DEFAULT: tok("highlight"),
-          hover:   tok("highlight-hover"),
-          950:     tok("highlight-950"),
-          900:     tok("highlight-900"),
-          800:     tok("highlight-800"),
-        },
-        // support: the optional third colour (page eyebrows, avatars, glows).
-        support: {
-          DEFAULT: tok("support"),
-          hover:   tok("support-hover"),
-          950:     tok("support-950"),
-          900:     tok("support-900"),
-          700:     tok("support-700"),
-        },
+        highlight: family("highlight"),
+        support: family("support"),
         // Text on an accent / highlight / support fill: dark or light, whichever reads.
         "on-accent": tok("on-accent"),
         "on-highlight": tok("on-highlight"),
@@ -64,18 +54,24 @@ export default {
         danger: "#FF5252",
       },
       fontFamily: {
-        // Heavy grotesque for headings — set to weight 800 in globals.css.
-        display: ["Archivo", "ui-sans-serif", "system-ui", "sans-serif"],
+        // Headings and body follow the theme's type styles (sans, mono or serif),
+        // set by src/lib/theme.ts as --font-display / --font-body; defaults in globals.css.
+        // Headings are weight 800 (globals.css).
+        display: ["var(--font-display)"],
         script: ["'Caveat Brush'", "cursive"],
-        body: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        body: ["var(--font-body)"],
         mono: ["'JetBrains Mono'", "ui-monospace", "SFMono-Regular", "monospace"],
       },
+      // Softly rounded, not pills: cards 14, fields 11, controls 10, chips 8.
+      // Circles (avatars, dots, orbs) stay rounded-full — they're the motif.
       borderRadius: {
-        "2xl": "18px",
-        xl: "14px",
-        lg: "10px",
-        md: "8px",
-        sm: "6px",
+        "3xl": "18px",
+        "2xl": "14px",
+        xl: "11px",
+        control: "10px",
+        lg: "8px",
+        md: "6px",
+        sm: "4px",
       },
     },
   },

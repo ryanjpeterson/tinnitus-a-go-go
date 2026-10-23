@@ -5,8 +5,8 @@
  * text 4.5:1) and keeps its colours clearly apart. The app's own default is
  * added at the front unless it is already one of them.
  *
- * A template may leave out support (`t(…)` with three colours); the engine
- * then derives one.
+ * A template sets two to four colours: accent and background always; leave
+ * out highlight (`null`) or support and the engine infers them.
  *
  * Part of jimbo-ui (foundation — don't edit here; change jimbo-ui and update).
  */
@@ -18,9 +18,9 @@ export type Template = { name: string; vibe: string; theme: Theme };
 export type TemplateGroup = { label: string; templates: Template[] };
 export type TemplateSet = { label: string; groups: TemplateGroup[] };
 
-/** name, vibe, then accent, highlight, background and (optional) support. */
-const t = (name: string, vibe: string, accent: string, highlight: string, background: string, support?: string): Template =>
-  ({ name, vibe, theme: { accent, highlight, background, ...(support ? { support } : {}) } });
+/** name, vibe, then accent, highlight (null = inferred), background and (optional) support. */
+const t = (name: string, vibe: string, accent: string, highlight: string | null, background: string, support?: string): Template =>
+  ({ name, vibe, theme: { accent, background, ...(highlight ? { highlight } : {}), ...(support ? { support } : {}) } });
 
 const SETS: TemplateSet[] = [
   { label: "Everyday", groups: [
@@ -33,6 +33,7 @@ const SETS: TemplateSet[] = [
       t("Ultraviolet", "Purple, pink, mint", "#B48CFF", "#FF5FA2", "#120F1C", "#5CF2B8"),
       t("Ember", "Gold, fire, ice", "#FFB23D", "#FF3D3D", "#17110D", "#7FD4FF"),
       t("Blackout", "White, red, blue", "#F2F2F2", "#FF3D3D", "#000000", "#4D94FF"),
+      t("Two-tone", "Periwinkle; the rest inferred", "#9DB2FF", null, "#101418"),
     ] },
     { label: "Mid", templates: [
       t("Slate", "Frost, sand, heather", "#88C0D0", "#EBCB8B", "#2E3440", "#D3AECB"),
@@ -58,11 +59,12 @@ const SETS: TemplateSet[] = [
   ] },
   { label: "Flags", groups: [
     { label: "Flags", templates: [
-      t("USA", "Red, white and blue", "#E0283F", "#F2F2F2", "#0B1B3D", "#6FA8FF"),
+      t("Canada", "Red, white and pine", "#D52B1E", "#8E1B14", "#FFFFFF", "#1F5E3A"),
+      t("USA", "Red, white and blue", "#E0283F", "#7DB4FF", "#0B1B3D", "#F2F2F2"),
       t("Italy", "Green, white and red", "#007A3D", "#CD212A", "#FAFAF5", "#1F4E8C"),
       t("Germany", "Black, red and gold", "#FFCE00", "#FF4B3E", "#0E0E0E", "#F2F2F2"),
       t("Ireland", "Green, white and orange", "#3DDC84", "#FF9F43", "#0C2418", "#F5F5F0"),
-      t("Sweden", "Blue and yellow", "#FECC02", "#FFFFFF", "#004B87", "#8FD0FF"),
+      t("Sweden", "Yellow and amber on blue", "#FECC02", "#FF9F1C", "#004B87", "#A8DCFF"),
       t("Jamaica", "Black, gold and green", "#FED100", "#2BB24C", "#0A0A0A", "#FF7A45"),
       t("Brazil", "Green, yellow and blue", "#FFDF00", "#9DBBFF", "#004D26", "#FFFFFF"),
       t("Mexico", "Green, white and red", "#006847", "#CE1126", "#FFFFFF", "#7A4A12"),
@@ -80,7 +82,7 @@ const SETS: TemplateSet[] = [
       t("Halloween", "Pumpkin, purple and slime", "#FF7A1A", "#B266FF", "#120D17", "#8CFF4F"),
       t("Diwali", "Marigold, magenta and teal", "#FFB020", "#FF3DA5", "#1A0B2E", "#2DD4BF"),
       t("Harvest", "Pumpkin, mustard and sage", "#FF9A3C", "#E8C04A", "#1E140C", "#A7CC94"),
-      t("Hanukkah", "Blue, silver and gold", "#5AA9FF", "#DDE3EA", "#0A1838", "#FFC94D"),
+      t("Hanukkah", "Blue, silver and gold", "#5AA9FF", "#B9D3F5", "#0A1838", "#FFC94D"),
       t("Christmas", "Red, gold and green", "#DC1F2A", "#FFC94D", "#0B1A12", "#3FBF6F"),
       t("Christmas morning", "Red and green on snow", "#C8102E", "#146B3A", "#FFF9F5", "#6F5000"),
       t("New year's eve", "Champagne, fuchsia and ice", "#F2C14E", "#FF3DA5", "#0A0A0F", "#5BC0FF"),

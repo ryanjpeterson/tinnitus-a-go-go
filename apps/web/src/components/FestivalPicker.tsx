@@ -73,7 +73,7 @@ export function FestivalPicker({ concertIds, suggestedName, onClose, onDone }: {
         <section className="space-y-2">
           <p className="eyebrow">Or an existing festival</p>
           <SearchField value={q} onChange={setQ} placeholder="Search festivals" />
-          <div className="card divide-y divide-border overflow-hidden">
+          <div className="card divide-etched overflow-hidden">
             {(festivals.data?.festivals ?? []).map((f) => (
               <button key={f.id} disabled={busy}
                 onClick={() => void run(async () => { await api.addShowsToFestival(f.slug, concertIds); return f.slug; })}

@@ -1,5 +1,5 @@
 /**
- * The brand theme from the server (colours, logo, favicon), applied to the
+ * The brand theme from the server (colours, fonts, logo, favicon), applied to the
  * page as it changes. Starts from the copy cached in localStorage so there's
  * no flash of the default colours, and works offline from that copy.
  */
@@ -7,11 +7,23 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
-import { applyFavicon, applyTheme, DEFAULT_THEME, THEME_STORAGE_KEY, type Theme } from "./theme";
+import { applyFavicon, applyTheme, DEFAULT_THEME, fullTheme, ownColours, THEME_STORAGE_KEY, type FullTheme, type SavedTheme, type Theme } from "./theme";
+import { BRAND } from "./brand.config";
 
-const BRAND_CACHE_KEY = "tagg.brand";
+// The app's API client provides getTheme(): { theme: { accent, highlight,
+// background, support, fonts } (null = default), logoUrl, faviconUrl } — see the
+// guide. Tinnitus adds logoUrl: its own logo can be replaced by an upload.
+// Highlight and support may be missing (left to inference, or saved before 0.5).
+const BRAND_CACHE_KEY = `${BRAND.storagePrefix}.brand`;
 
-export interface Brand { theme: Theme; logoUrl: string | null; faviconUrl: string | null }
+export interface Brand {
+  /** The colours as set — highlight and support may be missing (inferred). Save this. */
+  theme: Theme;
+  /** All four colours, missing ones inferred. Read this when you need a colour. */
+  colors: FullTheme;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+}
 
 function cached(): Brand | undefined {
   try {
@@ -19,22 +31,27 @@ function cached(): Brand | undefined {
     if (!raw) return undefined;
     const b = JSON.parse(raw) as Brand;
     // Re-shape through the defaults so a copy cached by an older version (extra or missing colours) can't leak through.
-    return { ...b, theme: withDefaults(b.theme ?? {}) };
+    const theme = withDefaults(b.theme ?? {});
+    return { theme, colors: fullTheme(theme), logoUrl: b.logoUrl ?? null, faviconUrl: b.faviconUrl ?? null };
   } catch {
     return undefined;
   }
 }
 
-/** Server values over the defaults (unset colours fall back; a saved theme without support gets a derived one). */
-export function withDefaults(t: Partial<Record<keyof Theme, string | null>>): Theme {
-  if (!t.accent && !t.highlight && !t.background) return DEFAULT_THEME;
-  const support = t.support || undefined;
-  return {
+/**
+ * Server values over the defaults. Nothing saved → the default theme. A saved
+ * theme keeps its own optional colours: a missing highlight or support stays
+ * missing, so the engine infers it to suit the saved accent and background.
+ */
+export function withDefaults(t: SavedTheme): Theme {
+  if (!t.accent && !t.background) return t.fonts ? ownColours({ ...DEFAULT_THEME, fonts: t.fonts }) : DEFAULT_THEME;
+  return ownColours({
     accent: t.accent || DEFAULT_THEME.accent,
-    highlight: t.highlight || DEFAULT_THEME.highlight,
     background: t.background || DEFAULT_THEME.background,
-    ...(support ? { support } : {}),
-  };
+    ...(t.highlight ? { highlight: t.highlight } : {}),
+    ...(t.support ? { support: t.support } : {}),
+    ...(t.fonts ? { fonts: t.fonts } : {}),
+  });
 }
 
 export function useBrand(): Brand {
@@ -42,12 +59,13 @@ export function useBrand(): Brand {
     queryKey: ["brand"],
     queryFn: async (): Promise<Brand> => {
       const r = await api.getTheme();
-      return { theme: withDefaults(r.theme), logoUrl: r.logoUrl, faviconUrl: r.faviconUrl };
+      const theme = withDefaults(r.theme ?? {});
+      return { theme, colors: fullTheme(theme), logoUrl: r.logoUrl, faviconUrl: r.faviconUrl };
     },
     initialData: cached,
     staleTime: 5 * 60_000,
   });
-  return q.data ?? { theme: DEFAULT_THEME, logoUrl: null, faviconUrl: null };
+  return q.data ?? { theme: DEFAULT_THEME, colors: fullTheme(DEFAULT_THEME), logoUrl: null, faviconUrl: null };
 }
 
 /** Mount once (App): keeps the page's colours, favicon and cached copy in step with the theme. */

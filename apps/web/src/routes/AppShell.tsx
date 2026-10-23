@@ -114,7 +114,7 @@ export function AppShell() {
 
       {/* Sticky app bar. Top padding clears the iOS status bar / notch in
           standalone mode (black-translucent). */}
-      <header className="sticky top-0 z-40 border-b border-border bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-border bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 sm:h-16 sm:px-6">
           <div className="flex h-full items-center gap-8">
             <Link to="/" aria-label="Home">
@@ -150,7 +150,7 @@ export function AppShell() {
               onClick={() => setSearchOpen(true)}
               aria-label="Search"
               title="Search ( / )"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-text-muted transition-colors hover:border-accent-lime hover:text-text-base active:scale-95"
+              className="glass flex h-10 w-10 items-center justify-center rounded-full text-text-muted transition-[color,border-color,transform] hover:border-accent hover:text-text-base active:scale-95"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
                 <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
@@ -161,7 +161,7 @@ export function AppShell() {
                 onClick={() => setGlobalAddOpen(true)}
                 aria-label="Add show"
                 title="Add show ( N )"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-lime text-on-accent transition-transform hover:brightness-110 active:scale-95"
+                className="lit-accent flex h-10 w-10 items-center justify-center rounded-full transition-transform hover:bg-accent-hover active:scale-95"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.75" strokeLinecap="round" aria-hidden="true">
                   <path d="M12 5v14M5 12h14" />
@@ -186,7 +186,7 @@ export function AppShell() {
               </>
             ) : (
               <Link to="/login">
-                <Button variant="secondary" size="sm" className="h-10 rounded-full px-4">
+                <Button variant="secondary" size="sm" className="h-10 rounded-control px-4">
                   Log in
                 </Button>
               </Link>
@@ -268,7 +268,7 @@ export function AppShell() {
         aria-label="Main"
         className="pointer-events-none fixed inset-x-0 bottom-0 z-40 select-none px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:hidden"
       >
-        <div className="pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-1 rounded-[28px] border border-white/10 bg-surface/75 p-1.5 shadow-[0_10px_40px_-8px_rgba(0,0,0,0.75)] ring-1 ring-black/40 backdrop-blur-2xl backdrop-saturate-150">
+        <div className="pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-1 rounded-[20px] border border-border bg-surface/95 p-1.5 shadow-[0_10px_40px_-8px_rgba(0,0,0,0.75)] ring-1 ring-black/30 backdrop-blur-md">
           {navLinks.map((link) => {
             const isActive = inTab(link);
             return (
@@ -284,8 +284,8 @@ export function AppShell() {
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }
                 }}
-                className={`relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-[22px] transition-[background-color,color,transform] duration-200 active:scale-[0.92] ${
-                  isActive ? "bg-accent-lime/15 text-accent-lime" : "text-text-muted active:bg-white/5"
+                className={`relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-[14px] transition-[background-color,color,transform] duration-200 active:scale-[0.92] ${
+                  isActive ? "bg-accent/15 text-accent shadow-[inset_0_0_0_1px_rgb(var(--c-accent)/0.3)]" : "text-text-muted active:bg-white/5"
                 }`}
               >
                 <span className="relative">

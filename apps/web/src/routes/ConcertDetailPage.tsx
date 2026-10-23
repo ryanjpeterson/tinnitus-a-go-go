@@ -772,7 +772,7 @@ function PhotoGallery({
                     onClick={isAdmin ? () => void handleToggleTicket(p.id, p.kind === "ticket" ? "photo" : "ticket") : undefined}
                     disabled={!isAdmin}
                     className={clsx(
-                      "absolute bottom-1 left-1 z-10 flex h-7 items-center rounded-full px-1.5 text-sm transition-opacity",
+                      "absolute bottom-1 left-1 z-10 flex h-7 items-center rounded-control px-1.5 text-sm transition-opacity",
                       p.kind === "ticket"
                         ? "bg-accent-lime text-on-accent opacity-100"
                         : "bg-black/60 text-white opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-70",
@@ -2266,7 +2266,7 @@ function SetlistSection({ concert, savedSetlists, isAdmin }: {
       )}
 
       {!unavailable && (
-        <div className="divide-y divide-border">
+        <div className="divide-etched">
           {sortedArtists.map((artist) => {
             const state = getState(artist.id);
             const setlistUrl = state.result
@@ -2551,7 +2551,7 @@ export function ConcertDetailPage() {
             : (concert.eventSeries ? concert.eventSeries.name : "Concert")
         }
         title={title}
-        accent={isFestivalDay ? "yellow" : "lime"}
+        accent={isFestivalDay ? "yellow" : "accent"}
         badge={(concert.attendance?.status ?? concert.status) && (
           <StatusBadge status={(concert.attendance?.status ?? concert.status)!} className="h-9 px-4 text-sm" />
         )}
@@ -2559,18 +2559,18 @@ export function ConcertDetailPage() {
           <>
             {concert.eventSeries && (
               <Link to={`/festivals/${concert.eventSeries.slug}`}>
-                <Button variant="secondary" className="rounded-full">{isFestivalDay ? "Festival lineup" : "Tour page"}</Button>
+                <Button variant="secondary">{isFestivalDay ? "Festival lineup" : "Tour page"}</Button>
               </Link>
             )}
             {concert.sourceUrl && (
               <a href={concert.sourceUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="ghost" className="rounded-full">Event page ↗</Button>
+                <Button variant="ghost">Event page ↗</Button>
               </a>
             )}
             {isAdmin && <FlyerControls key={concert.id} concert={concert} />}
             {isAdmin && (isFestivalDay
-              ? <Button variant="ghost" className="rounded-full" onClick={() => void leaveFestival(concert.eventSeries!, concert.id)}>Remove from festival</Button>
-              : <Button variant="ghost" className="rounded-full" onClick={() => setFestivalPickerOpen(true)}>Add to festival</Button>)}
+              ? <Button variant="ghost" onClick={() => void leaveFestival(concert.eventSeries!, concert.id)}>Remove from festival</Button>
+              : <Button variant="ghost" onClick={() => setFestivalPickerOpen(true)}>Add to festival</Button>)}
             <ShareButton card={() => ({
               imageUrl: concert.flyerUrl,
               eyebrow: [

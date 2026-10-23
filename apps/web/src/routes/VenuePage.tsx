@@ -369,18 +369,18 @@ export function VenuePage() {
           square
           eyebrow="Venue"
           title={venue.name}
-          accent="pink"
+          accent="highlight"
           actions={isAdmin && (
             <>
-              <Button variant="secondary" className="rounded-full" onClick={() => setEditing(true)}>Edit venue</Button>
-              <label className={`inline-flex h-10 cursor-pointer items-center rounded-full border border-border bg-surface-2 px-4 text-sm font-semibold transition-colors hover:bg-surface ${busy ? "pointer-events-none opacity-50" : ""}`}>
+              <Button variant="secondary" onClick={() => setEditing(true)}>Edit venue</Button>
+              <label className={`inline-flex h-10 cursor-pointer items-center rounded-control border border-border bg-surface-2 px-4 text-sm font-semibold transition-colors hover:bg-surface ${busy ? "pointer-events-none opacity-50" : ""}`}>
                 {uploadingPhoto ? "Uploading…" : venue.imageUrl ? "Replace photo" : "Upload photo"}
                 <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
                   onChange={(e) => void handlePhotoUpload(e)} disabled={busy} />
               </label>
-              <Button variant="ghost" className="rounded-full" disabled={busy} onClick={() => setShowPhotoUrlInput((v) => !v)}>Photo URL</Button>
+              <Button variant="ghost" disabled={busy} onClick={() => setShowPhotoUrlInput((v) => !v)}>Photo URL</Button>
               {venue.imageUrl && (
-                <Button variant="ghost" className="rounded-full text-text-muted hover:text-accent-pink" disabled={busy} onClick={() => void handleDeletePhoto()}>
+                <Button variant="ghost" className="text-text-muted hover:text-accent-pink" disabled={busy} onClick={() => void handleDeletePhoto()}>
                   Remove photo
                 </Button>
               )}
@@ -430,7 +430,7 @@ export function VenuePage() {
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <StatTile label="Shows" value={stats.total} accent="pink" />
+        <StatTile label="Shows" value={stats.total} accent="highlight" />
         <StatTile label="Artists seen" value={stats.uniqueArtists} />
       </div>
 

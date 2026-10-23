@@ -1,9 +1,11 @@
 {
-  "version": "3.1.0",
+  "version": "0.6.0",
+  "commit": "fe5be10",
+  "note": "0.6.0 plus jimbo-ui main up to fe5be10 (changes listed under Unreleased there).",
   "webRoot": "apps/web",
   "reference": {
+    "web/src/components/ui/kit.tsx": "apps/web/src/components/ui/jimbo-kit.tsx (exact copy; Tinnitus extras in kit.tsx)",
     "web/index.html": "apps/web/index.html",
-    "web/src/components/ui/kit.tsx": "apps/web/src/components/ui/kit.tsx",
     "web/src/routes/AppShell.tsx": "apps/web/src/routes/AppShell.tsx",
     "web/src/routes/BrandPage.tsx": "apps/web/src/routes/BrandPage.tsx",
     "web/src/routes/StyleGuidePage.tsx": "apps/web/src/routes/StyleGuidePage.tsx",

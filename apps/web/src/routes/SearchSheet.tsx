@@ -172,7 +172,7 @@ function Group({ title, count, children }: { title: string; count?: number; chil
       <p className="eyebrow mb-2 px-0.5">
         {title}{count != null && count > PER_GROUP && <span className="ml-1.5 text-text-subtle">{PER_GROUP} of {count}</span>}
       </p>
-      <div className="card divide-y divide-border overflow-hidden">{children}</div>
+      <div className="card divide-etched overflow-hidden">{children}</div>
     </section>
   );
 }

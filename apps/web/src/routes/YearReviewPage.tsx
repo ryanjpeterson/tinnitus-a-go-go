@@ -283,8 +283,8 @@ export function YearReviewPage() {
 
       {/* ── Headline numbers ─────────────────────────────────────────────── */}
       <StatGrid>
-        <StatTile label="Shows" value={d.totalShows} sub={deltaText} accent="lime" />
-        <StatTile label="Artists seen" value={d.uniqueArtists} sub={`${d.newArtistCount} for the first time`} accent="pink" />
+        <StatTile label="Shows" value={d.totalShows} sub={deltaText} accent="accent" />
+        <StatTile label="Artists seen" value={d.uniqueArtists} sub={`${d.newArtistCount} for the first time`} accent="highlight" />
         <StatTile label="Venues" value={d.uniqueVenues} sub={`${d.newVenueCount} new`} accent="muted" />
         <StatTile label="Cities" value={d.uniqueCities} sub={d.festivals.length > 0 ? plural(d.festivals.length, "festival") : undefined} accent="muted" />
       </StatGrid>
@@ -344,7 +344,7 @@ export function YearReviewPage() {
               <Link
                 key={a.artistId}
                 to={`/artists/${a.slug}`}
-                className="rounded-full border border-border bg-surface-2 px-3.5 py-2 text-sm font-medium text-text-muted transition-colors hover:border-accent-lime/50 hover:text-accent-lime"
+                className="rounded-control border border-border bg-surface-2 px-3.5 py-2 text-sm font-medium text-text-muted transition-colors hover:border-accent-lime/50 hover:text-accent-lime"
                 title={`First seen ${fmtDate(a.firstSeen)}`}
               >
                 {a.name}

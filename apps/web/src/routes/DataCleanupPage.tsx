@@ -70,7 +70,7 @@ function DuplicateGroup({ type, group }: { type: DataEntityType; group: DupGroup
   return (
     <div className="card overflow-hidden">
       <p className="border-b border-border px-4 py-2.5 text-sm font-semibold text-text-muted">{REASON_LABEL[group.reason]}</p>
-      <div className="divide-y divide-border">
+      <div className="divide-etched">
         {group.records.map((r) => {
           const href = `/${type === "venue" ? "venues" : "artists"}/${r.slug}`;
           return (
@@ -164,13 +164,13 @@ function Check({ check }: { check: HealthCheck }) {
           <p className="text-[15px] font-semibold">{check.title}</p>
           <p className="meta">{check.description}</p>
         </div>
-        <span className={`mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-sm font-semibold ${n > 0 ? "bg-yellow-950 text-yellow-300" : "bg-lime-950 text-accent-lime"}`}>
+        <span className={`mt-0.5 shrink-0 rounded-md px-2.5 py-0.5 text-sm font-semibold ${n > 0 ? "bg-yellow-950 text-yellow-300" : "bg-lime-950 text-accent-lime"}`}>
           {n > 0 ? n : "✓"}
         </span>
       </div>
 
       {check.cityGroups && check.cityGroups.length > 0 && (
-        <div className="divide-y divide-border border-t border-border">
+        <div className="divide-etched border-t border-border">
           {check.cityGroups.map((g) => (
             <div key={g.spellings[0]!.city} className="flex flex-wrap items-center gap-2 px-4 py-3">
               <span className="meta mr-1">Use:</span>
@@ -186,7 +186,7 @@ function Check({ check }: { check: HealthCheck }) {
       )}
 
       {!check.cityGroups && n > 0 && (
-        <div className="divide-y divide-border border-t border-border">
+        <div className="divide-etched border-t border-border">
           {shown.map((it) => (
             it.href ? (
               <Link key={it.id} to={it.href} className="flex min-h-[48px] items-center justify-between gap-3 px-4 py-2 hover:bg-surface-2/60">

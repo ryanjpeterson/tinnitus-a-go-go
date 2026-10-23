@@ -1,12 +1,21 @@
 /**
- * Theme engine — up to four brand colours in, every colour token out.
+ * Theme engine — two to four brand colours in, every colour token out.
  *
  *   accent      primary colour (buttons, active tabs, "done" states, the dot in the name)
- *   highlight   secondary colour (dates, badges, alerts)
- *   support     third colour, optional (page eyebrows, avatars, third rank, glows);
- *               derived from the other three when a theme leaves it out
  *   background  page colour; surfaces, borders and text are derived from it,
  *               and a light background flips the text to dark
+ *   highlight   secondary colour (dates, badges, alerts) — optional, inferred
+ *               from the accent when left out
+ *   support     third colour (page eyebrows, avatars, third rank, glows) —
+ *               optional, inferred from the others when left out
+ *
+ * Each of accent, highlight and support also gets lighter and darker shades
+ * (`-lighter`, `-light`, `-dark`, `-darker`), a two-stop fill for buttons and
+ * badges (`-top` → `-bottom`, lit from above, never lower contrast with its
+ * `on-` text) and washes mixed into the page (`-950` … `-700`).
+ *
+ * A theme can also pick a type style for headings and for body text — sans
+ * (the default), mono or serif — set as `--font-display` / `--font-body`.
  *
  * Tokens are CSS variables holding "R G B" channels, so Tailwind classes keep
  * their opacity modifiers (`bg-accent/15`). The defaults live in
@@ -19,16 +28,64 @@
 
 import { BRAND } from "./brand.config";
 
+/** A type style: the family used for headings or for body text. */
+export type FontStyle = "sans" | "mono" | "serif";
+
 export interface Theme {
   accent: string;
-  highlight: string;
   background: string;
-  /** Optional: themes saved before 3.1 have three colours, and get one derived (`deriveSupport`). */
+  /** Optional: inferred from the accent when left out (`deriveHighlight`). */
+  highlight?: string;
+  /** Optional: inferred from the other colours when left out (`deriveSupport`). */
   support?: string;
+  /** Optional type styles; both default to sans. */
+  fonts?: { headings?: FontStyle; body?: FontStyle };
 }
 
-/** A theme with all four colours filled in. */
+/** A theme as a server or cache returns it: anything may be missing or null. */
+export type SavedTheme = { [K in "accent" | "background" | "highlight" | "support"]?: string | null } & { fonts?: Theme["fonts"] | null };
+
+/**
+ * The type styles. `display` is the headings family, `body` the text family;
+ * `google` is the Google Fonts query that loads them (sans is in index.html).
+ */
+export const FONT_STYLES: Record<FontStyle, { label: string; display: string; body: string; google: string | null }> = {
+  sans: {
+    label: "Sans",
+    display: "'Archivo', ui-sans-serif, system-ui, sans-serif",
+    body: "'Inter', ui-sans-serif, system-ui, sans-serif",
+    google: null,
+  },
+  mono: {
+    label: "Mono",
+    display: "'JetBrains Mono', ui-monospace, SFMono-Regular, monospace",
+    body: "'JetBrains Mono', ui-monospace, SFMono-Regular, monospace",
+    google: "family=JetBrains+Mono:wght@400;500;600;700;800",
+  },
+  serif: {
+    label: "Serif",
+    display: "'Fraunces', ui-serif, Georgia, serif",
+    body: "'Source Serif 4', ui-serif, Georgia, serif",
+    google: "family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800;9..144,900&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700",
+  },
+};
+export const FONT_KEYS = ["sans", "mono", "serif"] as const;
+
+/** Load the web fonts for these styles (once each), by adding a Google Fonts stylesheet. */
+export function loadFonts(styles: FontStyle[]): void {
+  for (const s of new Set(styles)) {
+    const q = FONT_STYLES[s]?.google;
+    if (!q || document.getElementById(`font-${s}`)) continue;
+    const link = Object.assign(document.createElement("link"), { id: `font-${s}`, rel: "stylesheet", href: `https://fonts.googleapis.com/css2?${q}&display=swap` });
+    document.head.appendChild(link);
+  }
+}
+
+/** A theme with all four colours filled in (missing ones inferred). */
 export type FullTheme = Required<Theme>;
+
+/** The colours a theme may leave out. */
+export const OPTIONAL_KEYS = ["highlight", "support"] as const;
 
 /** The colour keys in editor order. */
 export const THEME_KEYS = ["accent", "highlight", "support", "background"] as const;
@@ -76,7 +133,7 @@ export const isHex = (v: string): boolean => /^#[0-9a-f]{6}$/i.test(v);
  * Contrast targets (WCAG ratios) the derived colours are stepped to meet on
  * every background, measured on cards — the surface most text sits on.
  */
-export const CONTRAST_TARGETS = { card: 1.16, card2: 1.14, border: 1.55, muted: 5, subtle: 3.8 } as const;
+export const CONTRAST_TARGETS = { card: 1.2, card2: 1.15, border: 1.8, muted: 5, subtle: 3.8 } as const;
 
 /** Smallest t in [min, max] where mix(from, to, t) reaches `target` contrast with `against` (it grows with t). */
 function stepTo(from: RGB, to: RGB, against: RGB, target: number, min: number, max: number): number {
@@ -116,38 +173,69 @@ function hslToRgb([h, s, l]: HSL): RGB {
   return [f(0), f(8), f(4)];
 }
 
+/** Hue `hue`, saturation `sat`, starting at lightness `l` and stepping away from the page until it reaches `target` contrast. */
+function readableOn(bg: RGB, hue: number, sat: number, l: number, target: number): string {
+  const light = luminance(bg) > 0.4;
+  for (let i = 0; i < 50 && contrast(hslToRgb([hue, sat, l]), bg) < target; i++) l = light ? l - 0.02 : l + 0.02;
+  return rgbToHex(hslToRgb([hue, sat, Math.max(0.05, Math.min(0.95, l))]));
+}
+
+/**
+ * A highlight for a theme that only sets the accent: the accent's hue turned
+ * 150° (a split complement, so it never looks like the accent), at least as
+ * saturated, made to reach 3.5:1 on the page. A grey accent gets a red.
+ */
+export function deriveHighlight(theme: Theme): string {
+  const [ha, sa, la] = rgbToHsl(hexToRgb(theme.accent));
+  const grey = sa < 0.15;
+  return readableOn(hexToRgb(theme.background), grey ? 350 : (ha + 150) % 360, grey ? 0.85 : Math.max(0.6, sa), grey ? 0.6 : la, 3.5);
+}
+
 /**
  * A support colour for a theme that doesn't set one: the hue furthest from
  * both the accent and the highlight, as saturated as they are, made light or
- * dark enough to reach 4.5:1 on the page.
+ * dark enough to read on cards (5.4:1 on the page).
  */
 export function deriveSupport(theme: Theme): string {
   const bg = hexToRgb(theme.background);
   const [ha, sa, la] = rgbToHsl(hexToRgb(theme.accent));
-  const [hh, sh] = rgbToHsl(hexToRgb(theme.highlight));
+  const [hh, sh] = rgbToHsl(hexToRgb(theme.highlight ?? deriveHighlight(theme)));
   const gap = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
   let hue = 0, best = -1;
   for (let h = 0; h < 360; h += 5) {
     const d = Math.min(sa > 0.15 ? gap(h, ha) : 180, sh > 0.15 ? gap(h, hh) : 180);
     if (d > best) { best = d; hue = h; }
   }
-  const sat = Math.max(0.55, (sa + sh) / 2);
-  const light = luminance(bg) > 0.4;
-  // Walk lightness away from the page until the colour reads on it.
-  let l = la;
-  for (let i = 0; i < 40 && contrast(hslToRgb([hue, sat, l]), bg) < 4.5; i++) l = light ? l - 0.02 : l + 0.02;
-  return rgbToHex(hslToRgb([hue, sat, Math.max(0.05, Math.min(0.95, l))]));
+  // 5.4:1 on the page leaves 4.5:1 on cards, which sit a step away from it.
+  return readableOn(bg, hue, Math.max(0.55, (sa + sh) / 2), la, 5.4);
 }
 
-/** The theme with its support colour filled in. */
-export const fullTheme = (theme: Theme): FullTheme => ({ ...theme, support: theme.support ?? deriveSupport(theme) });
+/** The theme with every colour filled in: missing highlight and support are inferred. */
+export function fullTheme(theme: Theme): FullTheme {
+  const highlight = theme.highlight || deriveHighlight(theme);
+  return {
+    accent: theme.accent, background: theme.background, highlight,
+    support: theme.support || deriveSupport({ ...theme, highlight }),
+    fonts: { headings: theme.fonts?.headings ?? "sans", body: theme.fonts?.body ?? "sans" },
+  };
+}
+
+/** Just what a theme sets (drops empty optional colours and default fonts) — what to save. */
+export function ownColours(theme: Theme): Theme {
+  const headings = theme.fonts?.headings && theme.fonts.headings !== "sans" ? theme.fonts.headings : undefined;
+  const body = theme.fonts?.body && theme.fonts.body !== "sans" ? theme.fonts.body : undefined;
+  return {
+    accent: theme.accent, background: theme.background,
+    ...(theme.highlight ? { highlight: theme.highlight } : {}),
+    ...(theme.support ? { support: theme.support } : {}),
+    ...(headings || body ? { fonts: { ...(headings ? { headings } : {}), ...(body ? { body } : {}) } } : {}),
+  };
+}
 
 /** Every derived colour, as RGB, keyed by CSS variable name (without the --c- prefix). */
-export function deriveColors(theme: Theme): Record<string, RGB> {
+export function deriveColors(input: Theme): Record<string, RGB> {
+  const theme = fullTheme(input);
   const bg = hexToRgb(theme.background);
-  const accent = hexToRgb(theme.accent);
-  const highlight = hexToRgb(theme.highlight);
-  const support = hexToRgb(fullTheme(theme).support);
   const light = luminance(bg) > 0.4;
   // Surfaces step away from the background — lighter on dark themes, darker on
   // light ones — as far as it takes to read as separate layers on this background.
@@ -159,6 +247,28 @@ export function deriveColors(theme: Theme): Record<string, RGB> {
   const border = mix(bg, away, stepTo(bg, away, surface, T.border, cardT + 0.06, 0.6));
   const text: RGB = light ? [17, 17, 19] : [250, 248, 244];
   const onColor = (c: RGB): RGB => (luminance(c) > 0.35 ? [20, 20, 22] : [255, 255, 255]);
+  /** A brand colour's tokens: itself, hover, on-colour, shades, a lit fill and page washes. */
+  const family = (name: string, c: RGB): Record<string, RGB> => {
+    const on = onColor(c);
+    // The fill's far stop moves away from the on-colour, so text on it only gets clearer:
+    // dark text → a lighter top; white text → a darker bottom.
+    const darkText = on[0] < 128;
+    return {
+      [name]: c,
+      [`${name}-hover`]: mix(c, light ? BLACK : WHITE, 0.2),
+      [`on-${name}`]: on,
+      [`${name}-lighter`]: mix(c, WHITE, 0.5),
+      [`${name}-light`]: mix(c, WHITE, 0.22),
+      [`${name}-dark`]: mix(c, BLACK, 0.22),
+      [`${name}-darker`]: mix(c, BLACK, 0.5),
+      [`${name}-top`]: darkText ? mix(c, WHITE, 0.3) : c,
+      [`${name}-bottom`]: darkText ? c : mix(c, BLACK, 0.28),
+      [`${name}-950`]: mix(bg, c, 0.1),
+      [`${name}-900`]: mix(bg, c, 0.28),
+      [`${name}-800`]: mix(bg, c, 0.4),
+      [`${name}-700`]: mix(bg, c, 0.5),
+    };
+  };
   return {
     bg,
     "bg-deep": mix(bg, away, cardT * 0.35),
@@ -169,25 +279,9 @@ export function deriveColors(theme: Theme): Record<string, RGB> {
     // Secondary text fades toward the page only as far as it stays readable on cards.
     "text-muted": mix(text, bg, fadeTo(text, bg, surface, T.muted, 0.4)),
     "text-subtle": mix(text, bg, fadeTo(text, bg, surface, T.subtle, 0.6)),
-    accent,
-    "accent-hover": mix(accent, light ? BLACK : WHITE, 0.22),
-    "on-accent": onColor(accent),
-    // Accent washes (done/selected chips, banner glows).
-    "accent-950": mix(bg, accent, 0.1),
-    "accent-900": mix(bg, accent, 0.28),
-    "accent-700": mix(bg, accent, 0.5),
-    highlight,
-    "highlight-hover": mix(highlight, light ? BLACK : WHITE, 0.2),
-    "on-highlight": onColor(highlight),
-    "highlight-950": mix(bg, highlight, 0.1),
-    "highlight-900": mix(bg, highlight, 0.28),
-    "highlight-800": mix(bg, highlight, 0.4),
-    support,
-    "support-hover": mix(support, light ? BLACK : WHITE, 0.2),
-    "on-support": onColor(support),
-    "support-950": mix(bg, support, 0.1),
-    "support-900": mix(bg, support, 0.28),
-    "support-700": mix(bg, support, 0.5),
+    ...family("accent", hexToRgb(theme.accent)),
+    ...family("highlight", hexToRgb(theme.highlight)),
+    ...family("support", hexToRgb(theme.support)),
   };
 }
 
@@ -229,13 +323,17 @@ export function applyTheme(theme: Theme): void {
   const vars: Record<string, string> = {};
   for (const [name, [r, g, b]] of Object.entries(deriveColors(theme))) {
     vars[`--c-${name}`] = `${Math.round(r)} ${Math.round(g)} ${Math.round(b)}`;
-    root.style.setProperty(`--c-${name}`, vars[`--c-${name}`]!);
   }
+  const { headings, body } = fullTheme(theme).fonts;
+  vars["--font-display"] = FONT_STYLES[headings!].display;
+  vars["--font-body"] = FONT_STYLES[body!].body;
+  for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+  loadFonts([headings!, body!]);
   const scheme = luminance(theme.background) > 0.4 ? "light" : "dark";
   root.style.colorScheme = scheme;
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme.background);
   try {
-    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(fullTheme(theme)));
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(ownColours(theme)));
     localStorage.setItem(THEME_VARS_KEY, JSON.stringify({ vars, scheme, background: theme.background }));
   } catch { /* storage unavailable */ }
 }
@@ -252,13 +350,16 @@ export async function applyFavicon(theme: Theme, customUrl: string | null): Prom
     faviconTemplate = template;
     const svg = template
       .replace(/#0B0B0C/gi, theme.background)
-      .replace(/#A8FF3E/gi, theme.accent);
+      .replace(/#A8FF3E/gi, theme.accent)
+      .replace(/#FF3D6E/gi, fullTheme(theme).highlight)
+      .replace(/#2EC5FF/gi, fullTheme(theme).support);
     link.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
   } catch { /* keep the static icon */ }
 }
 
 /** A round map pin in the highlight colour, as an SVG data URL (bigger when selected). */
-export function markerIcon(theme: Theme, selected = false): string {
+export function markerIcon(input: Theme, selected = false): string {
+  const theme = fullTheme(input);
   const hl = hexToRgb(theme.highlight);
   const ring = rgbToHex(mix(hl, WHITE, selected ? 0.45 : 0.3));
   const size = selected ? 28 : 20;

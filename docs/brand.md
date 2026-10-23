@@ -22,6 +22,7 @@ a newer one, ask Claude to "update to the latest jimbo-ui".
 | Wordmark — TINNITUS (accent, outlined in the text colour) over a-go-go (highlight) | `apps/web/src/components/Wordmark.tsx` |
 | Favicon, app icons, splash screens | `apps/web/public/` |
 | Tabs: Home · Shows · Artists · Festivals · Venues | `apps/web/src/routes/AppShell.tsx` |
+| UI kit | `apps/web/src/components/ui/jimbo-kit.tsx` is an exact copy of jimbo.ui's reference kit (update by copying); `kit.tsx` re-exports it and adds Tinnitus's pieces — attendance statuses, `EventRow` with an attendance status, the Venues list/map switch, the share button |
 | Attendance status colours | `STATUS` in `apps/web/src/components/ui/kit.tsx` (jimbo-ui's tones: attended = accent, attending = yellow, interested = purple, missed = red, cancelled = muted) |
 
 ## Rules for changing the look

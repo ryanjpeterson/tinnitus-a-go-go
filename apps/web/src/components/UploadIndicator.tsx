@@ -61,7 +61,7 @@ export function UploadIndicator() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
             </button>
           </div>
-          <ul className="max-h-64 divide-y divide-border overflow-y-auto">
+          <ul className="max-h-64 divide-etched overflow-y-auto">
             {jobs.slice(-40).reverse().map((j) => (
               <li key={j.id} className="flex items-center gap-3 px-4 py-2">
                 <div className="min-w-0 flex-1">

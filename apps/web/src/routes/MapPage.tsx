@@ -216,7 +216,7 @@ function VenuePanel({ venues, selected, onCity, onVenue, onAll }: {
   if (!open) {
     return (
       <button onClick={() => setOpen(true)}
-        className="pointer-events-auto absolute left-4 top-4 flex h-11 items-center gap-2 rounded-full border border-white/10 bg-bg/85 px-4 text-[15px] font-semibold shadow-xl backdrop-blur-md">
+        className="pointer-events-auto absolute left-4 top-4 flex h-11 items-center gap-2 rounded-control border border-border bg-bg/95 px-4 text-[15px] font-semibold shadow-xl backdrop-blur-md">
         Venues <span className="text-text-subtle">{venues.length}</span>
       </button>
     );

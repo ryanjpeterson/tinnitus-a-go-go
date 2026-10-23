@@ -4,7 +4,7 @@
  * through the system share sheet where supported, downloaded otherwise.
  */
 
-import { DEFAULT_THEME, THEME_STORAGE_KEY, themeHex, type Theme } from "./theme";
+import { DEFAULT_THEME, fullTheme, THEME_STORAGE_KEY, themeHex, type Theme } from "./theme";
 
 export interface ShareCard {
   imageUrl?: string | null;
@@ -21,9 +21,14 @@ const H = 1920;
 /** The current brand colours (applyTheme caches them), or the defaults. */
 function colors(): { accent: string; highlight: string; bg: string; text: string; tint: string } {
   let theme: Theme = DEFAULT_THEME;
-  try { theme = { ...DEFAULT_THEME, ...(JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) ?? "{}") as Partial<Theme>) }; } catch { /* defaults */ }
+  try {
+    const saved = JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) ?? "null") as Theme | null;
+    if (saved?.accent && saved.background) theme = saved;
+  } catch { /* defaults */ }
+  // Highlight may be left to inference — fill it in the way the app does.
+  const full = fullTheme(theme);
   const hex = themeHex(theme);
-  return { accent: theme.accent, highlight: theme.highlight, bg: theme.background, text: hex.text!, tint: hex["accent-900"]! };
+  return { accent: full.accent, highlight: full.highlight, bg: full.background, text: hex.text!, tint: hex["accent-900"]! };
 }
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {

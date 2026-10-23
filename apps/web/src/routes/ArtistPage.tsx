@@ -395,10 +395,10 @@ export function ArtistPage() {
           title={artist.name}
           actions={
             <>
-              {isAdmin && <Button variant="secondary" className="rounded-full" onClick={() => setEditing(true)}>Edit artist</Button>}
+              {isAdmin && <Button variant="secondary" onClick={() => setEditing(true)}>Edit artist</Button>}
               {artist.mbid && (
                 <a href={`https://musicbrainz.org/artist/${artist.mbid}`} target="_blank" rel="noopener noreferrer">
-                  <Button variant="ghost" className="rounded-full">MusicBrainz ↗</Button>
+                  <Button variant="ghost">MusicBrainz ↗</Button>
                 </a>
               )}
             </>
@@ -481,7 +481,7 @@ export function ArtistPage() {
       {/* Songs heard most (from setlists of attended shows) */}
       {stats.topSongs.length > 0 && (
         <Section title="Songs heard most" count={stats.topSongs.length} flush>
-          <ol className="divide-y divide-border">
+          <ol className="divide-etched">
             {stats.topSongs.map((s, i) => (
               <li key={s.song} className="flex min-h-[52px] items-center gap-3 px-4 py-2">
                 <span className={`w-6 shrink-0 text-right font-display text-lg ${i === 0 ? "text-accent-lime" : "text-text-subtle"}`}>{i + 1}</span>
@@ -496,7 +496,7 @@ export function ArtistPage() {
       {/* Setlists */}
       {(setlistsQ.data?.total ?? 0) > 0 && (
         <Section title="Setlists" count={setlistsQ.data!.total} flush>
-          <div className="divide-y divide-border">
+          <div className="divide-etched">
             {setlistsQ.data!.setlists.map((setlist) => (
               <div key={setlist.id} className="p-4 sm:p-5">
                 <div className="mb-3 flex items-baseline gap-2">

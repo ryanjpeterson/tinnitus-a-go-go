@@ -94,7 +94,7 @@ export function FestivalsPage() {
         title="Festivals"
         count={total}
         actions={canAddNew && (
-          <Button size="md" onClick={() => setAddOpen(true)} className="rounded-full">+ Add festival</Button>
+          <Button size="md" onClick={() => setAddOpen(true)}>+ Add festival</Button>
         )}
       />
 

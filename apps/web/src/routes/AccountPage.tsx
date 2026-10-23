@@ -145,7 +145,7 @@ export function AccountPage() {
 
       {/* Sign out — the only sign-out control on mobile, where the header has no room for one */}
       <div className="space-y-3">
-        <Button variant="secondary" onClick={() => void signOut()} className="h-12 w-full rounded-full text-[15px] text-accent-pink">
+        <Button variant="secondary" onClick={() => void signOut()} className="h-12 w-full rounded-control text-[15px] text-accent-pink">
           Sign out
         </Button>
         <p className="text-center text-sm text-text-subtle">Tinnitus A Go Go · v{__APP_VERSION__}</p>
@@ -272,7 +272,7 @@ function NotificationKinds() {
     try { await api.setPushPrefs(next); } catch { qc.setQueryData(["push-prefs"], { prefs }); }
   };
   return (
-    <div className="w-full divide-y divide-border overflow-hidden rounded-2xl border border-border">
+    <div className="w-full divide-etched overflow-hidden rounded-2xl border border-border">
       {KINDS.map((k) => {
         const on = prefs?.[k.key] ?? true;
         return (

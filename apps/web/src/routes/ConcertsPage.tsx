@@ -179,12 +179,12 @@ export function ConcertsPage() {
         count={total}
         actions={isAdmin && (
           <>
-            <Button size="md" variant={selecting ? "secondary" : "ghost"} className="rounded-full"
+            <Button size="md" variant={selecting ? "secondary" : "ghost"}
               onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
               {selecting ? "Done" : "Select"}
             </Button>
             {!selecting && (
-              <Button size="md" onClick={() => setAddOpen(true)} className="rounded-full">
+              <Button size="md" onClick={() => setAddOpen(true)}>
                 + Add show
               </Button>
             )}
@@ -243,7 +243,7 @@ export function ConcertsPage() {
         <>
           <List>
             {groupByMonth(concerts).map((g) => (
-              <div key={g.label} className="divide-y divide-border">
+              <div key={g.label} className="divide-etched">
                 <ListGroupLabel>{g.label}</ListGroupLabel>
                 {g.items.map((c) => (
                   <EventRow

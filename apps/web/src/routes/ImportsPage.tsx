@@ -80,7 +80,7 @@ export function ImportsPage() {
           ref={fileInputRef}
           type="file"
           accept=".csv,text/csv"
-          className="block w-full text-sm text-text-muted file:mr-4 file:h-10 file:rounded-full file:border-0 file:bg-surface-2 file:px-4 file:text-sm file:font-semibold file:text-text-base hover:file:bg-border"
+          className="block w-full text-sm text-text-muted file:mr-4 file:h-10 file:rounded-control file:border-0 file:bg-surface-2 file:px-4 file:text-sm file:font-semibold file:text-text-base hover:file:bg-border"
         />
         {error && <p className="text-sm text-accent-pink">{error}</p>}
         <div className="flex items-center gap-3">

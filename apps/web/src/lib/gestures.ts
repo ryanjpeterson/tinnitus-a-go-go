@@ -2,6 +2,8 @@
  * Touch gestures for the installed app: pull to refresh and horizontal swipes.
  * Mouse and pen are ignored, and anything inside an open sheet or an element
  * marked `data-no-swipe` (carousels, maps) is left alone.
+ *
+ * Part of jimbo-ui (foundation — don't edit here; change jimbo-ui and update).
  */
 
 import { useEffect, useRef, useState } from "react";

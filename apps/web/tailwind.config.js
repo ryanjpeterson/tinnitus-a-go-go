@@ -1,3 +1,4 @@
+// Part of jimbo-ui (foundation — don't edit here; change jimbo-ui and update).
 /** A theme token: `rgb(var(--c-name) / <alpha>)`. */
 const tok = (name) => `rgb(var(--c-${name}) / <alpha-value>)`;
 

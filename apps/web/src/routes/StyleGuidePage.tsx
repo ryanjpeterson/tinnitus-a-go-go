@@ -2,7 +2,7 @@
  * Style guide — /admin/style
  *
  * Every shared building block, rendered with the real components in the
- * current theme. The written rules live in docs/brand-ui-standards.md; this
+ * current theme. The written rules live in jimbo-ui's guide (see docs/brand.md); this
  * page is the living picture of them, so it changes whenever the kit does.
  */
 
@@ -64,7 +64,7 @@ export function StyleGuidePage() {
     <div className="space-y-10">
       <PageHeader eyebrow="Admin · reference" title="Style guide" />
       <p className="meta -mt-6 max-w-xl">
-        The shared building blocks, live in the current theme. Rules and the reuse checklist: <code className="font-mono text-text-base">docs/brand-ui-standards.md</code>.
+        The shared building blocks, live in the current theme. The rules: the jimbo-ui guide (<code className="font-mono text-text-base">docs/brand.md</code> says where).
       </p>
 
       <Block title="Brand" note="Logo (accent + highlight unless replaced) and the three source colours.">

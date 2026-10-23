@@ -2,6 +2,8 @@
  * ColorPicker — an inline, touch-friendly colour picker (no native dialog):
  * a saturation/brightness field, a hue slider, quick swatches and a hex box.
  * Drag with a finger or mouse; the value updates as you go.
+ *
+ * Part of jimbo-ui (foundation — don't edit here; change jimbo-ui and update).
  */
 
 import { useEffect, useRef, useState } from "react";

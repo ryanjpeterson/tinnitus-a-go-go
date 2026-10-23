@@ -1,0 +1,26 @@
+/* This app's default theme tokens ("R G B" channels), so the page looks right
+   before any script runs. Owned by the app; generate from BRAND.defaultTheme
+   with jimbo-ui's scripts/tokens.mjs. src/lib/theme.ts overrides them at runtime. */
+:root {
+  --c-bg: 20 20 22;
+  --c-bg-deep: 24 24 26;
+  --c-surface: 28 28 30;
+  --c-surface-2: 37 37 39;
+  --c-border: 48 48 50;
+  --c-text: 244 241 235;
+  --c-text-muted: 159 157 154;
+  --c-text-subtle: 114 113 111;
+  --c-accent: 168 255 62;
+  --c-accent-hover: 187 255 104;
+  --c-on-accent: 20 20 22;
+  --c-accent-950: 35 44 26;
+  --c-accent-900: 61 86 33;
+  --c-accent-700: 94 138 42;
+  --c-highlight: 255 61 110;
+  --c-highlight-hover: 255 100 139;
+  --c-on-highlight: 255 255 255;
+  --c-highlight-950: 44 24 31;
+  --c-highlight-900: 86 31 47;
+  --c-highlight-800: 114 36 57;
+  color-scheme: dark;
+}

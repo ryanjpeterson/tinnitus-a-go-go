@@ -1,3 +1,4 @@
+// Part of jimbo-ui (foundation — don't edit here; change jimbo-ui and update).
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 

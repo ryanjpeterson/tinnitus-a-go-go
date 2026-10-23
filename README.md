@@ -381,7 +381,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 ├── packages/shared/              shared by api, web and worker: Zod schemas and types (attendance
 │                                 statuses, roles), CSV parsing, slugify, queue names
 ├── docs/
-│   └── brand-ui-standards.md     brand & UI standards guide (reuse checklist for other apps)
+│   └── brand.md                  Tinnitus's brand on jimbo-ui (what's ours vs shared)
 ├── scripts/
 │   ├── backup.sh                 Postgres dump + MinIO mirror with rotation (TAGG_BACKUP_DIR)
 │   ├── setup-tailscale.sh        Tailscale overlay setup helper
@@ -399,10 +399,14 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 
 ## Design system
 
-The full guide — brand, colour tokens, type, layout, components, patterns and a
-checklist for reusing this layout in other apps — is
-**[docs/brand-ui-standards.md](./docs/brand-ui-standards.md)**. The **Style
-guide** page (`/admin/style`) shows every component live in the current theme.
+The look comes from **[jimbo-ui](https://github.com/ryanjpeterson/jimbo-ui)**,
+Ryan's shared brand and UI system, which grew out of this app. Its guide holds
+the full rules (brand, colour tokens, templates, type, layout, components,
+patterns); **[docs/brand.md](./docs/brand.md)** says which parts are Tinnitus's
+own, and `jimbo-ui.json` records the version this app is on. Files marked
+"Part of jimbo-ui (foundation)" are copied from jimbo-ui — change them there.
+The **Style guide** page (`/admin/style`) shows every component live in the
+current theme.
 
 In short: three brand colours (accent, highlight, background; defaults
 `#A8FF3E`, `#FF3D6E`, `#141416`), picked from 25 dark / mid / light templates

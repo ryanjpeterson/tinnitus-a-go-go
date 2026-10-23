@@ -1,3 +1,4 @@
+// Part of jimbo-ui (foundation — don't edit here; change jimbo-ui and update).
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 

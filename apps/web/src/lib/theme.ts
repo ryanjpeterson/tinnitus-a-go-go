@@ -11,8 +11,11 @@
  * globals.css too, so the app looks right before any script runs; index.html
  * applies the last-used theme from localStorage before first paint.
  *
- * See docs/brand-ui-standards.md for how to reuse this in another app.
+ * Part of jimbo-ui (foundation — don't edit here; change jimbo-ui and update).
+ * The app's own values live in ./brand.config.ts.
  */
+
+import { BRAND } from "./brand.config";
 
 export interface Theme {
   accent: string;
@@ -20,15 +23,11 @@ export interface Theme {
   background: string;
 }
 
-export const DEFAULT_THEME: Theme = {
-  accent: "#A8FF3E",
-  highlight: "#FF3D6E",
-  background: "#141416",
-};
+export const DEFAULT_THEME: Theme = BRAND.defaultTheme;
 
-export const THEME_STORAGE_KEY = "tagg.theme";
+export const THEME_STORAGE_KEY = `${BRAND.storagePrefix}.theme`;
 /** The computed CSS variables, cached for index.html to apply before first paint. */
-export const THEME_VARS_KEY = "tagg.themeVars";
+export const THEME_VARS_KEY = `${BRAND.storagePrefix}.themeVars`;
 
 type RGB = [number, number, number];
 

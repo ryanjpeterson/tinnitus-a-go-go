@@ -1,7 +1,8 @@
 /**
  * Admin brand & theme — /admin/brand
  *
- * Pick a look from the Everyday (dark, mid, light), Flags and Holidays templates (each card is
+ * Pick a look from the categories — Everyday (dark, mid, light), Holidays, Countries, Provinces
+ * and Sports (league and city tabs) — or search them all (each card is
  * a miniature of the app in that theme, with its colours as circles), then fine-tune the
  * colours with the inline picker. Accent and background are always set; highlight and
  * support can be left to the engine, which infers them from the others. Type: a sans, mono or
@@ -20,12 +21,12 @@ import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { applyTheme, contrast, FONT_KEYS, FONT_STYLES, fullTheme, loadFonts, ownColours, themeHex, type FontStyle, type Theme, THEME_KEYS } from "@/lib/theme";
-import { sameTheme, TEMPLATE_SETS } from "@/lib/themes";
+import { ALL_TEMPLATES, sameTheme, TEMPLATE_SETS, type Template, type TemplateGroup } from "@/lib/themes";
 import { useBrand } from "@/lib/useBrand";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ColorPicker";
 import { Wordmark } from "@/components/Wordmark";
-import { PageHeader, Tabs } from "@/components/ui/kit";
+import { PageHeader, PillTabs, SearchField } from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Templates
@@ -92,6 +93,24 @@ function ThemeCard({ name, vibe, theme: input, selected, onPick }: { name: strin
   );
 }
 
+/** A labelled grid of theme tiles (two across on phones, three from sm). */
+function TemplateGrid({ label, templates, draft, pick }: { label?: string; templates: Template[]; draft: Theme; pick: (t: Template) => void }) {
+  return (
+    <div className="space-y-2 pt-1">
+      {label && <p className="eyebrow px-0.5">{label}</p>}
+      {templates.length ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {templates.map((tpl) => (
+            <ThemeCard key={`${tpl.name}|${tpl.vibe}`} {...tpl} selected={same(draft, tpl.theme)} onPick={() => pick(tpl)} />
+          ))}
+        </div>
+      ) : (
+        <p className="meta px-0.5">No looks match. Try a team, a place or a colour.</p>
+      )}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
@@ -116,7 +135,14 @@ export function BrandPage() {
   const [draft, setDraft] = useState<Theme>(ownColours(brand.theme));
   const shown = fullTheme(draft);
   const [editing, setEditing] = useState<ColourKey>("accent");
-  const [set, setSet] = useState(() => TEMPLATE_SETS.find((s) => s.groups.some((g) => g.templates.some((x) => same(x.theme, brand.theme))))?.label ?? TEMPLATE_SETS[0]!.label);
+  // Open on the category (and sub-tab) holding the saved theme.
+  const home = (() => {
+    for (const s of TEMPLATE_SETS) for (const g of s.groups) if (g.templates.some((x) => same(x.theme, brand.theme))) return { set: s.label, group: g.label };
+    return { set: TEMPLATE_SETS[0]!.label, group: "" };
+  })();
+  const [set, setSet] = useState(home.set);
+  const [subTab, setSubTab] = useState(home.group);
+  const [query, setQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const dirty = !sameOwn(draft, brand.theme);
@@ -157,6 +183,20 @@ export function BrandPage() {
   ].filter((w): w is string => !!w);
 
   const field = FIELDS.find((f) => f.key === editing)!;
+  const current = TEMPLATE_SETS.find((s) => s.label === set)!;
+  const group: TemplateGroup | undefined = current.groups.find((g) => g.label === subTab) ?? current.groups[0];
+  const pick = (tpl: Template) => setDraft(ownColours({ ...tpl.theme, fonts: draft.fonts }));
+  // Lower-case and without accents, so "quebec" finds Québec.
+  const plain = (v: string) => v.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  const words = plain(query.trim()).split(/\s+/).filter(Boolean);
+  // Search matches a look's name and vibe, and the category and tab it's in (so "nhl" or "toronto" works).
+  const results = words.length
+    ? ALL_TEMPLATES.filter((tpl) => {
+        const where = TEMPLATE_SETS.flatMap((s) => s.groups.filter((g) => g.templates.includes(tpl)).map((g) => `${s.label} ${g.label}`)).join(" ");
+        const hay = plain(`${tpl.name} ${tpl.vibe} ${where}`);
+        return words.every((w) => hay.includes(w));
+      })
+    : [];
   const optional = editing === "highlight" || editing === "support";
   const inferred = optional && !draft[editing];
 
@@ -170,17 +210,23 @@ export function BrandPage() {
           <h2 className="h-section">Pick a look</h2>
           <p className="meta mt-1">Tap one to try it — the whole app changes. Nothing's saved until you say so.</p>
         </div>
-        <Tabs value={set} onChange={setSet} options={TEMPLATE_SETS.map((s) => ({ value: s.label, label: s.label }))} />
-        {TEMPLATE_SETS.find((s) => s.label === set)!.groups.map((g) => (
-          <div key={g.label} className="space-y-2 pt-1">
-            {g.label !== set && <p className="eyebrow px-0.5">{g.label}</p>}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {g.templates.map((tpl) => (
-                <ThemeCard key={tpl.name} {...tpl} selected={same(draft, tpl.theme)} onPick={() => setDraft(ownColours({ ...tpl.theme, fonts: draft.fonts }))} />
-              ))}
-            </div>
-          </div>
-        ))}
+        <SearchField value={query} onChange={setQuery} placeholder="Search — team, place, colour" />
+        {query.trim() ? (
+          <TemplateGrid label={`${results.length} ${results.length === 1 ? "look" : "looks"}`} templates={results} draft={draft} pick={pick} />
+        ) : (
+          <>
+            <PillTabs value={set} onChange={(v) => { setSet(v); setSubTab(""); }}
+              options={TEMPLATE_SETS.map((s) => ({ value: s.label, label: s.label }))} />
+            {current.tabs && (
+              <div className="rounded-xl border border-border bg-surface-2/60 p-2">
+                <PillTabs value={group!.label} onChange={setSubTab} options={current.groups.map((g) => ({ value: g.label, label: g.label }))} />
+              </div>
+            )}
+            {(current.tabs ? [group!] : current.groups).map((g) => (
+              <TemplateGrid key={g.label} label={g.label !== set ? g.label : undefined} templates={g.templates} draft={draft} pick={pick} />
+            ))}
+          </>
+        )}
       </section>
 
       {/* 2. Fine-tune */}

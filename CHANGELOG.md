@@ -9,6 +9,7 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ### Changed
 
+- **Updated to jimbo.ui's latest (unreleased, after 0.6.0): themes for teams and places** — 218 templates in all, including every NHL, NBA, MLB and NFL team, Toronto, Ottawa and Chicago teams in other leagues, more countries and Canada's provinces and territories. The Brand page groups them as Everyday, Holidays, Countries, Provinces and Sports (with league and city tabs) and has a search box.
 - **Updated to jimbo.ui 0.6.0 and its latest unreleased changes: a calmer, sharper look** — dates in lists are calendar tickets with the month on a coloured band; status dots are flat colour circles; page labels start with three small colour dots; buttons, tabs and pills are softly rounded rather than pill-shaped; cards, borders and row dividers are stronger, with etched lines between rows; the top bar, tab dock and sheets are near-solid instead of glassy. The Brand page has a **Type** section (sans, mono or serif for headings and body) and lets highlight and support be inferred from the other colours, with new Canada and Two-tone templates. The theme API accepts a theme with no highlight and stores the type styles. jimbo.ui's version numbers moved to 0.x (Tinnitus was on 0.5.0, formerly called 3.1.0).
 - **Updated to jimbo.ui 0.5.0: a fourth colour and new templates** — a **support** colour (sky blue by default) now colours page labels above titles, avatar initials and third place in top lists; it's optional, and older saved themes get one worked out from their other colours. The Brand page has **Everyday**, **Flags** and **Holidays** template sets and four colour tabs, and warns if support text is hard to read. The theme API accepts and returns an optional `support`. Top lists' second place now uses the highlight instead of a fixed cyan.
 - **Updated to jimbo.ui 0.4.0** — the shared system is now branded jimbo.ui and uses header text instead of a logo; Tinnitus keeps its own TINNITUS / a-go-go logo, so nothing changes on screen.
@@ -22,6 +23,7 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ### Fixed
 
+- **A changed theme showed up late** — the app trusted its saved copy of the theme for 5 minutes after opening, so a new look (or one changed on another device) could take that long to appear. It now shows the saved copy instantly and checks the server straight away.
 - **Artist counts include only attended shows** — the Artists list counted every show an artist was on, including ones you missed or were only interested in, so an artist seen once could show "2 shows". The list now says **Seen once / Seen 3×**, or **Coming up** / **Not seen yet** for artists you haven't seen, and sorts by attended shows. The artist page header says **Seen N times** (with the longest gap), and its shows are split into **Coming up** (attending / interested) and **Seen** (attended, with that count). Search's "N shows" for artists counts attended shows too.
 
 ### Added — Brand theme and UI standards guide

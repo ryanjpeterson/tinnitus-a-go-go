@@ -23,7 +23,9 @@ export async function searchRoutes(app: FastifyInstance): Promise<void> {
   app.get("/search/index", async (_req, reply) => {
     const [artists, venues, festivals, shows, songs] = await Promise.all([
       rows<{ name: string; slug: string; image_key: string | null; shows: number }>(sql`
-        select a.name, a.slug, a.image_key, count(distinct ca.concert_id)::int as shows
+        select a.name, a.slug, a.image_key,
+          count(distinct ca.concert_id) filter (where exists (
+            select 1 from concert_attendees att where att.concert_id = ca.concert_id and att.status = 'attended'))::int as shows
         from artists a left join concert_artists ca on ca.artist_id = a.id
         group by a.id order by shows desc, a.name`),
       rows<{ name: string; slug: string; city: string | null; shows: number }>(sql`

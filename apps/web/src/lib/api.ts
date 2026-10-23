@@ -823,7 +823,10 @@ export interface ArtistListItem {
   /** Storage key; use imageUrl to show the photo. */
   imageKey: string | null;
   imageUrl: string | null;
+  /** Attended shows only. */
   showCount: number;
+  /** Shows you're attending or interested in. */
+  upcomingCount: number;
 }
 
 export interface ArtistListResponse {

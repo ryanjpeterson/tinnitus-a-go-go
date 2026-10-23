@@ -48,7 +48,8 @@ export function ArtistsPage() {
                 name={a.name}
                 imageUrl={a.imageUrl}
                 // Count first so it survives truncation on narrow screens
-                sub={[plural(a.showCount, "show"), a.genre].filter(Boolean).join(" · ")}
+                // Attended shows only; otherwise say what's going on with them.
+                sub={[a.showCount > 0 ? `Seen ${a.showCount === 1 ? "once" : `${a.showCount}×`}` : a.upcomingCount > 0 ? "Coming up" : "Not seen yet", a.genre].filter(Boolean).join(" · ")}
                 round
               />
             ))}

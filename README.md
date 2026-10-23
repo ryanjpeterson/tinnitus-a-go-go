@@ -942,7 +942,7 @@ An installable web app (add it to your phone's Home Screen). Phone-first layout:
 - **Year in review** for every year: headline numbers vs the previous year, months, repeat and first-time artists, venues, festivals, songs heard live, and every show with its flyer.
 
 ### Artists and venues
-- **Artists** — photo (found automatically from Deezer or Wikimedia Commons and stored locally), bio and genre from Last.fm, times seen and the longest gap between sightings, songs heard most, every show, tagged photos, saved setlists. Admins edit name, genre, bio, MusicBrainz id and image.
+- **Artists** — counted by attended shows only ("Seen 3×"; "Coming up" or "Not seen yet" otherwise); photo (found automatically from Deezer or Wikimedia Commons and stored locally), bio and genre from Last.fm, times seen and the longest gap between sightings, upcoming shows and seen shows listed separately, songs heard most, every show, tagged photos, saved setlists. Admins edit name, genre, bio, MusicBrainz id and image.
 - **Venues** — **List | Map** switch. The map is full screen with a searchable by-city panel (tap a city to zoom to it); venues on the same spot share one pin. Venue pages show the photo, artists seen there, shows, location and **aliases** (former names — old links open the current venue).
 
 ### Search

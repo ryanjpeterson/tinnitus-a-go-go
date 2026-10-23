@@ -404,17 +404,17 @@ export function ArtistPage() {
             </>
           }
         >
-          <p className="font-semibold text-text-base">{plural(concerts.length, "show")} logged</p>
+          {/* Attended shows only — plans and interests are listed under Coming up. */}
+          <p className="font-semibold text-text-base">
+            {stats.attended === 0 ? "Not seen yet" : `Seen ${stats.attended === 1 ? "once" : `${stats.attended} times`}`}
+            {stats.attended > 1 && stats.longestGap && stats.longestGap.days > 60 && (
+              <span className="font-normal text-text-muted"> · longest gap {gapLabel(stats.longestGap.days)} ({stats.longestGap.from.slice(0, 4)}–{stats.longestGap.to.slice(0, 4)})</span>
+            )}
+          </p>
           {stats.firstSeen && (
             <p>
               First seen {fmtDate(stats.firstSeen)}
               {stats.lastSeen && stats.lastSeen !== stats.firstSeen && <> · last {fmtDate(stats.lastSeen)}</>}
-            </p>
-          )}
-          {stats.attended > 1 && (
-            <p>
-              Seen {plural(stats.attended, "time")}
-              {stats.longestGap && stats.longestGap.days > 60 && <> · longest gap {gapLabel(stats.longestGap.days)} ({stats.longestGap.from.slice(0, 4)}–{stats.longestGap.to.slice(0, 4)})</>}
             </p>
           )}
           {stats.upcomingShow && (
@@ -440,31 +440,43 @@ export function ArtistPage() {
         />
       )}
 
-      <section className="space-y-3">
-        <h2 className="h-section px-0.5">Shows<span className="ml-2 text-sm font-body font-medium text-text-subtle">{concerts.length}</span></h2>
-        {concerts.length === 0 ? (
-          <EmptyState title="No shows logged." />
-        ) : (
-          <List>
-            {concerts.map((c) => {
-              // Link to festival page for festival_day concerts, otherwise to concert page
-              const isFestival = c.type === "festival_day" && !!c.eventSeries;
-              const href = isFestival && c.eventSeries?.slug ? `/festivals/${c.eventSeries.slug}#set-${slug}` : `/shows/${c.slug || c.id}`;
-              return (
-                <EventRow
-                  key={c.id}
-                  to={href}
-                  date={c.date}
-                  title={isFestival ? c.eventSeries!.name : (c.venue?.name ?? "Unknown venue")}
-                  subtitle={[isFestival ? c.venue?.name : null, c.venue?.city].filter(Boolean).join(" · ") || undefined}
-                  meta={[!isFestival ? c.eventSeries?.name : null, c.appearanceNotes].filter(Boolean).join(" · ") || undefined}
-                  status={c.attendance?.status}
-                />
-              );
-            })}
-          </List>
-        )}
-      </section>
+      {/* Coming up (attending / interested) and Seen (attended) — only attended shows count as seen. */}
+      {(() => {
+        const seen = concerts.filter((c) => c.attendance?.status === "attended");
+        const coming = concerts.filter((c) => c.attendance?.status !== "attended");
+        const row = (c: (typeof concerts)[number]) => {
+          // Link to festival page for festival_day concerts, otherwise to concert page
+          const isFestival = c.type === "festival_day" && !!c.eventSeries;
+          const href = isFestival && c.eventSeries?.slug ? `/festivals/${c.eventSeries.slug}#set-${slug}` : `/shows/${c.slug || c.id}`;
+          return (
+            <EventRow
+              key={c.id}
+              to={href}
+              date={c.date}
+              title={isFestival ? c.eventSeries!.name : (c.venue?.name ?? "Unknown venue")}
+              subtitle={[isFestival ? c.venue?.name : null, c.venue?.city].filter(Boolean).join(" · ") || undefined}
+              meta={[!isFestival ? c.eventSeries?.name : null, c.appearanceNotes].filter(Boolean).join(" · ") || undefined}
+              status={c.attendance?.status}
+            />
+          );
+        };
+        return (
+          <>
+            {coming.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="h-section px-0.5">Coming up<span className="ml-2 text-sm font-body font-medium text-text-subtle">{coming.length}</span></h2>
+                <List>{coming.map(row)}</List>
+              </section>
+            )}
+            <section className="space-y-3">
+              <h2 className="h-section px-0.5">Seen<span className="ml-2 text-sm font-body font-medium text-text-subtle">{seen.length}</span></h2>
+              {seen.length === 0
+                ? <EmptyState title="Not seen yet." body={coming.length > 0 ? "Their shows you're going to or interested in are above." : undefined} />
+                : <List>{seen.map(row)}</List>}
+            </section>
+          </>
+        );
+      })()}
 
       {/* Songs heard most (from setlists of attended shows) */}
       {stats.topSongs.length > 0 && (

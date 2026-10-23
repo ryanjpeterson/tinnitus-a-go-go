@@ -57,6 +57,10 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
       ? ilike(schema.artists.name, `%${q}%`)
       : undefined;
 
+    // Counts are of attended shows only; shows you're going to or interested in
+    // are counted separately, and missed/cancelled ones not at all.
+    const attended = sql`exists (select 1 from concert_attendees att where att.concert_id = ${schema.concertArtists.concertId} and att.status = 'attended')`;
+    const upcoming = sql`exists (select 1 from concert_attendees att where att.concert_id = ${schema.concertArtists.concertId} and att.status in ('attending', 'interested'))`;
     const [rows, countRows] = await Promise.all([
       db
         .select({
@@ -65,13 +69,18 @@ export async function artistRoutes(app: FastifyInstance): Promise<void> {
           slug: schema.artists.slug,
           genre: schema.artists.genre,
           imageKey: schema.artists.imageKey,
-          showCount: sql<number>`count(distinct ${schema.concertArtists.concertId})::int`,
+          showCount: sql<number>`count(distinct ${schema.concertArtists.concertId}) filter (where ${attended})::int`,
+          upcomingCount: sql<number>`count(distinct ${schema.concertArtists.concertId}) filter (where ${upcoming})::int`,
         })
         .from(schema.artists)
         .leftJoin(schema.concertArtists, eq(schema.concertArtists.artistId, schema.artists.id))
         .where(conditions)
         .groupBy(schema.artists.id)
-        .orderBy(desc(sql`count(distinct ${schema.concertArtists.concertId})`))
+        .orderBy(
+          desc(sql`count(distinct ${schema.concertArtists.concertId}) filter (where ${attended})`),
+          desc(sql`count(distinct ${schema.concertArtists.concertId}) filter (where ${upcoming})`),
+          schema.artists.name,
+        )
         .limit(limit)
         .offset(offset),
       db

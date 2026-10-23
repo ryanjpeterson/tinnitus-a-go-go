@@ -7,6 +7,10 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Artist counts include only attended shows** — the Artists list counted every show an artist was on, including ones you missed or were only interested in, so an artist seen once could show "2 shows". The list now says **Seen once / Seen 3×**, or **Coming up** / **Not seen yet** for artists you haven't seen, and sorts by attended shows. The artist page header says **Seen N times** (with the longest gap), and its shows are split into **Coming up** (attending / interested) and **Seen** (attended, with that count). Search's "N shows" for artists counts attended shows too.
+
 ### Added — Brand theme and UI standards guide
 
 - **Brand & theme** (Account → Brand & theme) — colour pickers (and hex fields) for the **accent** (green), **highlight** (pink), **background** and **logo** colours. Changes preview live across the app and only stick when saved; presets (Tinnitus, Ocean, Ember, Violet, Daylight), readability checks (WCAG contrast) and **Back to defaults**.

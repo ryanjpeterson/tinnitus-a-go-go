@@ -20,13 +20,13 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { applyTheme, contrast, FONT_GROUPS, FONTS, fullTheme, loadFonts, ownColours, themeHex, type Theme, THEME_KEYS } from "@/lib/theme";
+import { applyTheme, brandConfigLine, contrast, exportTheme, FONT_GROUPS, FONTS, fullTheme, importTheme, loadFonts, ownColours, themeHex, tokensCss, type Theme, THEME_KEYS } from "@/lib/theme";
 import { ALL_TEMPLATES, sameTheme, TEMPLATE_SETS, type Template, type TemplateGroup } from "@/lib/themes";
 import { useBrand } from "@/lib/useBrand";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ColorPicker";
 import { Wordmark } from "@/components/Wordmark";
-import { PageHeader, PillTabs, RangeField, SearchField, Tabs } from "@/components/ui/kit";
+import { PageHeader, PillTabs, RangeField, SearchField, Sheet, Tabs } from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Templates
@@ -338,6 +338,8 @@ export function BrandPage() {
         </div>
       </section>
 
+      <ShareTheme draft={draft} onImport={(t) => setDraft(ownColours(t))} />
+
       <BrandAssets logoUrl={brand.logoUrl} faviconUrl={brand.faviconUrl} onChange={refresh} />
 
       <Link to="/admin/style" className="card flex items-center justify-between gap-3 p-4 hover:border-accent">
@@ -418,6 +420,89 @@ function BrandAssets({ logoUrl, faviconUrl, onChange }: { logoUrl: string | null
           <img src={faviconUrl ?? (document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.href ?? "/favicon.svg")} alt="" className="h-10 w-10" />)}
         {error && <p className="text-sm text-accent-pink">{error}</p>}
       </div>
+    </section>
+  );
+}
+
+/**
+ * Share this look: export the theme being edited (a theme file, the
+ * brand.config.ts line, or tokens.css) and import one — so any jimbo.ui app's
+ * Brand page, or the showcase used as a playground, can design a theme for
+ * another app.
+ */
+function ShareTheme({ draft, onImport }: { draft: Theme; onImport: (t: Theme) => void }) {
+  const [open, setOpen] = useState<"export" | "import" | null>(null);
+  const [format, setFormat] = useState<"file" | "config" | "tokens">("file");
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const out = format === "file" ? exportTheme(draft) : format === "config" ? brandConfigLine(draft) : tokensCss(draft);
+  const fileName = { file: "theme.json", config: "brand.config.ts.txt", tokens: "tokens.css" }[format];
+
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(out); setCopied(true); setTimeout(() => setCopied(false), 1500); }
+    catch { setError("Couldn't copy — select the text and copy it yourself."); }
+  };
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([out], { type: format === "file" ? "application/json" : "text/plain" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: fileName });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const apply = (value: string) => {
+    try { onImport(importTheme(value).theme); setOpen(null); setText(""); setError(null); }
+    catch (err) { setError(err instanceof Error ? err.message : "Couldn't read that theme."); }
+  };
+
+  return (
+    <section className="space-y-3">
+      <div className="px-0.5">
+        <h2 className="h-section">Share this look</h2>
+        <p className="meta mt-1">Take this theme to another app, or bring one in. Importing previews it — save to keep it.</p>
+      </div>
+      <div className="card flex flex-wrap gap-2 p-4 sm:p-5">
+        <button type="button" className="btn btn-secondary" onClick={() => { setError(null); setOpen("export"); }}>Export…</button>
+        <button type="button" className="btn btn-secondary" onClick={() => { setError(null); setOpen("import"); }}>Import…</button>
+      </div>
+
+      {open === "export" && (
+        <Sheet title="Export this look" subtitle="A theme file for another Brand page, or the lines for an app's code." onClose={() => setOpen(null)}>
+          <div className="space-y-3 p-5">
+            <Tabs value={format} onChange={setFormat}
+              options={[{ value: "file", label: "Theme file" }, { value: "config", label: "brand.config" }, { value: "tokens", label: "tokens.css" }]} />
+            <p className="meta">
+              {format === "file" && "Import it on any jimbo.ui Brand page."}
+              {format === "config" && "Replace the defaultTheme line in the app's src/lib/brand.config.ts."}
+              {format === "tokens" && "Replace the app's src/styles/tokens.css, so its first paint matches."}
+            </p>
+            <textarea readOnly value={out} rows={10} onFocus={(e) => e.currentTarget.select()}
+              className="field block w-full resize-y py-3 font-mono text-xs leading-relaxed" aria-label="Exported theme" />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn btn-primary" onClick={() => void copy()}>{copied ? "Copied" : "Copy"}</button>
+              <button type="button" className="btn btn-secondary" onClick={download}>Download {fileName}</button>
+            </div>
+            {error && <p className="text-sm text-highlight">{error}</p>}
+          </div>
+        </Sheet>
+      )}
+
+      {open === "import" && (
+        <Sheet title="Import a look" subtitle="Paste a theme file, or choose one. It previews across the app until you save or leave." onClose={() => setOpen(null)}>
+          <div className="space-y-3 p-5">
+            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} placeholder='{ "kind": "jimbo-ui/theme", "theme": { "accent": "#…", "background": "#…" } }'
+              className="field block w-full resize-y py-3 font-mono text-xs leading-relaxed" aria-label="Theme to import" />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn btn-primary" disabled={!text.trim()} onClick={() => apply(text)}>Preview it</button>
+              <label className="btn btn-secondary cursor-pointer">
+                Choose a file…
+                <input type="file" accept="application/json,.json,text/plain" className="sr-only"
+                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void f.text().then(apply); }} />
+              </label>
+            </div>
+            {error && <p className="text-sm text-highlight">{error}</p>}
+          </div>
+        </Sheet>
+      )}
     </section>
   );
 }

@@ -423,6 +423,80 @@ export function mapStyles(theme: Theme): MapStyle[] {
   ];
 }
 
+/**
+ * An app's src/styles/tokens.css for a theme: every colour token ("R G B"),
+ * any non-default fonts, weights and spacing, and the colour scheme — so the
+ * page looks right before any script runs. scripts/tokens.mjs prints this.
+ */
+export function tokensCss(theme: Theme): string {
+  const lines = Object.entries(deriveColors(theme)).map(([k, v]) => `  --c-${k}: ${v.map(Math.round).join(" ")};`);
+  const f = fullTheme(theme).fonts;
+  // Fonts other than the defaults (index.html must load their Google Fonts too).
+  if (f.headings !== "archivo") lines.push(`  --font-display: ${FONTS[f.headings!]!.css};`);
+  if (f.body !== "inter") lines.push(`  --font-body: ${FONTS[f.body!]!.css};`);
+  if (f.headingsWeight !== 800) lines.push(`  --font-display-weight: ${f.headingsWeight};`);
+  if (f.bodyWeight !== 400) lines.push(`  --font-body-weight: ${f.bodyWeight};`);
+  if (f.headingsTracking !== -0.015) lines.push(`  --font-display-tracking: ${f.headingsTracking}em;`);
+  if (f.bodyTracking !== 0) lines.push(`  --font-body-tracking: ${f.bodyTracking}em;`);
+  return [
+    `/* This app's default theme tokens ("R G B" channels), so the page looks right`,
+    `   before any script runs. Owned by the app; generate from BRAND.defaultTheme`,
+    `   with jimbo-ui's scripts/tokens.mjs (or export it from a Brand page).`,
+    `   src/lib/theme.ts overrides them at runtime. */`,
+    ":root {", ...lines, `  color-scheme: ${luminance(theme.background) > 0.4 ? "light" : "dark"};`, "}",
+  ].join("\n");
+}
+
+/** The kind marker in a theme file. */
+export const THEME_FILE_KIND = "jimbo-ui/theme";
+
+/**
+ * A theme as a shareable file (JSON): what it sets (inferred colours and
+ * defaults left out, so they stay inferred), with an optional name. Import it
+ * into any jimbo.ui app's Brand page, or paste it into an app's brand.config.ts.
+ */
+export function exportTheme(theme: Theme, name?: string): string {
+  return JSON.stringify({ kind: THEME_FILE_KIND, version: 1, ...(name ? { name } : {}), theme: ownColours(theme) }, null, 2);
+}
+
+/** The `defaultTheme` line for an app's src/lib/brand.config.ts. */
+export function brandConfigLine(theme: Theme): string {
+  const literal = JSON.stringify(ownColours(theme)).replace(/"(\w+)":/g, "$1: ").replace(/,(?=\S)/g, ", ").replace(/\{(?=\S)/g, "{ ").replace(/(?<=\S)\}/g, " }");
+  return `  defaultTheme: ${literal} satisfies Theme,`;
+}
+
+/**
+ * Read a theme from text: a theme file (`exportTheme`), a bare theme object,
+ * or anything with a `theme` or `defaultTheme` in it. Unknown fields are
+ * dropped and numbers clamped; throws an Error with a plain message if there's
+ * no usable accent and background.
+ */
+export function importTheme(text: string): { theme: Theme; name?: string } {
+  let data: unknown;
+  try { data = JSON.parse(text); } catch { throw new Error("That isn't a theme file — it should be JSON, like an export from a Brand page."); }
+  const obj = (data ?? {}) as Record<string, unknown>;
+  const raw = ((obj.theme ?? obj.defaultTheme ?? obj) ?? {}) as Record<string, unknown>;
+  const hex = (v: unknown) => (typeof v === "string" && isHex(v) ? v.toUpperCase() : undefined);
+  const num = (v: unknown, min: number, max: number) => (typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : undefined);
+  const accent = hex(raw.accent), background = hex(raw.background);
+  if (!accent || !background) throw new Error("The file needs at least an accent and a background colour (#RRGGBB).");
+  const f = (raw.fonts ?? {}) as Record<string, unknown>;
+  const theme: Theme = {
+    accent, background,
+    highlight: hex(raw.highlight), support: hex(raw.support),
+    fonts: {
+      headings: typeof f.headings === "string" ? fontFor(f.headings, "headings") : undefined,
+      body: typeof f.body === "string" ? fontFor(f.body, "body") : undefined,
+      headingsWeight: num(f.headingsWeight, 100, 900), bodyWeight: num(f.bodyWeight, 100, 900),
+      headingsTracking: num(f.headingsTracking, -0.1, 0.3), bodyTracking: num(f.bodyTracking, -0.1, 0.3),
+    },
+    infer: raw.infer === "tonal" ? "tonal" : undefined,
+    vibrancy: num(raw.vibrancy, 0.4, 1.5), contrast: num(raw.contrast, 0.8, 1.6),
+  };
+  const name = typeof obj.name === "string" ? obj.name.slice(0, 80) : undefined;
+  return { theme: ownColours(theme), ...(name ? { name } : {}) };
+}
+
 /** Write the theme to the page: CSS variables, browser chrome colour, and a cached copy for next load. */
 export function applyTheme(theme: Theme): void {
   const root = document.documentElement;

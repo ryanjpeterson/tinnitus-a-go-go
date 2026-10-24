@@ -1,6 +1,7 @@
 /* This app's default theme tokens ("R G B" channels), so the page looks right
    before any script runs. Owned by the app; generate from BRAND.defaultTheme
-   with jimbo-ui's scripts/tokens.mjs. src/lib/theme.ts overrides them at runtime. */
+   with jimbo-ui's scripts/tokens.mjs (or export it from a Brand page).
+   src/lib/theme.ts overrides them at runtime. */
 :root {
   --c-bg: 20 20 22;
   --c-bg-deep: 26 26 28;

@@ -49,6 +49,8 @@ export interface Theme {
   vibrancy?: number;
   /** Layer contrast: 1 is standard; up to 1.6 for cards, borders and labels that stand out more, down to 0.8 for softer. */
   contrast?: number;
+  /** The page's backdrop: an abstract pattern over a base, in the theme's colours (`BACKDROPS`). */
+  backdrop?: Backdrop;
   /**
    * How missing colours are inferred: `contrast` (the default) picks new hues
    * that stand apart; `tonal` uses lighter and darker versions of the accent,
@@ -59,7 +61,7 @@ export interface Theme {
 
 /** A theme as a server or cache returns it: anything may be missing or null. */
 export type SavedTheme = { [K in "accent" | "background" | "highlight" | "support"]?: string | null }
-  & { fonts?: Theme["fonts"] | null; infer?: Theme["infer"] | null; vibrancy?: number | null; contrast?: number | null };
+  & { fonts?: Theme["fonts"] | null; infer?: Theme["infer"] | null; vibrancy?: number | null; contrast?: number | null; backdrop?: Backdrop | null };
 
 /**
  * The fonts a theme can use. `css` is the font stack; `google` the Google Fonts
@@ -116,6 +118,31 @@ export function loadFonts(keys: FontKey[]): void {
     document.head.appendChild(link);
   }
 }
+
+/** An abstract page backdrop: a pattern over a base, with strength and size. */
+export type Backdrop = {
+  /** none · ripples · waves · contours · geometry · burst · dots · arrows · shapes */
+  pattern?: BackdropPattern;
+  /** solid (just the page colour) · gradient (a sweep of accent and support) · glow (soft colour orbs — the default) */
+  base?: "solid" | "gradient" | "glow";
+  /** 0–1, default 0.5: how strongly the pattern and base show. */
+  intensity?: number;
+  /** 0.5–2, default 1: the pattern's size. */
+  scale?: number;
+};
+export type BackdropPattern = "none" | "ripples" | "waves" | "contours" | "geometry" | "burst" | "dots" | "arrows" | "shapes";
+export const BACKDROPS: { key: BackdropPattern; label: string; hint: string }[] = [
+  { key: "none", label: "None", hint: "Just the base" },
+  { key: "ripples", label: "Ripples", hint: "Rings spreading from two corners" },
+  { key: "waves", label: "Waves", hint: "Layered waves along the bottom" },
+  { key: "contours", label: "Contours", hint: "Topographic lines" },
+  { key: "geometry", label: "Geometry", hint: "A triangle lattice" },
+  { key: "burst", label: "Light burst", hint: "Rays from the top" },
+  { key: "dots", label: "Dot grid", hint: "Fine dots" },
+  { key: "arrows", label: "Arrows", hint: "Chevrons heading up" },
+  { key: "shapes", label: "Shapes", hint: "Scattered circles, triangles and squiggles" },
+];
+export const BACKDROP_BASES = ["solid", "gradient", "glow"] as const;
 
 /** A theme with all four colours filled in (missing ones inferred). */
 export type FullTheme = Required<Theme>;
@@ -296,8 +323,21 @@ export function fullTheme(theme: Theme): FullTheme {
     },
     vibrancy: theme.vibrancy ?? 1,
     contrast: theme.contrast ?? 1,
+    backdrop: { pattern: theme.backdrop?.pattern ?? "none", base: theme.backdrop?.base ?? "glow", intensity: theme.backdrop?.intensity ?? 0.5, scale: theme.backdrop?.scale ?? 1 },
     infer: theme.infer ?? "contrast",
   };
+}
+
+/** A backdrop without its defaults (none, glow, 0.5, 1), or undefined if it's all defaults. */
+function ownBackdrop(b: Backdrop | undefined): Backdrop | undefined {
+  if (!b) return undefined;
+  const out: Backdrop = {
+    ...(b.pattern && b.pattern !== "none" ? { pattern: b.pattern } : {}),
+    ...(b.base && b.base !== "glow" ? { base: b.base } : {}),
+    ...(b.intensity !== undefined && b.intensity !== 0.5 ? { intensity: b.intensity } : {}),
+    ...(b.scale !== undefined && b.scale !== 1 ? { scale: b.scale } : {}),
+  };
+  return Object.keys(out).length ? out : undefined;
 }
 
 /** Just what a theme sets (drops empty optional colours and defaults) — what to save. */
@@ -319,6 +359,7 @@ export function ownColours(theme: Theme): Theme {
     ...(theme.infer === "tonal" && (!theme.highlight || !theme.support) ? { infer: "tonal" as const } : {}),
     ...(theme.vibrancy !== undefined && theme.vibrancy !== 1 ? { vibrancy: theme.vibrancy } : {}),
     ...(theme.contrast !== undefined && theme.contrast !== 1 ? { contrast: theme.contrast } : {}),
+    ...(ownBackdrop(theme.backdrop) ? { backdrop: ownBackdrop(theme.backdrop) } : {}),
   };
 }
 
@@ -423,6 +464,126 @@ export function mapStyles(theme: Theme): MapStyle[] {
   ];
 }
 
+/** CSS background layers for a theme's backdrop, ready for `background-image` and friends. */
+export type BackdropLayers = { image: string; size: string; position: string; repeat: string };
+
+/**
+ * The page backdrop as CSS background layers: the pattern (an inline SVG or a
+ * gradient, drawn in the theme's colours at the chosen strength and size)
+ * over the base. Abstract and static; applyTheme sets it on the page.
+ */
+export function backdropCss(input: Theme): BackdropLayers {
+  const theme = fullTheme(input);
+  const c = themeHex(input);
+  const b = theme.backdrop;
+  const k = Math.max(0, Math.min(1, b.intensity!)) * 2;   // 0–2, 1 at the default
+  const sc = Math.max(0.5, Math.min(2, b.scale!));
+  const rgba = (hex: string, a: number) => { const [r, g, bl] = hexToRgb(hex); return `rgb(${r} ${g} ${bl} / ${Math.max(0, Math.min(1, a)).toFixed(3)})`; };
+  const svg = (body: string, w: number, h: number, ar = "xMidYMid slice") =>
+    `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${w} ${h}' width='${w}' height='${h}' preserveAspectRatio='${ar}'>${body}</svg>`)}")`;
+  const n = (v: number) => Math.round(v * 10) / 10;
+  const layers: BackdropLayers[] = [];
+  const add = (image: string, size = "auto", position = "0 0", repeat = "no-repeat") => layers.push({ image, size, position, repeat });
+
+  switch (b.pattern) {
+    case "ripples": {
+      let body = "";
+      for (const [cx, cy, col] of [[860, 140, c.accent!], [140, 900, c.support!]] as const) {
+        const step = 44 * sc;
+        for (let i = 1; i * step < 1500; i++) {
+          body += `<circle cx='${cx}' cy='${cy}' r='${n(i * step)}' fill='none' stroke='${col}' stroke-width='1.5' stroke-opacity='${(0.16 * k * Math.max(0.15, 1 - (i * step) / 1500)).toFixed(3)}'/>`;
+        }
+      }
+      add(svg(body, 1000, 1000), "cover", "center");
+      break;
+    }
+    case "waves": {
+      let body = "";
+      const cols = [c.support!, c.highlight!, c.accent!];
+      cols.forEach((col, j) => {
+        const base = 900 - (70 + j * 85) * sc, amp = 34 * sc, len = 420 * sc, phase = j * 140;
+        let d = `M0 ${n(base)}`;
+        for (let x = 0; x <= 1600; x += 20) d += ` L${x} ${n(base + amp * Math.sin(((x + phase) / len) * Math.PI * 2))}`;
+        body += `<path d='${d} L1600 900 L0 900 Z' fill='${col}' fill-opacity='${(0.06 * k).toFixed(3)}'/>`;
+        body += `<path d='${d}' fill='none' stroke='${col}' stroke-width='2' stroke-opacity='${(0.22 * k).toFixed(3)}'/>`;
+      });
+      add(svg(body, 1600, 900, "xMidYMax slice"), "cover", "bottom");
+      break;
+    }
+    case "contours": {
+      let body = "";
+      const [cx, cy] = [300, 330];
+      for (let i = 0; i < 22; i++) {
+        const R = (36 + i * 42) * sc;
+        let d = "";
+        for (let a = 0; a <= 360; a += 6) {
+          const t = (a * Math.PI) / 180;
+          const rr = R * (1 + 0.09 * Math.sin(3 * t + i * 0.45) + 0.05 * Math.sin(5 * t - i * 0.8));
+          d += `${a ? "L" : "M"}${n(cx + rr * Math.cos(t))} ${n(cy + rr * Math.sin(t))}`;
+        }
+        body += `<path d='${d}Z' fill='none' stroke='${i % 4 === 0 ? c.accent! : c.support!}' stroke-width='${i % 4 === 0 ? 1.6 : 1}' stroke-opacity='${(0.2 * k).toFixed(3)}'/>`;
+      }
+      add(svg(body, 1000, 1000), "cover", "center");
+      break;
+    }
+    case "geometry": {
+      const w = 60, h = n(w * 0.866);
+      const body = `<path d='M0 ${h} L${w / 2} 0 L${w} ${h} M0 ${h} H${w} M${w / 2} 0 H${w * 1.5}' fill='none' stroke='${c["text-subtle"]!}' stroke-opacity='${(0.18 * k).toFixed(3)}'/>`
+        + `<path d='M0 ${h} L${w / 2} 0 L${w} ${h}Z' fill='${c.accent!}' fill-opacity='${(0.05 * k).toFixed(3)}'/>`;
+      add(svg(body, w, h, "none"), `${n(w * sc)}px ${n(h * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "burst": {
+      const ray = 2.2 * sc, gap = 9 * sc;
+      add(`radial-gradient(circle at 50% -6%, transparent 0, transparent 18%, ${c.bg!} 78%)`, "100% 100%");
+      add(`repeating-conic-gradient(from -90deg at 50% -6%, ${rgba(c.accent!, 0.14 * k)} 0deg ${n(ray)}deg, transparent ${n(ray)}deg ${n(gap)}deg)`, "100% 100%");
+      break;
+    }
+    case "dots": {
+      const body = `<circle cx='11' cy='11' r='1.4' fill='${c.text!}' fill-opacity='${(0.16 * k).toFixed(3)}'/>`;
+      add(svg(body, 22, 22, "none"), `${n(22 * sc)}px ${n(22 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "arrows": {
+      const body = `<path d='M10 26 L24 12 L38 26' fill='none' stroke='${c.accent!}' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' stroke-opacity='${(0.16 * k).toFixed(3)}'/>`
+        + `<path d='M34 58 L48 44 L62 58' fill='none' stroke='${c.highlight!}' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' stroke-opacity='${(0.12 * k).toFixed(3)}'/>`;
+      add(svg(body, 72, 72, "none"), `${n(72 * sc)}px ${n(72 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "shapes": {
+      const so = (0.24 * k).toFixed(3), fo = (0.1 * k).toFixed(3);
+      const body = `<circle cx='40' cy='44' r='16' fill='none' stroke='${c.accent!}' stroke-width='3' stroke-opacity='${so}'/>`
+        + `<circle cx='196' cy='196' r='7' fill='${c.highlight!}' fill-opacity='${fo}'/>`
+        + `<path d='M150 30 L172 68 H128 Z' fill='none' stroke='${c.support!}' stroke-width='3' stroke-linejoin='round' stroke-opacity='${so}'/>`
+        + `<rect x='60' y='170' width='26' height='26' rx='3' transform='rotate(18 73 183)' fill='none' stroke='${c.highlight!}' stroke-width='3' stroke-opacity='${so}'/>`
+        + `<path d='M212 110 v20 M202 120 h20' stroke='${c.accent!}' stroke-width='3' stroke-linecap='round' stroke-opacity='${so}'/>`
+        + `<path d='M20 120 q12 -14 24 0 t24 0 t24 0' fill='none' stroke='${c.support!}' stroke-width='3' stroke-linecap='round' stroke-opacity='${so}'/>`
+        + `<circle cx='120' cy='126' r='4' fill='${c.accent!}' fill-opacity='${fo}'/>`;
+      add(svg(body, 240, 240, "none"), `${n(240 * sc)}px ${n(240 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+  }
+
+  // The base, under the pattern.
+  const bk = k;
+  if (b.base === "glow") {
+    add(`radial-gradient(circle at 10% 4%, ${rgba(c.accent!, 0.2 * bk)}, transparent 36%)`);
+    add(`radial-gradient(circle at 98% 36%, ${rgba(c.highlight!, 0.16 * bk)}, transparent 32%)`);
+    add(`radial-gradient(circle at 14% 98%, ${rgba(c.support!, 0.16 * bk)}, transparent 38%)`);
+    add(`linear-gradient(${rgba(c["bg-deep"]!, 0)}, ${c["bg-deep"]!})`);
+  } else if (b.base === "gradient") {
+    add(`linear-gradient(155deg, ${rgba(c.accent!, 0.16 * bk)} 0%, transparent 42%, transparent 58%, ${rgba(c.support!, 0.14 * bk)} 100%)`);
+    add(`linear-gradient(${c.bg!}, ${c["bg-deep"]!})`);
+  }
+  if (!layers.length) add("none");
+  return {
+    image: layers.map((l) => l.image).join(", "),
+    size: layers.map((l) => l.size === "auto" ? "100% 100%" : l.size).join(", "),
+    position: layers.map((l) => l.position).join(", "),
+    repeat: layers.map((l) => l.repeat).join(", "),
+  };
+}
+
 /**
  * An app's src/styles/tokens.css for a theme: every colour token ("R G B"),
  * any non-default fonts, weights and spacing, and the colour scheme — so the
@@ -492,6 +653,12 @@ export function importTheme(text: string): { theme: Theme; name?: string } {
     },
     infer: raw.infer === "tonal" ? "tonal" : undefined,
     vibrancy: num(raw.vibrancy, 0.4, 1.5), contrast: num(raw.contrast, 0.8, 1.6),
+    backdrop: (() => {
+      const bd = (raw.backdrop ?? {}) as Record<string, unknown>;
+      const pattern = BACKDROPS.find((x) => x.key === bd.pattern)?.key;
+      const base = BACKDROP_BASES.find((x) => x === bd.base);
+      return { pattern, base, intensity: num(bd.intensity, 0, 1), scale: num(bd.scale, 0.5, 2) };
+    })(),
   };
   const name = typeof obj.name === "string" ? obj.name.slice(0, 80) : undefined;
   return { theme: ownColours(theme), ...(name ? { name } : {}) };
@@ -511,6 +678,11 @@ export function applyTheme(theme: Theme): void {
   vars["--font-body-weight"] = String(f.bodyWeight);
   vars["--font-display-tracking"] = `${f.headingsTracking}em`;
   vars["--font-body-tracking"] = `${f.bodyTracking}em`;
+  const bd = backdropCss(theme);
+  vars["--bg-image"] = bd.image;
+  vars["--bg-size"] = bd.size;
+  vars["--bg-position"] = bd.position;
+  vars["--bg-repeat"] = bd.repeat;
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   loadFonts([f.headings!, f.body!]);
   const scheme = luminance(theme.background) > 0.4 ? "light" : "dark";

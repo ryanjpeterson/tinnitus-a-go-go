@@ -20,7 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { applyTheme, brandConfigLine, contrast, exportTheme, FONT_GROUPS, FONTS, fullTheme, importTheme, loadFonts, ownColours, themeHex, tokensCss, type Theme, THEME_KEYS } from "@/lib/theme";
+import { applyTheme, BACKDROP_BASES, BACKDROPS, backdropCss, brandConfigLine, contrast, exportTheme, FONT_GROUPS, FONTS, fullTheme, importTheme, loadFonts, ownColours, themeHex, tokensCss, type Theme, THEME_KEYS } from "@/lib/theme";
 import { ALL_TEMPLATES, sameTheme, TEMPLATE_SETS, type Template, type TemplateGroup } from "@/lib/themes";
 import { useBrand } from "@/lib/useBrand";
 import { Button } from "@/components/ui/button";
@@ -153,6 +153,7 @@ export function BrandPage() {
   // The type pickers show each style in its own face.
   useEffect(() => { loadFonts(Object.keys(FONTS)); }, []);
   const [fontTab, setFontTab] = useState<Partial<Record<"headings" | "body", string>>>({});
+  const setBackdrop = (patch: NonNullable<Theme["backdrop"]>) => setDraft((d) => ownColours({ ...d, backdrop: { ...d.backdrop, ...patch } }));
   const setFonts = (patch: NonNullable<Theme["fonts"]>) => setDraft((d) => ownColours({ ...d, fonts: { ...d.fonts, ...patch } }));
   const saved = useRef(brand.theme);
   saved.current = brand.theme;
@@ -188,7 +189,8 @@ export function BrandPage() {
   const group: TemplateGroup | undefined = current.groups.find((g) => g.label === subTab) ?? current.groups[0];
   // Sports tabs offer the kits their teams have: Home, Away and (some Toronto and Ottawa teams) Retro.
   const kits = (["home", "away", "retro"] as const).filter((k) => (current.tabs ? [group!] : current.groups).some((g) => g.templates.some((x) => x.kit === k)));
-  const pick = (tpl: Template) => setDraft(ownColours({ ...tpl.theme, fonts: draft.fonts }));
+  // A template sets the colours; the type and backdrop you've chosen stay.
+  const pick = (tpl: Template) => setDraft(ownColours({ ...tpl.theme, fonts: draft.fonts, backdrop: draft.backdrop }));
   // Lower-case and without accents, so "quebec" finds Québec.
   const plain = (v: string) => v.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
   const words = plain(query.trim()).split(/\s+/).filter(Boolean);
@@ -295,7 +297,42 @@ export function BrandPage() {
         </div>
       </section>
 
-      {/* 3. Type */}
+      {/* 3. Backdrop */}
+      <section className="space-y-3">
+        <div className="px-0.5">
+          <h2 className="h-section">Backdrop</h2>
+          <p className="meta mt-1">An abstract pattern behind every page, in your colours. Cards stay solid on top, so text stays readable.</p>
+        </div>
+        <div className="card space-y-4 p-4 sm:p-5">
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Backdrop pattern">
+            {BACKDROPS.map((b) => {
+              const active = shown.backdrop.pattern === b.key;
+              const look = backdropCss({ ...draft, backdrop: { ...draft.backdrop, pattern: b.key } });
+              return (
+                <button key={b.key} type="button" role="radio" aria-checked={active} title={b.hint}
+                  onClick={() => setBackdrop({ pattern: b.key })}
+                  className={`overflow-hidden rounded-xl border text-left transition-colors ${active ? "border-accent ring-1 ring-accent" : "border-border hover:border-text-subtle"}`}>
+                  <span className="block h-16" style={{ backgroundColor: shown.background, backgroundImage: look.image, backgroundSize: look.size, backgroundPosition: look.position, backgroundRepeat: look.repeat }} />
+                  <span className={`block truncate border-t border-border bg-surface px-2 py-1.5 text-[11px] font-semibold ${active ? "text-accent" : "text-text-muted"}`}>{b.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-text-muted">Base</p>
+            <Tabs value={shown.backdrop.base!} onChange={(v) => setBackdrop({ base: v })}
+              options={BACKDROP_BASES.map((v) => ({ value: v, label: { solid: "Solid", gradient: "Gradient", glow: "Glow" }[v] }))} />
+          </div>
+          <div className="grid gap-x-4 sm:grid-cols-2">
+            <RangeField label="Strength" min={0} max={1} step={0.05} value={shown.backdrop.intensity!}
+              onChange={(v) => setBackdrop({ intensity: v })} format={(v) => `${Math.round(v * 100)}%`} />
+            <RangeField label="Size" min={0.5} max={2} step={0.05} value={shown.backdrop.scale!}
+              onChange={(v) => setBackdrop({ scale: v })} format={(v) => `${Math.round(v * 100)}%`} />
+          </div>
+        </div>
+      </section>
+
+      {/* 4. Type */}
       <section className="space-y-3">
         <div className="px-0.5">
           <h2 className="h-section">Type</h2>

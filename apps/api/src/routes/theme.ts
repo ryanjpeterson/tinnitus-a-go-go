@@ -35,6 +35,14 @@ const fonts = z.object({
   headingsTracking: z.number().min(-0.1).max(0.3).optional(),
   bodyTracking: z.number().min(-0.1).max(0.3).optional(),
 });
+/** Page backdrop (jimbo.ui): a pattern over a base, with strength and size; stored as JSON. */
+const BACKDROP_KEY = "theme.backdrop";
+const backdrop = z.object({
+  pattern: z.enum(["none", "ripples", "waves", "contours", "geometry", "burst", "dots", "arrows", "shapes"]).optional(),
+  base: z.enum(["solid", "gradient", "glow"]).optional(),
+  intensity: z.number().min(0).max(1).optional(),
+  scale: z.number().min(0.5).max(2).optional(),
+});
 /** Look settings (jimbo.ui): how missing colours are inferred, colour vibrancy and layer contrast. */
 const OPTION_KEYS = { infer: "theme.infer", vibrancy: "theme.vibrancy", contrast: "theme.contrast" } as const;
 const options = {
@@ -65,6 +73,11 @@ function parseFonts(raw: string | null): z.infer<typeof fonts> | null {
   try { const f = fonts.safeParse(JSON.parse(raw)); return f.success ? f.data : null; } catch { return null; }
 }
 
+function parseBackdrop(raw: string | null): z.infer<typeof backdrop> | null {
+  if (!raw) return null;
+  try { const b = backdrop.safeParse(JSON.parse(raw)); return b.success ? b.data : null; } catch { return null; }
+}
+
 const num = (v: string | null): number | null => (v != null && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null);
 
 async function readTheme() {
@@ -77,6 +90,7 @@ async function readTheme() {
       background: get(COLOR_KEYS.background),
       support: get(COLOR_KEYS.support),
       fonts: parseFonts(get(FONTS_KEY)),
+      backdrop: parseBackdrop(get(BACKDROP_KEY)),
       infer: get(OPTION_KEYS.infer) === "tonal" ? "tonal" : get(OPTION_KEYS.infer) === "contrast" ? "contrast" : null,
       vibrancy: num(get(OPTION_KEYS.vibrancy)),
       contrast: num(get(OPTION_KEYS.contrast)),
@@ -109,8 +123,8 @@ export async function themeRoutes(app: FastifyInstance): Promise<void> {
   app.put("/admin/theme", { preHandler: [requireAdmin] }, async (req, reply) => {
     // Highlight and support are optional (jimbo.ui 0.5–0.6): what's left out, the app infers from the
     // accent and background. Store only what's sent; fonts default to sans.
-    const parsed = z.object({ accent: hex, background: hex, highlight: hex.optional(), support: hex.optional(), fonts: fonts.optional(), ...options }).safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: "accent and background must be #RRGGBB colours (highlight and support too, if given); fonts, vibrancy (0.4–1.5) and contrast (0.8–1.6) must be in range." });
+    const parsed = z.object({ accent: hex, background: hex, highlight: hex.optional(), support: hex.optional(), fonts: fonts.optional(), backdrop: backdrop.optional(), ...options }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "accent and background must be #RRGGBB colours (highlight and support too, if given); fonts, backdrop, vibrancy (0.4–1.5) and contrast (0.8–1.6) must be in range." });
     const labels = { accent: "Accent colour", highlight: "Highlight colour", background: "Background colour", support: "Support colour" };
     for (const k of Object.keys(COLOR_KEYS) as (keyof typeof COLOR_KEYS)[]) {
       const v = parsed.data[k];
@@ -123,6 +137,9 @@ export async function themeRoutes(app: FastifyInstance): Promise<void> {
     const f = parsed.data.fonts;
     if (f && Object.keys(f).length > 0) await setValue(FONTS_KEY, JSON.stringify(f), "Fonts");
     else cleared.push(FONTS_KEY);
+    const bd = parsed.data.backdrop;
+    if (bd && Object.keys(bd).length > 0) await setValue(BACKDROP_KEY, JSON.stringify(bd), "Page backdrop");
+    else cleared.push(BACKDROP_KEY);
     const optionLabels = { infer: "Inferred colours", vibrancy: "Colour vibrancy", contrast: "Layer contrast" };
     for (const k of Object.keys(OPTION_KEYS) as (keyof typeof OPTION_KEYS)[]) {
       const v = parsed.data[k];
@@ -134,7 +151,7 @@ export async function themeRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.delete("/admin/theme", { preHandler: [requireAdmin] }, async (_req, reply) => {
-    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, [...Object.values(COLOR_KEYS), FONTS_KEY, ...Object.values(OPTION_KEYS), ...RETIRED_KEYS]));
+    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, [...Object.values(COLOR_KEYS), FONTS_KEY, BACKDROP_KEY, ...Object.values(OPTION_KEYS), ...RETIRED_KEYS]));
     return reply.send({ ok: true });
   });
 

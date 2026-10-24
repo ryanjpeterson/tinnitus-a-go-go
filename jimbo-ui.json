@@ -1,7 +1,7 @@
 {
   "version": "0.6.0",
-  "commit": "129c82d",
-  "note": "0.6.0 plus jimbo-ui main up to 129c82d (changes listed under Unreleased there).",
+  "commit": "c3d1a2d",
+  "note": "0.6.0 plus jimbo-ui main up to c3d1a2d (changes listed under Unreleased there).",
   "webRoot": "apps/web",
   "reference": {
     "web/src/components/ui/kit.tsx": "apps/web/src/components/ui/jimbo-kit.tsx (exact copy; Tinnitus extras in kit.tsx)",

@@ -52,6 +52,9 @@ export function withDefaults(t: SavedTheme): Theme {
     ...(t.support ? { support: t.support } : {}),
     ...(t.fonts ? { fonts: t.fonts } : {}),
     ...(t.infer ? { infer: t.infer } : {}),
+    ...(t.vibrancy ? { vibrancy: t.vibrancy } : {}),
+    ...(t.contrast ? { contrast: t.contrast } : {}),
+    ...(t.backdrop ? { backdrop: t.backdrop } : {}),
   });
 }
 

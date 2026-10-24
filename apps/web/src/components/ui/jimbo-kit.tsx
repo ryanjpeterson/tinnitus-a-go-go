@@ -19,6 +19,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/cn";
+import { backdropCss, type BackdropPattern } from "@/lib/theme";
+import { useBrand } from "@/lib/useBrand";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Small helpers
@@ -106,6 +108,72 @@ export function ThemeDots({ size = 10, className }: { size?: number; className?:
           style={{ width: size, height: size, marginLeft: i ? -size * 0.3 : 0, zIndex: 3 - i }} />
       ))}
     </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Full width — edge-to-edge sections inside the page column
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BLEED_TONES = {
+  none: "",
+  surface: "border-y border-border bg-surface",
+  accent: "bg-accent text-on-accent shadow-[inset_0_1px_0_0_rgb(var(--c-accent-darker)/0.55),inset_0_-1px_0_0_rgb(var(--c-accent-darker)/0.55)]",
+  highlight: "bg-highlight text-on-highlight shadow-[inset_0_1px_0_0_rgb(var(--c-highlight-darker)/0.55),inset_0_-1px_0_0_rgb(var(--c-highlight-darker)/0.55)]",
+  support: "bg-support text-on-support shadow-[inset_0_1px_0_0_rgb(var(--c-support-darker)/0.55),inset_0_-1px_0_0_rgb(var(--c-support-darker)/0.55)]",
+} as const;
+
+/**
+ * Breaks out of the page column to the full screen width — a band, a strip of
+ * media, a hero. Its content lines up with the page column again unless
+ * `flush`. `tone` fills it: the surface, or a flat brand colour (with its
+ * `on-` text). The app shell clips sideways overflow, so 100vw is safe.
+ */
+export function FullBleed({ children, tone = "none", flush = false, pad = true, className, style }: {
+  children: ReactNode;
+  tone?: keyof typeof BLEED_TONES;
+  /** Content runs edge to edge too (media, maps). */
+  flush?: boolean;
+  /** Vertical padding (24 / 32 px). */
+  pad?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <section className={cn("relative ml-[calc(50%-50vw)] w-screen", BLEED_TONES[tone], pad && "py-6 sm:py-8", className)} style={style}>
+      <div className={flush ? "" : "mx-auto max-w-5xl px-4 sm:px-6"}>{children}</div>
+    </section>
+  );
+}
+
+/**
+ * A full-width page opener without a photo: big title, a line, actions, over
+ * an abstract pattern in the theme's colours (any backdrop pattern) on a
+ * gradient. Use at the top of a landing or home page; `size="lg"` fills most
+ * of the first screen. Pulls up under the top bar like `Banner`.
+ */
+export function HeroSection({ eyebrow, title, children, actions, pattern = "ripples", size = "md", align = "left" }: {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  /** A line or two under the title. */
+  children?: ReactNode;
+  actions?: ReactNode;
+  pattern?: BackdropPattern;
+  size?: "md" | "lg";
+  align?: "left" | "center";
+}) {
+  const { theme } = useBrand();
+  const look = backdropCss({ ...theme, backdrop: { pattern, base: "gradient", intensity: 0.75, scale: 0.8 } });
+  return (
+    <FullBleed pad={false} className="-mt-6 mb-2 border-b border-border sm:-mt-8"
+      style={{ backgroundImage: look.image, backgroundSize: look.size, backgroundPosition: look.position, backgroundRepeat: look.repeat }}>
+      <div className={cn("flex flex-col justify-end gap-3 py-10 sm:py-14", size === "lg" ? "min-h-[62dvh]" : "min-h-[34dvh]", align === "center" && "items-center text-center")}>
+        {eyebrow && <p className="eyebrow text-support">{eyebrow}</p>}
+        <h1 className="font-display text-[40px] leading-[1.02] text-text-base sm:text-6xl">{title}</h1>
+        {children && <div className={cn("max-w-xl text-[17px] text-text-muted", align === "center" && "mx-auto")}>{children}</div>}
+        {actions && <div className="mt-2 flex flex-wrap gap-2">{actions}</div>}
+      </div>
+    </FullBleed>
   );
 }
 

@@ -19,13 +19,17 @@
   html, body, #root { height: 100%; }
   body {
     background-color: rgb(var(--c-bg));
-    /* Three soft orbs of the brand colours behind everything: depth for the
-       frosted bars and sheets to blur, and the circle motif at page scale. */
-    background-image:
+    /* The backdrop: an abstract pattern over a base, set by src/lib/theme.ts
+       (backdropCss) as --bg-image and friends. Before any script runs, the
+       default: three soft orbs of the brand colours. */
+    background-image: var(--bg-image,
       radial-gradient(circle at 10% 4%, rgb(var(--c-accent) / 0.2), transparent 36%),
       radial-gradient(circle at 98% 36%, rgb(var(--c-highlight) / 0.16), transparent 32%),
       radial-gradient(circle at 14% 98%, rgb(var(--c-support) / 0.16), transparent 38%),
-      linear-gradient(rgb(var(--c-bg-deep) / 0), rgb(var(--c-bg-deep)));
+      linear-gradient(rgb(var(--c-bg-deep) / 0), rgb(var(--c-bg-deep))));
+    background-size: var(--bg-size, 100% 100%);
+    background-position: var(--bg-position, 0 0);
+    background-repeat: var(--bg-repeat, no-repeat);
     background-attachment: fixed;
     /* iOS safe area support. Top/bottom insets are handled by the header and
        the mobile bottom nav — padding body vertically on top of height: 100%

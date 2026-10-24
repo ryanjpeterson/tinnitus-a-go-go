@@ -95,8 +95,8 @@ export function Chevron({ dir = "right", className }: { dir?: "left" | "right" |
 
 /**
  * The theme's colours as small overlapping lit circles (accent, highlight,
- * support) — jimbo.ui's motif. Use here and there: before a page eyebrow, in
- * empty states, beside a brand moment. Decorative; follows the live theme.
+ * support) — jimbo.ui's motif. Use here and there: in empty states, beside a
+ * brand moment. Not above page titles. Decorative; follows the live theme.
  */
 export function ThemeDots({ size = 10, className }: { size?: number; className?: string }) {
   return (
@@ -122,7 +122,7 @@ export function PageHeader({ eyebrow, title, count, actions, className }: {
 }) {
   return (
     <header className={cn("mb-5 sm:mb-6", className)}>
-      {eyebrow && <p className="eyebrow mb-1.5 flex items-center gap-2 text-support"><ThemeDots size={9} />{eyebrow}</p>}
+      {eyebrow && <p className="eyebrow mb-1 text-support">{eyebrow}</p>}
       <div className="flex items-end justify-between gap-3">
         <h1 className="h-page min-w-0">
           {title}
@@ -608,6 +608,33 @@ export function SearchField({ value, onChange, placeholder }: { value: string; o
         placeholder={placeholder}
         className="field h-12 w-full pl-10 sm:h-11"
       />
+    </label>
+  );
+}
+
+/**
+ * A labelled slider (weight, spacing, vibrancy…): the label and current value
+ * above, a full-width track in the accent below, 44 px tall for thumbs.
+ */
+export function RangeField({ label, value, onChange, min, max, step, format = String, className }: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  /** How the value reads beside the label ("800", "+0.04 em", "120%"). */
+  format?: (v: number) => string;
+  className?: string;
+}) {
+  return (
+    <label className={cn("block", className)}>
+      <span className="flex items-baseline justify-between gap-3">
+        <span className="text-sm font-semibold text-text-muted">{label}</span>
+        <span className="font-mono text-xs text-text-subtle">{format(value)}</span>
+      </span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))}
+        className="h-11 w-full cursor-pointer accent-[rgb(var(--c-accent))]" />
     </label>
   );
 }

@@ -17,7 +17,7 @@ import {
   DateBlock, EmptyState, EntityRow, EventRow, LinkCard, List, ListGroupLabel, Loading, MediaCard, PageHeader, Pager,
   PillTabs, RankedList, SearchField, Section, SelectField, Sheet, StatGrid, StatTile, StatusBadge, Tabs, ThemeDots, VenueViewSwitch,
 } from "@/components/ui/kit";
-import { FONT_STYLES, THEME_KEYS, themeHex } from "@/lib/theme";
+import { FONTS, THEME_KEYS, themeHex } from "@/lib/theme";
 import { useBrand } from "@/lib/useBrand";
 
 const TOKENS: { name: string; use: string }[] = [
@@ -138,7 +138,7 @@ export function StyleGuidePage() {
         </div>
       </Block>
 
-      <Block title="Type" note={`Headings in ${FONT_STYLES[theme.fonts.headings!].label.toLowerCase()}, body in ${FONT_STYLES[theme.fonts.body!].label.toLowerCase()} — the theme picks sans, mono or serif for each. Tabular figures throughout.`}>
+      <Block title="Type" note={`Headings in ${FONTS[theme.fonts.headings!]!.label} (${theme.fonts.headingsWeight}), body in ${FONTS[theme.fonts.body!]!.label} (${theme.fonts.bodyWeight}) — the theme picks the fonts, weights and spacing. Tabular figures throughout.`}>
         <div className="card space-y-3 p-5">
           <p className="eyebrow">.eyebrow — label above a title</p>
           <p className="h-page">.h-page — Page title</p>

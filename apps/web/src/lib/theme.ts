@@ -14,8 +14,10 @@
  * badges (`-top` → `-bottom`, lit from above, never lower contrast with its
  * `on-` text) and washes mixed into the page (`-950` … `-700`).
  *
- * A theme can also pick a type style for headings and for body text — sans
- * (the default), mono or serif — set as `--font-display` / `--font-body`.
+ * A theme can also pick fonts for headings and body text (`FONTS`: sans, serif,
+ * mono and — for headings — decorative faces), with weight and letter spacing,
+ * set as `--font-display` / `--font-body` and their `-weight` / `-tracking`;
+ * and tune colour vibrancy and layer contrast with two sliders.
  *
  * Tokens are CSS variables holding "R G B" channels, so Tailwind classes keep
  * their opacity modifiers (`bg-accent/15`). The defaults live in
@@ -28,8 +30,8 @@
 
 import { BRAND } from "./brand.config";
 
-/** A type style: the family used for headings or for body text. */
-export type FontStyle = "sans" | "mono" | "serif";
+/** A font in `FONTS` (or an older style name: "sans", "mono", "serif"). */
+export type FontKey = string;
 
 export interface Theme {
   accent: string;
@@ -38,45 +40,79 @@ export interface Theme {
   highlight?: string;
   /** Optional: inferred from the other colours when left out (`deriveSupport`). */
   support?: string;
-  /** Optional type styles; both default to sans. */
-  fonts?: { headings?: FontStyle; body?: FontStyle };
+  /**
+   * Optional type: a font for headings and one for body text (keys of `FONTS`;
+   * defaults Archivo and Inter), each with a weight and letter spacing (em).
+   */
+  fonts?: { headings?: FontKey; body?: FontKey; headingsWeight?: number; bodyWeight?: number; headingsTracking?: number; bodyTracking?: number };
+  /** Colour vibrancy: 1 as picked, lower is calmer (0.4), higher is louder (1.5). */
+  vibrancy?: number;
+  /** Layer contrast: 1 is standard; up to 1.6 for cards, borders and labels that stand out more, down to 0.8 for softer. */
+  contrast?: number;
+  /**
+   * How missing colours are inferred: `contrast` (the default) picks new hues
+   * that stand apart; `tonal` uses lighter and darker versions of the accent,
+   * for a simple one-colour scheme.
+   */
+  infer?: "contrast" | "tonal";
 }
 
 /** A theme as a server or cache returns it: anything may be missing or null. */
-export type SavedTheme = { [K in "accent" | "background" | "highlight" | "support"]?: string | null } & { fonts?: Theme["fonts"] | null };
+export type SavedTheme = { [K in "accent" | "background" | "highlight" | "support"]?: string | null }
+  & { fonts?: Theme["fonts"] | null; infer?: Theme["infer"] | null; vibrancy?: number | null; contrast?: number | null };
 
 /**
- * The type styles. `display` is the headings family, `body` the text family;
- * `google` is the Google Fonts query that loads them (sans is in index.html).
+ * The fonts a theme can use. `css` is the font stack; `google` the Google Fonts
+ * family query that loads it (Archivo, Inter and JetBrains Mono are in
+ * index.html); `weights` the range it has; `body: false` marks display faces
+ * that are for headings only (blackletter, pixel, script — unreadable as text).
  */
-export const FONT_STYLES: Record<FontStyle, { label: string; display: string; body: string; google: string | null }> = {
-  sans: {
-    label: "Sans",
-    display: "'Archivo', ui-sans-serif, system-ui, sans-serif",
-    body: "'Inter', ui-sans-serif, system-ui, sans-serif",
-    google: null,
-  },
-  mono: {
-    label: "Mono",
-    display: "'JetBrains Mono', ui-monospace, SFMono-Regular, monospace",
-    body: "'JetBrains Mono', ui-monospace, SFMono-Regular, monospace",
-    google: "family=JetBrains+Mono:wght@400;500;600;700;800",
-  },
-  serif: {
-    label: "Serif",
-    display: "'Fraunces', ui-serif, Georgia, serif",
-    body: "'Source Serif 4', ui-serif, Georgia, serif",
-    google: "family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800;9..144,900&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700",
-  },
+export type FontDef = { label: string; group: "Sans" | "Serif" | "Mono" | "Decorative"; css: string; google: string | null; weights: [number, number]; body?: false };
+export const FONTS: Record<string, FontDef> = {
+  archivo:        { label: "Archivo", group: "Sans", css: "'Archivo', ui-sans-serif, system-ui, sans-serif", google: null, weights: [500, 900] },
+  inter:          { label: "Inter", group: "Sans", css: "'Inter', ui-sans-serif, system-ui, sans-serif", google: null, weights: [400, 700] },
+  "space-grotesk":{ label: "Space Grotesk", group: "Sans", css: "'Space Grotesk', ui-sans-serif, system-ui, sans-serif", google: "family=Space+Grotesk:wght@300..700", weights: [300, 700] },
+  "dm-sans":      { label: "DM Sans", group: "Sans", css: "'DM Sans', ui-sans-serif, system-ui, sans-serif", google: "family=DM+Sans:opsz,wght@9..40,300..900", weights: [300, 900] },
+  manrope:        { label: "Manrope", group: "Sans", css: "'Manrope', ui-sans-serif, system-ui, sans-serif", google: "family=Manrope:wght@300..800", weights: [300, 800] },
+  oswald:         { label: "Oswald", group: "Sans", css: "'Oswald', ui-sans-serif, system-ui, sans-serif", google: "family=Oswald:wght@300..700", weights: [300, 700] },
+  fraunces:       { label: "Fraunces", group: "Serif", css: "'Fraunces', ui-serif, Georgia, serif", google: "family=Fraunces:opsz,wght@9..144,300..900", weights: [300, 900] },
+  "source-serif": { label: "Source Serif", group: "Serif", css: "'Source Serif 4', ui-serif, Georgia, serif", google: "family=Source+Serif+4:opsz,wght@8..60,300..900", weights: [300, 900] },
+  playfair:       { label: "Playfair", group: "Serif", css: "'Playfair Display', ui-serif, Georgia, serif", google: "family=Playfair+Display:wght@400..900", weights: [400, 900] },
+  "eb-garamond":  { label: "EB Garamond", group: "Serif", css: "'EB Garamond', ui-serif, Georgia, serif", google: "family=EB+Garamond:wght@400..800", weights: [400, 800] },
+  marcellus:      { label: "Marcellus", group: "Serif", css: "'Marcellus', ui-serif, Georgia, serif", google: "family=Marcellus", weights: [400, 400] },
+  "dm-serif":     { label: "DM Serif", group: "Serif", css: "'DM Serif Display', ui-serif, Georgia, serif", google: "family=DM+Serif+Display", weights: [400, 400], body: false },
+  "jetbrains-mono": { label: "JetBrains Mono", group: "Mono", css: "'JetBrains Mono', ui-monospace, SFMono-Regular, monospace", google: "family=JetBrains+Mono:wght@300..800", weights: [300, 800] },
+  "ibm-plex-mono":{ label: "IBM Plex Mono", group: "Mono", css: "'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace", google: "family=IBM+Plex+Mono:wght@300;400;500;600;700", weights: [300, 700] },
+  "space-mono":   { label: "Space Mono", group: "Mono", css: "'Space Mono', ui-monospace, SFMono-Regular, monospace", google: "family=Space+Mono:wght@400;700", weights: [400, 700] },
+  "fira-code":    { label: "Fira Code", group: "Mono", css: "'Fira Code', ui-monospace, SFMono-Regular, monospace", google: "family=Fira+Code:wght@300..700", weights: [300, 700] },
+  "old-english":  { label: "Old English", group: "Decorative", css: "'UnifrakturCook', serif", google: "family=UnifrakturCook:wght@700", weights: [700, 700], body: false },
+  "old-german":   { label: "Old German", group: "Decorative", css: "'UnifrakturMaguntia', serif", google: "family=UnifrakturMaguntia", weights: [400, 400], body: false },
+  gothic:         { label: "Gothic", group: "Decorative", css: "'Grenze Gotisch', serif", google: "family=Grenze+Gotisch:wght@300..900", weights: [300, 900], body: false },
+  pirate:         { label: "Pirate", group: "Decorative", css: "'Pirata One', serif", google: "family=Pirata+One", weights: [400, 400], body: false },
+  rocker:         { label: "Rocker", group: "Decorative", css: "'New Rocker', serif", google: "family=New+Rocker", weights: [400, 400], body: false },
+  typewriter:     { label: "Typewriter", group: "Decorative", css: "'Special Elite', ui-monospace, monospace", google: "family=Special+Elite", weights: [400, 400], body: false },
+  pixel:          { label: "Pixel", group: "Decorative", css: "'Press Start 2P', ui-monospace, monospace", google: "family=Press+Start+2P", weights: [400, 400], body: false },
+  bungee:         { label: "Bungee", group: "Decorative", css: "'Bungee', ui-sans-serif, sans-serif", google: "family=Bungee", weights: [400, 400], body: false },
+  neon:           { label: "Neon", group: "Decorative", css: "'Monoton', ui-sans-serif, sans-serif", google: "family=Monoton", weights: [400, 400], body: false },
+  carved:         { label: "Carved caps", group: "Decorative", css: "'Cinzel', ui-serif, Georgia, serif", google: "family=Cinzel:wght@400..900", weights: [400, 900], body: false },
+  script:         { label: "Script", group: "Decorative", css: "'Lobster', cursive", google: "family=Lobster", weights: [400, 400], body: false },
 };
-export const FONT_KEYS = ["sans", "mono", "serif"] as const;
+export const FONT_GROUPS = ["Sans", "Serif", "Mono", "Decorative"] as const;
 
-/** Load the web fonts for these styles (once each), by adding a Google Fonts stylesheet. */
-export function loadFonts(styles: FontStyle[]): void {
-  for (const s of new Set(styles)) {
-    const q = FONT_STYLES[s]?.google;
-    if (!q || document.getElementById(`font-${s}`)) continue;
-    const link = Object.assign(document.createElement("link"), { id: `font-${s}`, rel: "stylesheet", href: `https://fonts.googleapis.com/css2?${q}&display=swap` });
+/** A font key, with the older style names ("sans", "mono", "serif") turned into fonts. */
+export function fontFor(key: FontKey | undefined, part: "headings" | "body"): string {
+  const legacy: Record<string, [string, string]> = { sans: ["archivo", "inter"], mono: ["jetbrains-mono", "jetbrains-mono"], serif: ["fraunces", "source-serif"] };
+  const k = key && legacy[key] ? legacy[key]![part === "headings" ? 0 : 1] : key;
+  if (k && FONTS[k] && (part === "headings" || FONTS[k]!.body !== false)) return k;
+  return part === "headings" ? "archivo" : "inter";
+}
+
+/** Load the web fonts for these keys (once each), by adding a Google Fonts stylesheet. */
+export function loadFonts(keys: FontKey[]): void {
+  for (const k of new Set(keys)) {
+    const q = FONTS[k]?.google;
+    if (!q || document.getElementById(`font-${k}`)) continue;
+    const link = Object.assign(document.createElement("link"), { id: `font-${k}`, rel: "stylesheet", href: `https://fonts.googleapis.com/css2?${q}&display=swap` });
     document.head.appendChild(link);
   }
 }
@@ -180,12 +216,45 @@ function readableOn(bg: RGB, hue: number, sat: number, l: number, target: number
   return rgbToHex(hslToRgb([hue, sat, Math.max(0.05, Math.min(0.95, l))]));
 }
 
+/** CIE76 ΔE between two colours — how different they look. */
+export function deltaE(a: string | RGB, b: string | RGB): number {
+  const lab = (c: string | RGB) => {
+    const [r, g, bl] = (typeof c === "string" ? hexToRgb(c) : c).map((v) => {
+      const x = v / 255;
+      return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+    }) as RGB;
+    const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+    const [x, y, z] = [(r * 0.4124 + g * 0.3576 + bl * 0.1805) / 0.95047, r * 0.2126 + g * 0.7152 + bl * 0.0722, (r * 0.0193 + g * 0.1192 + bl * 0.9505) / 1.08883].map(f) as RGB;
+    return [116 * y - 16, 500 * (x - y), 200 * (y - z)] as RGB;
+  };
+  const [p, q] = [lab(a), lab(b)];
+  return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+}
+
+/**
+ * A tonal variant of the accent — the same colour made lighter or darker
+ * (away from the page first) — that reaches `target` contrast on the page
+ * and stands `apart` (ΔE) from the accent and `others`. Null if none does.
+ */
+function tonal(theme: Theme, others: string[], target: number, apart: number): string | null {
+  const bg = hexToRgb(theme.background);
+  const accent = hexToRgb(theme.accent);
+  const light = luminance(bg) > 0.4;
+  const steps = [0.15, 0.25, 0.35, 0.45, 0.55, 0.65];
+  const toward = (end: RGB) => steps.map((t) => mix(accent, end, t));
+  for (const c of [...toward(light ? BLACK : WHITE), ...toward(light ? WHITE : BLACK)]) {
+    if (contrast(c, bg) >= target && deltaE(c, accent) >= apart && others.every((o) => deltaE(c, o) >= apart)) return rgbToHex(c);
+  }
+  return null;
+}
+
 /**
  * A highlight for a theme that only sets the accent: the accent's hue turned
  * 150° (a split complement, so it never looks like the accent), at least as
  * saturated, made to reach 3.5:1 on the page. A grey accent gets a red.
  */
 export function deriveHighlight(theme: Theme): string {
+  if (theme.infer === "tonal") return tonal(theme, [], 3.5, 15) ?? deriveHighlight({ ...theme, infer: "contrast" });
   const [ha, sa, la] = rgbToHsl(hexToRgb(theme.accent));
   const grey = sa < 0.15;
   return readableOn(hexToRgb(theme.background), grey ? 350 : (ha + 150) % 360, grey ? 0.85 : Math.max(0.6, sa), grey ? 0.6 : la, 3.5);
@@ -197,6 +266,10 @@ export function deriveHighlight(theme: Theme): string {
  * dark enough to read on cards (5.4:1 on the page).
  */
 export function deriveSupport(theme: Theme): string {
+  if (theme.infer === "tonal") {
+    const hl = theme.highlight ?? deriveHighlight(theme);
+    return tonal(theme, [hl], 5.4, 10) ?? deriveSupport({ ...theme, infer: "contrast" });
+  }
   const bg = hexToRgb(theme.background);
   const [ha, sa, la] = rgbToHsl(hexToRgb(theme.accent));
   const [hh, sh] = rgbToHsl(hexToRgb(theme.highlight ?? deriveHighlight(theme)));
@@ -216,31 +289,64 @@ export function fullTheme(theme: Theme): FullTheme {
   return {
     accent: theme.accent, background: theme.background, highlight,
     support: theme.support || deriveSupport({ ...theme, highlight }),
-    fonts: { headings: theme.fonts?.headings ?? "sans", body: theme.fonts?.body ?? "sans" },
+    fonts: {
+      headings: fontFor(theme.fonts?.headings, "headings"), body: fontFor(theme.fonts?.body, "body"),
+      headingsWeight: theme.fonts?.headingsWeight ?? 800, bodyWeight: theme.fonts?.bodyWeight ?? 400,
+      headingsTracking: theme.fonts?.headingsTracking ?? -0.015, bodyTracking: theme.fonts?.bodyTracking ?? 0,
+    },
+    vibrancy: theme.vibrancy ?? 1,
+    contrast: theme.contrast ?? 1,
+    infer: theme.infer ?? "contrast",
   };
 }
 
-/** Just what a theme sets (drops empty optional colours and default fonts) — what to save. */
+/** Just what a theme sets (drops empty optional colours and defaults) — what to save. */
 export function ownColours(theme: Theme): Theme {
-  const headings = theme.fonts?.headings && theme.fonts.headings !== "sans" ? theme.fonts.headings : undefined;
-  const body = theme.fonts?.body && theme.fonts.body !== "sans" ? theme.fonts.body : undefined;
+  const f = theme.fonts ?? {};
+  const fonts = Object.fromEntries(Object.entries({
+    headings: f.headings && fontFor(f.headings, "headings") !== "archivo" ? fontFor(f.headings, "headings") : undefined,
+    body: f.body && fontFor(f.body, "body") !== "inter" ? fontFor(f.body, "body") : undefined,
+    headingsWeight: f.headingsWeight !== undefined && f.headingsWeight !== 800 ? f.headingsWeight : undefined,
+    bodyWeight: f.bodyWeight !== undefined && f.bodyWeight !== 400 ? f.bodyWeight : undefined,
+    headingsTracking: f.headingsTracking !== undefined && f.headingsTracking !== -0.015 ? f.headingsTracking : undefined,
+    bodyTracking: f.bodyTracking !== undefined && f.bodyTracking !== 0 ? f.bodyTracking : undefined,
+  }).filter(([, v]) => v !== undefined));
   return {
     accent: theme.accent, background: theme.background,
     ...(theme.highlight ? { highlight: theme.highlight } : {}),
     ...(theme.support ? { support: theme.support } : {}),
-    ...(headings || body ? { fonts: { ...(headings ? { headings } : {}), ...(body ? { body } : {}) } } : {}),
+    ...(Object.keys(fonts).length ? { fonts } : {}),
+    ...(theme.infer === "tonal" && (!theme.highlight || !theme.support) ? { infer: "tonal" as const } : {}),
+    ...(theme.vibrancy !== undefined && theme.vibrancy !== 1 ? { vibrancy: theme.vibrancy } : {}),
+    ...(theme.contrast !== undefined && theme.contrast !== 1 ? { contrast: theme.contrast } : {}),
   };
+}
+
+/**
+ * The theme with vibrancy applied: the brand colours' saturation scaled by it
+ * (and the page's by half as much), hue and lightness kept.
+ */
+function tuned(theme: FullTheme): FullTheme {
+  const v = Math.max(0.3, Math.min(1.6, theme.vibrancy));
+  if (v === 1) return theme;
+  const sat = (hex: string, by: number) => {
+    const [h, s, l] = rgbToHsl(hexToRgb(hex));
+    return rgbToHex(hslToRgb([h, Math.max(0, Math.min(1, s * by)), l]));
+  };
+  return { ...theme, accent: sat(theme.accent, v), highlight: sat(theme.highlight, v), support: sat(theme.support, v), background: sat(theme.background, 1 + (v - 1) / 2) };
 }
 
 /** Every derived colour, as RGB, keyed by CSS variable name (without the --c- prefix). */
 export function deriveColors(input: Theme): Record<string, RGB> {
-  const theme = fullTheme(input);
+  const theme = tuned(fullTheme(input));
   const bg = hexToRgb(theme.background);
   const light = luminance(bg) > 0.4;
   // Surfaces step away from the background — lighter on dark themes, darker on
   // light ones — as far as it takes to read as separate layers on this background.
   const away = light ? BLACK : WHITE;
-  const T = CONTRAST_TARGETS;
+  // Layer contrast scales how far cards, fields and borders step from the page.
+  const k = theme.contrast;
+  const T = { ...CONTRAST_TARGETS, card: 1 + (CONTRAST_TARGETS.card - 1) * k, card2: 1 + (CONTRAST_TARGETS.card2 - 1) * k, border: 1 + (CONTRAST_TARGETS.border - 1) * k };
   const cardT = stepTo(bg, away, bg, T.card, light ? 0.04 : 0.05, 0.3);
   const surface = mix(bg, away, cardT);
   const surface2 = mix(bg, away, stepTo(bg, away, surface, T.card2, cardT + 0.03, 0.45));
@@ -324,11 +430,15 @@ export function applyTheme(theme: Theme): void {
   for (const [name, [r, g, b]] of Object.entries(deriveColors(theme))) {
     vars[`--c-${name}`] = `${Math.round(r)} ${Math.round(g)} ${Math.round(b)}`;
   }
-  const { headings, body } = fullTheme(theme).fonts;
-  vars["--font-display"] = FONT_STYLES[headings!].display;
-  vars["--font-body"] = FONT_STYLES[body!].body;
+  const f = fullTheme(theme).fonts;
+  vars["--font-display"] = FONTS[f.headings!]!.css;
+  vars["--font-body"] = FONTS[f.body!]!.css;
+  vars["--font-display-weight"] = String(f.headingsWeight);
+  vars["--font-body-weight"] = String(f.bodyWeight);
+  vars["--font-display-tracking"] = `${f.headingsTracking}em`;
+  vars["--font-body-tracking"] = `${f.bodyTracking}em`;
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
-  loadFonts([headings!, body!]);
+  loadFonts([f.headings!, f.body!]);
   const scheme = luminance(theme.background) > 0.4 ? "light" : "dark";
   root.style.colorScheme = scheme;
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme.background);

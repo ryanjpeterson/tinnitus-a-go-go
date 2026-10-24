@@ -20,13 +20,13 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { applyTheme, contrast, FONT_KEYS, FONT_STYLES, fullTheme, loadFonts, ownColours, themeHex, type FontStyle, type Theme, THEME_KEYS } from "@/lib/theme";
+import { applyTheme, contrast, FONT_GROUPS, FONTS, fullTheme, loadFonts, ownColours, themeHex, type Theme, THEME_KEYS } from "@/lib/theme";
 import { ALL_TEMPLATES, sameTheme, TEMPLATE_SETS, type Template, type TemplateGroup } from "@/lib/themes";
 import { useBrand } from "@/lib/useBrand";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ColorPicker";
 import { Wordmark } from "@/components/Wordmark";
-import { PageHeader, PillTabs, SearchField } from "@/components/ui/kit";
+import { PageHeader, PillTabs, RangeField, SearchField, Tabs } from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Templates
@@ -142,6 +142,7 @@ export function BrandPage() {
   })();
   const [set, setSet] = useState(home.set);
   const [subTab, setSubTab] = useState(home.group);
+  const [kit, setKit] = useState<"home" | "away" | "retro">("home");
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -150,9 +151,9 @@ export function BrandPage() {
   // Live preview while editing; leaving the page puts the saved theme back.
   useEffect(() => { applyTheme(draft); }, [draft]);
   // The type pickers show each style in its own face.
-  useEffect(() => { loadFonts([...FONT_KEYS]); }, []);
-  const setFont = (part: "headings" | "body", style: FontStyle) =>
-    setDraft((d) => ownColours({ ...d, fonts: { ...d.fonts, [part]: style } }));
+  useEffect(() => { loadFonts(Object.keys(FONTS)); }, []);
+  const [fontTab, setFontTab] = useState<Partial<Record<"headings" | "body", string>>>({});
+  const setFonts = (patch: NonNullable<Theme["fonts"]>) => setDraft((d) => ownColours({ ...d, fonts: { ...d.fonts, ...patch } }));
   const saved = useRef(brand.theme);
   saved.current = brand.theme;
   useEffect(() => () => applyTheme(saved.current), []);
@@ -185,6 +186,8 @@ export function BrandPage() {
   const field = FIELDS.find((f) => f.key === editing)!;
   const current = TEMPLATE_SETS.find((s) => s.label === set)!;
   const group: TemplateGroup | undefined = current.groups.find((g) => g.label === subTab) ?? current.groups[0];
+  // Sports tabs offer the kits their teams have: Home, Away and (some Toronto and Ottawa teams) Retro.
+  const kits = (["home", "away", "retro"] as const).filter((k) => (current.tabs ? [group!] : current.groups).some((g) => g.templates.some((x) => x.kit === k)));
   const pick = (tpl: Template) => setDraft(ownColours({ ...tpl.theme, fonts: draft.fonts }));
   // Lower-case and without accents, so "quebec" finds Québec.
   const plain = (v: string) => v.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
@@ -193,7 +196,7 @@ export function BrandPage() {
   const results = words.length
     ? ALL_TEMPLATES.filter((tpl) => {
         const where = TEMPLATE_SETS.flatMap((s) => s.groups.filter((g) => g.templates.includes(tpl)).map((g) => `${s.label} ${g.label}`)).join(" ");
-        const hay = plain(`${tpl.name} ${tpl.vibe} ${where}`);
+        const hay = plain(`${tpl.name} ${tpl.vibe} ${tpl.kit ?? ""} ${where}`);
         return words.every((w) => hay.includes(w));
       })
     : [];
@@ -222,8 +225,13 @@ export function BrandPage() {
                 <PillTabs value={group!.label} onChange={setSubTab} options={current.groups.map((g) => ({ value: g.label, label: g.label }))} />
               </div>
             )}
+            {kits.length > 1 && (
+              <Tabs value={kits.includes(kit) ? kit : "home"} onChange={setKit}
+                options={kits.map((k) => ({ value: k, label: { home: "Home", away: "Away", retro: "Retro" }[k] }))} />
+            )}
             {(current.tabs ? [group!] : current.groups).map((g) => (
-              <TemplateGrid key={g.label} label={g.label !== set ? g.label : undefined} templates={g.templates} draft={draft} pick={pick} />
+              <TemplateGrid key={g.label} label={g.label !== set ? g.label : undefined} draft={draft} pick={pick}
+                templates={kits.length > 1 ? g.templates.filter((x) => x.kit === (kits.includes(kit) ? kit : "home")) : g.templates} />
             ))}
           </>
         )}
@@ -261,11 +269,24 @@ export function BrandPage() {
               </button>
             )}
           </div>
+          {(!draft.highlight || !draft.support) && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-text-muted">Inferred colours</p>
+              <Tabs value={draft.infer ?? "contrast"} onChange={(v) => setDraft((d) => ownColours({ ...d, infer: v }))}
+                options={[{ value: "contrast", label: "Contrasting" }, { value: "tonal", label: "Tonal" }]} />
+            </div>
+          )}
           <ColorPicker
             value={shown[editing]}
             swatches={field.swatches}
             onChange={(hexValue) => setDraft((d) => ({ ...d, [editing]: hexValue }))}
           />
+          <div className="grid gap-x-4 border-t border-border pt-3 sm:grid-cols-2">
+            <RangeField label="Vibrancy" min={0.4} max={1.5} step={0.05} value={shown.vibrancy!}
+              onChange={(v) => setDraft((d) => ownColours({ ...d, vibrancy: v }))} format={(v) => `${Math.round(v * 100)}%`} />
+            <RangeField label="Contrast" min={0.8} max={1.6} step={0.05} value={shown.contrast!}
+              onChange={(v) => setDraft((d) => ownColours({ ...d, contrast: v }))} format={(v) => `${Math.round(v * 100)}%`} />
+          </div>
           {warnings.length > 0 && (
             <div className="rounded-xl bg-highlight-950 px-3 py-2 text-sm text-highlight">
               {warnings.map((w) => <p key={w}>! {w}</p>)}
@@ -278,27 +299,42 @@ export function BrandPage() {
       <section className="space-y-3">
         <div className="px-0.5">
           <h2 className="h-section">Type</h2>
-          <p className="meta mt-1">Pick a style for headings and one for body text. Mix them — a serif heading over sans text, or mono all the way.</p>
+          <p className="meta mt-1">A font for headings and one for body text, each with its own weight and spacing. Decorative faces are for headings only.</p>
         </div>
         <div className="card space-y-5 p-4 sm:p-5">
-          {(["headings", "body"] as const).map((part) => (
-            <div key={part} className="space-y-2">
-              <p className="label">{part === "headings" ? "Headings" : "Body text"}</p>
-              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={part === "headings" ? "Headings" : "Body text"}>
-                {FONT_KEYS.map((style) => {
-                  const active = shown.fonts[part] === style;
-                  const family = part === "headings" ? FONT_STYLES[style].display : FONT_STYLES[style].body;
-                  return (
-                    <button key={style} type="button" role="radio" aria-checked={active} onClick={() => setFont(part, style)}
-                      className={`flex flex-col items-center gap-1 rounded-xl border p-3 transition-colors ${active ? "border-accent bg-accent-950" : "border-border bg-surface-2 hover:border-text-subtle"}`}>
-                      <span className={part === "headings" ? "text-[28px] font-extrabold leading-none" : "text-[22px] leading-none"} style={{ fontFamily: family }}>Aa</span>
-                      <span className={`text-xs font-semibold ${active ? "text-accent" : "text-text-muted"}`}>{FONT_STYLES[style].label}</span>
-                    </button>
-                  );
-                })}
+          {(["headings", "body"] as const).map((part) => {
+            const key = shown.fonts[part]!;
+            const def = FONTS[key]!;
+            const weightKey = part === "headings" ? "headingsWeight" : "bodyWeight";
+            const trackKey = part === "headings" ? "headingsTracking" : "bodyTracking";
+            const groups = FONT_GROUPS.filter((g) => part === "headings" || g !== "Decorative");
+            const group = fontTab[part] ?? def.group;
+            return (
+              <div key={part} className="space-y-3">
+                <p className="label">{part === "headings" ? "Headings" : "Body text"}</p>
+                <PillTabs value={group} onChange={(g) => setFontTab((t) => ({ ...t, [part]: g }))} options={groups.map((g) => ({ value: g, label: g }))} />
+                <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={part === "headings" ? "Headings font" : "Body font"}>
+                  {Object.entries(FONTS).filter(([, f]) => f.group === group && (part === "headings" || f.body !== false)).map(([k, f]) => {
+                    const active = key === k;
+                    return (
+                      <button key={k} type="button" role="radio" aria-checked={active} onClick={() => setFonts({ [part]: k })}
+                        className={`flex min-w-0 flex-col items-center gap-1 rounded-xl border p-2.5 transition-colors ${active ? "border-accent bg-accent-950" : "border-border bg-surface-2 hover:border-text-subtle"}`}>
+                        <span className="text-[24px] leading-none" style={{ fontFamily: f.css, fontWeight: part === "headings" ? Math.min(f.weights[1], 800) : 400 }}>Aa</span>
+                        <span className={`max-w-full truncate text-[11px] font-semibold ${active ? "text-accent" : "text-text-muted"}`}>{f.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="grid gap-x-4 sm:grid-cols-2">
+                  <RangeField label="Weight" min={def.weights[0] === def.weights[1] ? 300 : def.weights[0]} max={def.weights[0] === def.weights[1] ? 900 : def.weights[1]} step={50}
+                    value={shown.fonts[weightKey]!} onChange={(v) => setFonts({ [weightKey]: v })} />
+                  <RangeField label="Letter spacing" min={-0.05} max={0.15} step={0.005}
+                    value={shown.fonts[trackKey]!} onChange={(v) => setFonts({ [trackKey]: v })}
+                    format={(v) => `${v > 0 ? "+" : ""}${v.toFixed(3)} em`} />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

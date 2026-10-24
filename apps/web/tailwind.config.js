@@ -56,7 +56,7 @@ export default {
       fontFamily: {
         // Headings and body follow the theme's type styles (sans, mono or serif),
         // set by src/lib/theme.ts as --font-display / --font-body; defaults in globals.css.
-        // Headings are weight 800 (globals.css).
+        // Weight and letter spacing follow --font-display-weight / -tracking (globals.css).
         display: ["var(--font-display)"],
         script: ["'Caveat Brush'", "cursive"],
         body: ["var(--font-body)"],

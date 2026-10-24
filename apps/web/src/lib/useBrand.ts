@@ -51,6 +51,7 @@ export function withDefaults(t: SavedTheme): Theme {
     ...(t.highlight ? { highlight: t.highlight } : {}),
     ...(t.support ? { support: t.support } : {}),
     ...(t.fonts ? { fonts: t.fonts } : {}),
+    ...(t.infer ? { infer: t.infer } : {}),
   });
 }
 

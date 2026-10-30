@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { api, type ConcertDetail, type ArtistListItem, type VenueListItem, type ConcertArtist, type SetlistfmResult, type ConcertSetlistEntry } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
-import { VenueMap } from "@/components/VenueMap";
+import { MapView } from "@/components/MapView";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
 import { FestivalPicker } from "@/components/FestivalPicker";
 import type { CarouselItem } from "@/components/PhotoCarousel";
@@ -2659,7 +2659,7 @@ export function ConcertDetailPage() {
                   {concert.venue.name} ›
                 </Link>
               </div>
-              <VenueMap lat={concert.venue.lat} lng={concert.venue.lng} venueName={concert.venue.name} />
+              <MapView pins={[{ id: concert.venue.id, lat: concert.venue.lat, lng: concert.venue.lng, label: concert.venue.name }]} selected={concert.venue.id} />
             </section>
           )}
 

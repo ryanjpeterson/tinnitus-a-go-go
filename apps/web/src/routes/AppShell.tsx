@@ -28,8 +28,7 @@ import { RequireAuth } from "./RequireAuth";
 import { YearReviewIndex, YearReviewPage } from "./YearReviewPage";
 import { SearchSheet } from "./SearchSheet";
 import { TicketsPage } from "./TicketsPage";
-import { BrandPage } from "./BrandPage";
-import { StyleGuidePage } from "./StyleGuidePage";
+import { JimboConfigPage } from "./JimboConfigPage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AppShell — main layout for public content with optional auth
@@ -251,8 +250,8 @@ export function AppShell() {
           <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
           <Route path="/admin/imports" element={<RequireAdmin><ImportsPage /></RequireAdmin>} />
           <Route path="/admin/data" element={<RequireAdmin><DataCleanupPage /></RequireAdmin>} />
-          <Route path="/admin/brand" element={<RequireAdmin><BrandPage /></RequireAdmin>} />
-          <Route path="/admin/style" element={<RequireAdmin><StyleGuidePage /></RequireAdmin>} />
+          {/* jimbo-ui config: theme, brand and style guide, admins only (the API checks admin on every save) */}
+          <Route path="/jimbo-ui" element={<RequireAdmin><JimboConfigPage canConfigure={isAdmin} /></RequireAdmin>} />
 
           {/* Fallback for unmatched paths */}
           <Route path="*" element={<Navigate to="/" replace />} />

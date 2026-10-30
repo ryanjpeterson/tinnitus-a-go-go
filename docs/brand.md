@@ -5,7 +5,7 @@ Tinnitus A Go Go is built on **jimbo.ui** (repo `jimbo-ui`), Ryan's shared brand
 The full rules — theme engine, templates, tokens, type, shell, components and
 patterns — live in its guide (`skills/jimbo-ui/guide.md`). jimbo-ui itself is
 generic; Tinnitus has its own versions of the reference files (kit, shell,
-Brand and Style guide pages), extended with its domain pieces — and its own
+the jimbo-ui config section), extended with its domain pieces — and its own
 logo, where jimbo.ui apps use the app's name as header text —
 attendance statuses, the venue list/map switch, share images, the photo
 carousel and the upload ring.
@@ -23,6 +23,7 @@ a newer one, ask Claude to "update to the latest jimbo-ui".
 | Favicon, app icons, splash screens | `apps/web/public/` |
 | Tabs: Home · Shows · Artists · Festivals · Venues | `apps/web/src/routes/AppShell.tsx` |
 | UI kit | `apps/web/src/components/ui/jimbo-kit.tsx` is an exact copy of jimbo.ui's reference kit (update by copying); `kit.tsx` re-exports it and adds Tinnitus's pieces — attendance statuses, `EventRow` with an attendance status, the Venues list/map switch, the share button |
+| jimbo-ui config section (`/jimbo-ui`, admins only) | `apps/web/src/routes/JimboConfigPage.tsx` and `routes/config/` — jimbo.ui's reference, with the Wordmark in the theme previews and a logo upload on the Brand tab |
 | Attendance status colours | `STATUS` in `apps/web/src/components/ui/kit.tsx` (jimbo-ui's tones: attended = accent, attending = yellow, interested = purple, missed = red, cancelled = muted) |
 
 ## Rules for changing the look

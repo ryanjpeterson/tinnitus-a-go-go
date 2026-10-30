@@ -9,6 +9,8 @@ FROM base AS deps
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* .npmrc* ./
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
+# For the About tab of the jimbo-ui config section (read by vite.config.ts).
+COPY jimbo-ui.json ./
 RUN pnpm install --frozen-lockfile || pnpm install
 
 FROM deps AS dev

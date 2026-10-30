@@ -19,7 +19,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/cn";
-import { backdropCss, type BackdropPattern } from "@/lib/theme";
+import { backdropCss, fullTheme, loadFonts, themeVars, type BackdropPattern, type Theme } from "@/lib/theme";
 import { useBrand } from "@/lib/useBrand";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,17 +65,21 @@ export const TONES: Record<Tone, { text: string; chip: string; border: string; t
 /** A status dot: a 10 px flat circle (add a tone's `dot`). */
 export const STATUS_DOT = "h-2.5 w-2.5 shrink-0 rounded-full";
 
-/** A status as a labelled chip — for detail pages and headers. */
-export function Badge({ tone, children, className }: { tone: Tone; children: ReactNode; className?: string }) {
+/** A status dot that pulses while something is happening (running, syncing) — movement keeps it apart from a same-coloured still dot. */
+export const LIVE = "animate-pulse";
+
+/** A status as a labelled chip — for detail pages, headers and settings. `dot`: a status dot before the label (`live` pulses it). */
+export function Badge({ tone, children, dot = false, live = false, className }: { tone: Tone; children: ReactNode; dot?: boolean; live?: boolean; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold", TONES[tone].chip, className)}>
+    <span className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-semibold", TONES[tone].chip, className)}>
+      {dot && <span aria-hidden="true" className={cn("h-2 w-2 shrink-0 rounded-full", TONES[tone].dot, live && LIVE)} />}
       {children}
     </span>
   );
 }
 
-/** A status on a row: a tone plus the words a screen reader and tooltip use. */
-export type RowStatus = { tone: Tone; label: string };
+/** A status on a row: a tone plus the words a screen reader and tooltip use; `live` pulses the dot (running now). */
+export type RowStatus = { tone: Tone; label: string; live?: boolean };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Icons
@@ -121,6 +125,15 @@ const BLEED_TONES = {
   highlight: "bg-highlight text-on-highlight shadow-[inset_0_1px_0_0_rgb(var(--c-highlight-darker)/0.55),inset_0_-1px_0_0_rgb(var(--c-highlight-darker)/0.55)]",
   support: "bg-support text-on-support shadow-[inset_0_1px_0_0_rgb(var(--c-support-darker)/0.55),inset_0_-1px_0_0_rgb(var(--c-support-darker)/0.55)]",
 } as const;
+
+/**
+ * Part of the page in another theme — its colours, type and backdrop — without
+ * touching the rest (a carousel of looks, a preview). Loads the theme's fonts.
+ */
+export function ThemeScope({ theme, className, children }: { theme: Theme; className?: string; children: ReactNode }) {
+  useEffect(() => { const f = fullTheme(theme).fonts; loadFonts([f.headings!, f.body!]); }, [theme]);
+  return <div className={cn("theme-scope", className)} style={themeVars(theme) as React.CSSProperties}>{children}</div>;
+}
 
 /**
  * Breaks out of the page column to the full screen width — a band, a strip of
@@ -427,8 +440,10 @@ export function DateBlock({ date, showYear = false, approximate = false }: { dat
 const rowBase = "group flex items-center gap-3 px-4 py-3.5 min-h-[76px] transition-colors hover:bg-surface-2/70 active:bg-surface-2 sm:gap-4";
 
 /** A dated item as a row: date block, optional thumb, title, sub lines, status dot, chevron. */
-export function EventRow({ to, date, title, subtitle, meta, imageUrl, status, showYear = true, approximate, selected, onSelect }: {
-  to: string;
+export function EventRow({ to, onOpen, date, title, subtitle, meta, imageUrl, status, showYear = true, approximate, selected, onSelect }: {
+  /** Where the row goes. Or give `onOpen` instead, to open something in place (a log in a Sheet). */
+  to?: string;
+  onOpen?: () => void;
   date: string;
   title: string;
   subtitle?: ReactNode;
@@ -462,8 +477,8 @@ export function EventRow({ to, date, title, subtitle, meta, imageUrl, status, sh
       </button>
     );
   }
-  return (
-    <Link to={to} className={rowBase}>
+  const body = (
+    <>
       <DateBlock date={date} showYear={showYear} approximate={approximate} />
       {imageUrl !== undefined && (
         <div className="hidden h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-surface-2 sm:block">
@@ -476,9 +491,113 @@ export function EventRow({ to, date, title, subtitle, meta, imageUrl, status, sh
         {meta && <p className="mt-0.5 truncate text-xs text-text-subtle">{meta}</p>}
       </div>
       {/* Status as a quiet dot — the label is in the tooltip and on the detail page */}
-      {status && <span title={status.label} aria-label={status.label} className={cn(STATUS_DOT, TONES[status.tone].dot)} />}
+      {status && <span title={status.label} aria-label={status.label} className={cn(STATUS_DOT, TONES[status.tone].dot, status.live && LIVE)} />}
       <Chevron className="text-text-subtle group-hover:text-accent" />
-    </Link>
+    </>
+  );
+  return onOpen || !to
+    ? <button type="button" onClick={onOpen} className={cn(rowBase, "w-full text-left")}>{body}</button>
+    : <Link to={to} className={rowBase}>{body}</Link>;
+}
+
+/**
+ * A read-only label and its value: `inline` (label left, value right — settings, a job's details)
+ * or `stacked` (a small label above — a detail page's facts). Put several in a `List` or `Section flush`.
+ */
+export function KeyValue({ label, children, layout = "inline" }: { label: ReactNode; children: ReactNode; layout?: "inline" | "stacked" }) {
+  return layout === "inline" ? (
+    <div className="flex min-h-[56px] items-center justify-between gap-4 px-4 py-3">
+      <span className="text-[15px] font-semibold text-text-base">{label}</span>
+      <span className="min-w-0 text-right text-sm text-text-muted">{children}</span>
+    </div>
+  ) : (
+    <div className="px-4 py-3">
+      <p className="text-xs font-semibold text-text-subtle">{label}</p>
+      <div className="mt-0.5 text-[15px] text-text-base">{children}</div>
+    </div>
+  );
+}
+
+/** One setting turned on or off, as a whole-row switch (44 px+ tall) with a label and an optional hint. */
+export function SwitchRow({ label, hint, checked, onChange, disabled }: {
+  label: ReactNode; hint?: ReactNode; checked: boolean; onChange: (on: boolean) => void; disabled?: boolean;
+}) {
+  return (
+    <button type="button" role="switch" aria-checked={checked} disabled={disabled} onClick={() => onChange(!checked)}
+      className="flex min-h-[60px] w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-2/60 disabled:opacity-60">
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-semibold">{label}</span>
+        {hint && <span className="block text-sm text-text-muted">{hint}</span>}
+      </span>
+      <span className={cn("relative h-7 w-12 shrink-0 rounded-full border transition-colors", checked ? "lit-accent border-accent" : "border-border bg-surface-2")}>
+        <span className={cn("absolute top-0.5 h-[22px] w-[22px] rounded-full shadow-sm transition-[left]", checked ? "left-[22px] bg-on-accent" : "left-0.5 bg-text-subtle")} />
+      </span>
+    </button>
+  );
+}
+
+export type AutocompleteOption = { id: string; label: string; sub?: ReactNode };
+
+/**
+ * Pick an existing record as you type, or make a new one: a field with a list of matches
+ * under it (arrow keys, Enter, Escape). `onCreate` adds "Add “…”" when nothing matches
+ * exactly. For several (a lineup, tags), keep the picks as chips above it and clear the text on pick.
+ */
+export function Autocomplete({ label, value, onChange, options, onPick, onCreate, placeholder }: {
+  label?: string;
+  value: string;
+  onChange: (text: string) => void;
+  /** The matches for `value` (the app filters or fetches them). */
+  options: AutocompleteOption[];
+  onPick: (option: AutocompleteOption) => void;
+  onCreate?: (text: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const text = value.trim();
+  const canCreate = !!onCreate && !!text && !options.some((o) => o.label.toLowerCase() === text.toLowerCase());
+  const count = options.length + (canCreate ? 1 : 0);
+  const choose = (i: number) => {
+    if (i < options.length) onPick(options[i]!);
+    else if (canCreate) onCreate!(text);
+    setOpen(false);
+  };
+  return (
+    <div className="relative">
+      {label && <label className="label">{label}</label>}
+      <input value={value} placeholder={placeholder} role="combobox" aria-expanded={open && count > 0} aria-autocomplete="list"
+        onChange={(e) => { onChange(e.target.value); setOpen(true); setActive(0); }}
+        onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 120)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setActive((a) => Math.min(a + 1, count - 1)); }
+          else if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
+          else if (e.key === "Enter" && open && count) { e.preventDefault(); choose(active); }
+          else if (e.key === "Escape") setOpen(false);
+        }}
+        className={cn("field h-12 w-full sm:h-11", label && "mt-1.5")} />
+      {open && count > 0 && text && (
+        <ul role="listbox" className="absolute inset-x-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-xl border border-border bg-surface py-1 shadow-2xl">
+          {options.map((o, i) => (
+            <li key={o.id} role="option" aria-selected={i === active}>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => choose(i)}
+                className={cn("block min-h-[44px] w-full px-3 py-2 text-left", i === active && "bg-surface-2")}>
+                <span className="block truncate text-[15px] font-semibold">{o.label}</span>
+                {o.sub && <span className="block truncate text-xs text-text-subtle">{o.sub}</span>}
+              </button>
+            </li>
+          ))}
+          {canCreate && (
+            <li role="option" aria-selected={active === options.length}>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => choose(options.length)}
+                className={cn("block min-h-[44px] w-full px-3 py-2 text-left text-[15px] font-semibold text-accent", active === options.length && "bg-surface-2")}>
+                Add “{text}”
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
   );
 }
 

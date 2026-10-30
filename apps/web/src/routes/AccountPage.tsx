@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ServicesPanel } from "@/components/ServicesPanel";
 import { LinkCard, PageHeader } from "@/components/ui/kit";
+import { JimboConfigLink } from "./JimboConfigPage";
 import { saveEverything } from "@/lib/offline";
 import { disablePush, enablePush, pushState, type PushState } from "@/lib/push";
 
@@ -129,8 +130,7 @@ export function AccountPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <LinkCard to="/admin/imports" eyebrow="Data" title="Import & export" sub="CSV import · CSV, JSON or Markdown export" />
               <LinkCard to="/admin/data" eyebrow="Data" title="Data cleanup" sub="Merge duplicates, fix gaps" />
-              <LinkCard to="/admin/brand" eyebrow="Look" title="Brand & theme" sub="Colours, logo and favicon" />
-              <LinkCard to="/admin/style" eyebrow="Look" title="Style guide" sub="Every component in the current colours" />
+              <JimboConfigLink canConfigure={user.isAdmin} />
             </div>
           </div>
           <ServicesPanel />

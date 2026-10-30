@@ -121,7 +121,7 @@ export function loadFonts(keys: FontKey[]): void {
 
 /** An abstract page backdrop: a pattern over a base, with strength and size. */
 export type Backdrop = {
-  /** none · ripples · waves · contours · geometry · burst · dots · arrows · shapes */
+  /** A key of `BACKDROPS` (none, or one of the abstract, geo, vintage and texture patterns). */
   pattern?: BackdropPattern;
   /** solid (just the page colour) · gradient (a sweep of accent and support) · glow (soft colour orbs — the default) */
   base?: "solid" | "gradient" | "glow";
@@ -129,18 +129,40 @@ export type Backdrop = {
   intensity?: number;
   /** 0.5–2, default 1: the pattern's size. */
   scale?: number;
+  /** 0.3–2, default 1: how far the pattern stands out from the page (the base is left as is). */
+  contrast?: number;
+  /** 0–1.6, default 1: the pattern's and base's colour — 0 is greys, above 1 more vivid. */
+  saturation?: number;
 };
-export type BackdropPattern = "none" | "ripples" | "waves" | "contours" | "geometry" | "burst" | "dots" | "arrows" | "shapes";
-export const BACKDROPS: { key: BackdropPattern; label: string; hint: string }[] = [
-  { key: "none", label: "None", hint: "Just the base" },
-  { key: "ripples", label: "Ripples", hint: "Rings spreading from two corners" },
-  { key: "waves", label: "Waves", hint: "Layered waves along the bottom" },
-  { key: "contours", label: "Contours", hint: "Topographic lines" },
-  { key: "geometry", label: "Geometry", hint: "A triangle lattice" },
-  { key: "burst", label: "Light burst", hint: "Rays from the top" },
-  { key: "dots", label: "Dot grid", hint: "Fine dots" },
-  { key: "arrows", label: "Arrows", hint: "Chevrons heading up" },
-  { key: "shapes", label: "Shapes", hint: "Scattered circles, triangles and squiggles" },
+export type BackdropPattern =
+  | "none" | "ripples" | "waves" | "contours" | "shapes" | "blobs" | "flow" | "confetti" | "burst"
+  | "geometry" | "hexagons" | "diamonds" | "grid" | "arrows"
+  | "halftone" | "stripes" | "sunburst" | "deco"
+  | "dots" | "grain" | "paper" | "linen";
+export const BACKDROP_GROUPS = ["Abstract", "Geo", "Vintage", "Texture"] as const;
+export const BACKDROPS: { key: BackdropPattern; label: string; hint: string; group: (typeof BACKDROP_GROUPS)[number] | null }[] = [
+  { key: "none", label: "None", hint: "Just the base", group: null },
+  { key: "ripples", label: "Ripples", hint: "Rings spreading from two corners", group: "Abstract" },
+  { key: "waves", label: "Waves", hint: "Layered waves along the bottom", group: "Abstract" },
+  { key: "contours", label: "Contours", hint: "Topographic lines", group: "Abstract" },
+  { key: "shapes", label: "Shapes", hint: "Scattered circles, triangles and squiggles", group: "Abstract" },
+  { key: "blobs", label: "Blobs", hint: "Three soft organic shapes", group: "Abstract" },
+  { key: "flow", label: "Flow", hint: "Lines flowing across the page", group: "Abstract" },
+  { key: "confetti", label: "Confetti", hint: "Small dashes in every colour", group: "Abstract" },
+  { key: "burst", label: "Light burst", hint: "Rays from the top", group: "Abstract" },
+  { key: "geometry", label: "Triangles", hint: "A triangle lattice", group: "Geo" },
+  { key: "hexagons", label: "Hexagons", hint: "A honeycomb", group: "Geo" },
+  { key: "diamonds", label: "Diamonds", hint: "A harlequin of diamonds", group: "Geo" },
+  { key: "grid", label: "Grid", hint: "Graph paper, a heavier line every fourth", group: "Geo" },
+  { key: "arrows", label: "Arrows", hint: "Chevrons heading up", group: "Geo" },
+  { key: "halftone", label: "Halftone", hint: "Print dots fading from a corner", group: "Vintage" },
+  { key: "stripes", label: "Retro stripes", hint: "Three bands sweeping round a corner", group: "Vintage" },
+  { key: "sunburst", label: "Sunburst", hint: "Wide rays rising from the bottom", group: "Vintage" },
+  { key: "deco", label: "Deco fans", hint: "Art deco scallops", group: "Vintage" },
+  { key: "dots", label: "Dot grid", hint: "Fine dots", group: "Texture" },
+  { key: "grain", label: "Grain", hint: "Fine film grain", group: "Texture" },
+  { key: "paper", label: "Paper", hint: "Soft mottled paper", group: "Texture" },
+  { key: "linen", label: "Linen", hint: "A fine woven crosshatch", group: "Texture" },
 ];
 export const BACKDROP_BASES = ["solid", "gradient", "glow"] as const;
 
@@ -323,12 +345,13 @@ export function fullTheme(theme: Theme): FullTheme {
     },
     vibrancy: theme.vibrancy ?? 1,
     contrast: theme.contrast ?? 1,
-    backdrop: { pattern: theme.backdrop?.pattern ?? "none", base: theme.backdrop?.base ?? "glow", intensity: theme.backdrop?.intensity ?? 0.5, scale: theme.backdrop?.scale ?? 1 },
+    backdrop: { pattern: theme.backdrop?.pattern ?? "none", base: theme.backdrop?.base ?? "glow", intensity: theme.backdrop?.intensity ?? 0.5, scale: theme.backdrop?.scale ?? 1,
+      contrast: theme.backdrop?.contrast ?? 1, saturation: theme.backdrop?.saturation ?? 1 },
     infer: theme.infer ?? "contrast",
   };
 }
 
-/** A backdrop without its defaults (none, glow, 0.5, 1), or undefined if it's all defaults. */
+/** A backdrop without its defaults (none, glow, 0.5, 1, 1, 1), or undefined if it's all defaults. */
 function ownBackdrop(b: Backdrop | undefined): Backdrop | undefined {
   if (!b) return undefined;
   const out: Backdrop = {
@@ -336,6 +359,8 @@ function ownBackdrop(b: Backdrop | undefined): Backdrop | undefined {
     ...(b.base && b.base !== "glow" ? { base: b.base } : {}),
     ...(b.intensity !== undefined && b.intensity !== 0.5 ? { intensity: b.intensity } : {}),
     ...(b.scale !== undefined && b.scale !== 1 ? { scale: b.scale } : {}),
+    ...(b.contrast !== undefined && b.contrast !== 1 ? { contrast: b.contrast } : {}),
+    ...(b.saturation !== undefined && b.saturation !== 1 ? { saturation: b.saturation } : {}),
   };
   return Object.keys(out).length ? out : undefined;
 }
@@ -474,9 +499,14 @@ export type BackdropLayers = { image: string; size: string; position: string; re
  */
 export function backdropCss(input: Theme): BackdropLayers {
   const theme = fullTheme(input);
-  const c = themeHex(input);
+  const raw = themeHex(input);
   const b = theme.backdrop;
-  const k = Math.max(0, Math.min(1, b.intensity!)) * 2;   // 0–2, 1 at the default
+  // Saturation recolours the brand colours the backdrop draws with; text and page colours stay.
+  const sv = Math.max(0, Math.min(1.6, b.saturation!));
+  const satd = (hex: string) => { const [h, s, l] = rgbToHsl(hexToRgb(hex)); return rgbToHex(hslToRgb([h, Math.max(0, Math.min(1, s * sv)), l])); };
+  const c: Record<string, string> = sv === 1 ? raw : { ...raw, accent: satd(raw.accent!), highlight: satd(raw.highlight!), support: satd(raw.support!) };
+  const bk = Math.max(0, Math.min(1, b.intensity!)) * 2;   // 0–2, 1 at the default: the base
+  const k = bk * Math.max(0.3, Math.min(2, b.contrast!));   // the pattern
   const sc = Math.max(0.5, Math.min(2, b.scale!));
   const rgba = (hex: string, a: number) => { const [r, g, bl] = hexToRgb(hex); return `rgb(${r} ${g} ${bl} / ${Math.max(0, Math.min(1, a)).toFixed(3)})`; };
   const svg = (body: string, w: number, h: number, ar = "xMidYMid slice") =>
@@ -562,10 +592,100 @@ export function backdropCss(input: Theme): BackdropLayers {
       add(svg(body, 240, 240, "none"), `${n(240 * sc)}px ${n(240 * sc)}px`, "0 0", "repeat");
       break;
     }
+    case "blobs": {
+      const blob = (cx: number, cy: number, r: number, col: string, o: number) => {
+        const pts = [1, 0.82, 1.12, 0.9, 1.05, 0.86].map((m, i) => { const a = (i / 6) * Math.PI * 2; return [cx + Math.cos(a) * r * m, cy + Math.sin(a) * r * m]; });
+        let d = `M${n((pts[0]![0]! + pts[5]![0]!) / 2)} ${n((pts[0]![1]! + pts[5]![1]!) / 2)}`;
+        pts.forEach((p, i) => { const q = pts[(i + 1) % 6]!; d += ` Q${n(p[0]!)} ${n(p[1]!)} ${n((p[0]! + q[0]!) / 2)} ${n((p[1]! + q[1]!) / 2)}`; });
+        return `<path d='${d}Z' fill='${col}' fill-opacity='${(o * k).toFixed(3)}'/>`;
+      };
+      add(svg(blob(820, 160, 260 * sc, c.accent!, 0.09) + blob(150, 640, 300 * sc, c.support!, 0.08) + blob(900, 860, 200 * sc, c.highlight!, 0.08), 1000, 1000), "cover", "center");
+      break;
+    }
+    case "flow": {
+      let body = "";
+      const cols = [c.accent!, c.support!, c.highlight!];
+      for (let i = 0; i < 14; i++) {
+        const y = 80 + i * 56 * sc, a = 60 + i * 6;
+        body += `<path d='M-50 ${n(y)} C 400 ${n(y - a)}, 700 ${n(y + a * 1.6)}, 1650 ${n(y - a * 0.6)}' fill='none' stroke='${cols[i % 3]}' stroke-width='1.6' stroke-opacity='${(0.16 * k).toFixed(3)}'/>`;
+      }
+      add(svg(body, 1600, 900), "cover", "center");
+      break;
+    }
+    case "confetti": {
+      const so = (0.3 * k).toFixed(3);
+      const bits: [number, number, number, string][] = [[20, 30, 20, c.accent!], [96, 18, -35, c.highlight!], [150, 70, 60, c.support!], [52, 110, -10, c.highlight!], [130, 140, 30, c.accent!], [10, 160, 75, c.support!], [88, 70, -60, c.accent!]];
+      const body = bits.map(([x, y, r, col]) => `<rect x='${x}' y='${y}' width='14' height='4' rx='2' transform='rotate(${r} ${x + 7} ${y + 2})' fill='${col}' fill-opacity='${so}'/>`).join("");
+      add(svg(body, 180, 180, "none"), `${n(180 * sc)}px ${n(180 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "hexagons": {
+      const body = `<path d='M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100' fill='none' stroke='${c.accent!}' stroke-width='1.2' stroke-opacity='${(0.2 * k).toFixed(3)}'/>`;
+      add(svg(body, 56, 100, "none"), `${n(56 * sc)}px ${n(100 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "diamonds": {
+      const body = `<path d='M20 0L40 20L20 40L0 20Z' fill='${c.accent!}' fill-opacity='${(0.05 * k).toFixed(3)}' stroke='${c.support!}' stroke-opacity='${(0.18 * k).toFixed(3)}'/>`
+        + `<path d='M40 20L60 40L40 60L20 40Z' fill='${c.highlight!}' fill-opacity='${(0.03 * k).toFixed(3)}'/>`;
+      add(svg(body, 40, 40, "none"), `${n(40 * sc)}px ${n(40 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "grid": {
+      let body = "";
+      for (let i = 0; i < 4; i++) {
+        const o = (i === 0 ? 0.2 : 0.08) * k, v = i * 24;
+        body += `<path d='M${v} 0V96M0 ${v}H96' stroke='${i === 0 ? c.accent! : c.text!}' stroke-opacity='${o.toFixed(3)}' stroke-width='${i === 0 ? 1.2 : 0.8}'/>`;
+      }
+      add(svg(body, 96, 96, "none"), `${n(96 * sc)}px ${n(96 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "halftone": {
+      const step = 16 * sc;
+      add(`linear-gradient(35deg, transparent 0%, ${c.bg!} 70%)`, "100% 100%");
+      add(`radial-gradient(circle, ${rgba(c.highlight!, 0.32 * k)} ${n(3.2 * sc)}px, transparent ${n(3.6 * sc)}px)`, `${n(step)}px ${n(step)}px`, "0 0", "repeat");
+      break;
+    }
+    case "stripes": {
+      const cols = [c.accent!, c.highlight!, c.support!];
+      const body = cols.map((col, i) => {
+        const r = (560 + i * 70) * sc;
+        return `<path d='M1600 ${n(900 - r)} A ${n(r)} ${n(r)} 0 0 0 ${n(1600 - r)} 900' fill='none' stroke='${col}' stroke-width='${n(54 * sc)}' stroke-opacity='${(0.22 * k).toFixed(3)}'/>`;
+      }).join("");
+      add(svg(body, 1600, 900, "xMaxYMax slice"), "cover", "right bottom");
+      break;
+    }
+    case "sunburst": {
+      const ray = 7 * sc;
+      add(`radial-gradient(circle at 50% 108%, transparent 0, transparent 22%, ${c.bg!} 92%)`, "100% 100%");
+      add(`repeating-conic-gradient(from -90deg at 50% 108%, ${rgba(c.highlight!, 0.16 * k)} 0deg ${n(ray)}deg, ${rgba(c.accent!, 0.05 * k)} ${n(ray)}deg ${n(ray * 2)}deg)`, "100% 100%");
+      break;
+    }
+    case "deco": {
+      const so = (0.22 * k).toFixed(3);
+      const arcs = (x: number, y: number) => [30, 20, 10].map((r) => `<path d='M${x - r} ${y} A${r} ${r} 0 0 1 ${x + r} ${y}' fill='none' stroke='${r === 30 ? c.accent! : c.support!}' stroke-width='1.4' stroke-opacity='${so}'/>`).join("");
+      add(svg(arcs(30, 30) + arcs(0, 60) + arcs(60, 60), 60, 60, "none"), `${n(60 * sc)}px ${n(60 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "grain":
+    case "paper": {
+      const [r, g, bl] = hexToRgb(c.text!).map((v) => (v / 255).toFixed(3));
+      const fine = b.pattern === "grain";
+      const a = (fine ? 0.22 : 0.14) * k;
+      const body = `<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='${fine ? 0.85 : 0.035}' numOctaves='${fine ? 2 : 4}' stitchTiles='stitch'/>`
+        + `<feColorMatrix values='0 0 0 0 ${r} 0 0 0 0 ${g} 0 0 0 0 ${bl} 0 0 0 ${a.toFixed(3)} 0'/></filter><rect width='100%' height='100%' filter='url(#n)'/>`;
+      const size = fine ? 180 : 420;
+      add(svg(body, size, size, "none"), `${n(size * sc)}px ${n(size * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "linen": {
+      const gap = n(4 * sc);
+      add(`repeating-linear-gradient(0deg, ${rgba(c.text!, 0.05 * k)} 0 1px, transparent 1px ${gap}px)`, "100% 100%");
+      add(`repeating-linear-gradient(90deg, ${rgba(c.text!, 0.04 * k)} 0 1px, transparent 1px ${gap}px)`, "100% 100%");
+      break;
+    }
   }
 
   // The base, under the pattern.
-  const bk = k;
   if (b.base === "glow") {
     add(`radial-gradient(circle at 10% 4%, ${rgba(c.accent!, 0.2 * bk)}, transparent 36%)`);
     add(`radial-gradient(circle at 98% 36%, ${rgba(c.highlight!, 0.16 * bk)}, transparent 32%)`);
@@ -657,7 +777,7 @@ export function importTheme(text: string): { theme: Theme; name?: string } {
       const bd = (raw.backdrop ?? {}) as Record<string, unknown>;
       const pattern = BACKDROPS.find((x) => x.key === bd.pattern)?.key;
       const base = BACKDROP_BASES.find((x) => x === bd.base);
-      return { pattern, base, intensity: num(bd.intensity, 0, 1), scale: num(bd.scale, 0.5, 2) };
+      return { pattern, base, intensity: num(bd.intensity, 0, 1), scale: num(bd.scale, 0.5, 2), contrast: num(bd.contrast, 0.3, 2), saturation: num(bd.saturation, 0, 1.6) };
     })(),
   };
   const name = typeof obj.name === "string" ? obj.name.slice(0, 80) : undefined;
@@ -665,8 +785,8 @@ export function importTheme(text: string): { theme: Theme; name?: string } {
 }
 
 /** Write the theme to the page: CSS variables, browser chrome colour, and a cached copy for next load. */
-export function applyTheme(theme: Theme): void {
-  const root = document.documentElement;
+/** Every CSS variable a theme sets: colours, type and backdrop. Set them on any element to theme just that part of the page. */
+export function themeVars(theme: Theme): Record<string, string> {
   const vars: Record<string, string> = {};
   for (const [name, [r, g, b]] of Object.entries(deriveColors(theme))) {
     vars[`--c-${name}`] = `${Math.round(r)} ${Math.round(g)} ${Math.round(b)}`;
@@ -683,6 +803,13 @@ export function applyTheme(theme: Theme): void {
   vars["--bg-size"] = bd.size;
   vars["--bg-position"] = bd.position;
   vars["--bg-repeat"] = bd.repeat;
+  return vars;
+}
+
+export function applyTheme(theme: Theme): void {
+  const root = document.documentElement;
+  const vars = themeVars(theme);
+  const f = fullTheme(theme).fonts;
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   loadFonts([f.headings!, f.body!]);
   const scheme = luminance(theme.background) > 0.4 ? "light" : "dark";
@@ -724,4 +851,107 @@ export function markerIcon(input: Theme, selected = false): string {
     `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">` +
     `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="${theme.highlight}" stroke="${ring}" stroke-width="${selected ? 3 : 2}"/></svg>`,
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page tones: one look in light, mid and dark
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** How light a theme's page is: dark (near-black), mid (a deep or muted colour) or light (near-white). */
+export type PageTone = "dark" | "mid" | "light";
+export const PAGE_TONES: PageTone[] = ["light", "mid", "dark"];
+
+export function toneOf(theme: Theme): PageTone {
+  const l = luminance(theme.background);
+  return l < 0.025 ? "dark" : l >= 0.7 ? "light" : "mid";
+}
+
+/** The readability targets every template meets (scripts/contrast.mjs): the names of any it misses. */
+export const TEMPLATE_TARGETS = { text: 7, muted: 4.5, subtle: 3.5, border: 1.75, card: 1.19, accent: 3, highlight: 3, support: 4.5, button: 4.5, apart: 10 } as const;
+export function templateScores(theme: Theme): Record<keyof typeof TEMPLATE_TARGETS, number> {
+  const c = themeHex(theme);
+  return {
+    text: contrast(c.text!, c.surface!), muted: contrast(c["text-muted"]!, c.surface!), subtle: contrast(c["text-subtle"]!, c.surface!),
+    border: contrast(c.border!, c.surface!), card: contrast(c.surface!, c.bg!),
+    accent: contrast(c.accent!, c.bg!), highlight: contrast(c.highlight!, c.bg!), support: contrast(c.support!, c.surface!),
+    button: contrast(c["on-accent"]!, c.accent!),
+    // Accent and highlight need 15 apart; the other pairs 10 (scaled so the one target covers both).
+    apart: Math.min(deltaE(c.accent!, c.highlight!) * (10 / 15), deltaE(c.accent!, c.support!), deltaE(c.highlight!, c.support!)),
+  };
+}
+export function templateIssues(theme: Theme): string[] {
+  const r = templateScores(theme);
+  return (Object.keys(TEMPLATE_TARGETS) as (keyof typeof TEMPLATE_TARGETS)[]).filter((k) => r[k] < TEMPLATE_TARGETS[k]);
+}
+
+const chroma = (hex: string) => { const [r, g, b] = hexToRgb(hex); return (Math.max(r, g, b) - Math.min(r, g, b)) / 255; };
+const isWarm = (hex: string) => { const [h, s] = rgbToHsl(hexToRgb(hex)); return s > 0.25 && (h < 45 || h > 330); };
+
+/** `base` scaled darker or lighter (same hue) until its luminance is `target`. */
+function atLuminance(base: RGB, target: number): RGB {
+  let lo = 0, hi = 1, out: RGB = base;
+  // Darken by scaling towards black; if even the full colour is too dark, mix towards white.
+  if (luminance(base) >= target) {
+    for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; out = mix(BLACK, base, m); if (luminance(out) > target) hi = m; else lo = m; }
+  } else {
+    for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; out = mix(base, WHITE, m); if (luminance(out) > target) hi = m; else lo = m; }
+  }
+  return out.map((v) => Math.round(v)) as RGB;
+}
+
+/**
+ * The same look on a light, mid or dark page, made only from its own colours
+ * (`extra`: more of them — a team's other kits) and lighter or darker shades
+ * of them: the page is the most colourful of them, deepened or paled; each role
+ * takes the first own colour that reads on it, nudged lighter or darker (reds
+ * and oranges are never paled into pink). Returns null when it can't meet every
+ * readability target in that tone.
+ */
+export function atTone(theme: Theme, tone: PageTone, extra: string[] = []): Theme | null {
+  if (toneOf(theme) === tone) return theme;
+  const own: string[] = [];
+  for (const h of [theme.accent, theme.highlight, theme.support, ...extra, theme.background]) {
+    if (h && isHex(h) && !own.some((o) => deltaE(o, h) < 8)) own.push(h.toUpperCase());
+  }
+  // Page hues to try: the theme's own page if it has colour, then its most colourful colours, then a neutral.
+  const hued = [theme.background, ...own].filter((h, i, all) => chroma(h) >= 0.18 && all.findIndex((x) => deltaE(x, h) < 20) === i).slice(0, 3);
+  const bases = [...hued, theme.background].map(hexToRgb);
+  const depths: number[] = tone === "light" ? [0.045, 0.025] : tone === "mid" ? [0.05, 0.04, 0.03] : [0.011, 0.006];
+  for (const base of bases) for (const depth of depths) {
+    const page = rgbToHex(tone === "light" ? mix(WHITE, base, chroma(rgbToHex(base)) > 0.18 ? depth : depth * 0.6) : atLuminance(base, depth));
+    const out = rolesOn(theme, own, page, tone === "light");
+    if (out && !templateIssues(out).length) return out;
+  }
+  return null;
+}
+
+/** Fill accent, highlight and support from `own` colours (nudged lighter or darker) so each reads on `page`. */
+function rolesOn(theme: Theme, own: string[], page: string, lightPage: boolean): Theme | null {
+  const surface = themeHex({ accent: theme.accent, background: page }).surface!;
+  // Text on the accent as deriveColors picks it: near-black on light fills, white on dark ones.
+  const onBest = (c: string) => contrast(c, luminance(c) > 0.35 ? "#141416" : "#FFFFFF");
+  const read = (hex: string, ok: (c: string) => boolean): string | null => {
+    for (let t = 0; t <= 0.6001; t += 0.05) {
+      if (!lightPage && t > 0.15 && isWarm(hex)) return null;
+      const c = rgbToHex(mix(hexToRgb(hex), lightPage ? BLACK : WHITE, t));
+      if (deltaE(c, page) >= 22 && ok(c)) return c;
+    }
+    return null;
+  };
+  const pick = (ok: (c: string) => boolean, apartFrom: [string, number][]) => {
+    for (const h of own) {
+      const c = read(h, (x) => ok(x) && apartFrom.every(([o, d]) => deltaE(x, o) >= d));
+      if (c) return c;
+    }
+    return null;
+  };
+  const accent = pick((c) => contrast(c, page) >= 3.2 && onBest(c) >= 4.7, []);
+  if (!accent) return null;
+  const highlight = theme.highlight ? pick((c) => contrast(c, page) >= 3.2, [[accent, 16]]) : null;
+  const support = theme.support ? pick((c) => contrast(c, surface) >= 4.7, [[accent, 11], ...(highlight ? [[highlight, 11]] as [string, number][] : [])]) : null;
+  return {
+    accent, background: page, ...(highlight ? { highlight } : {}), ...(support ? { support } : {}),
+    // A role no own colour can fill is left to shades of the accent, never a new hue.
+    ...((theme.highlight && !highlight) || (theme.support && !support) || theme.infer === "tonal" ? { infer: "tonal" as const } : {}),
+  };
 }

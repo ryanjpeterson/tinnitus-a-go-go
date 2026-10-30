@@ -6,7 +6,7 @@ import { useState, useRef } from "react";
 import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type VenueAlias } from "@/lib/api";
-import { VenueMap } from "@/components/VenueMap";
+import { MapView } from "@/components/MapView";
 import { useAuth } from "@/lib/auth-context";
 import { fmtDate, plural } from "@/lib/format";
 import { showSubtitle, showTitle } from "@/lib/showTitle";
@@ -471,7 +471,7 @@ export function VenuePage() {
               Open map ↗
             </a>
           </div>
-          <VenueMap lat={venue.lat!} lng={venue.lng!} venueName={venue.name} />
+          <MapView pins={[{ id: venue.id, lat: venue.lat!, lng: venue.lng!, label: venue.name }]} selected={venue.id} />
         </section>
       )}
 

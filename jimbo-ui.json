@@ -1,16 +1,18 @@
 {
-  "version": "0.6.0",
-  "commit": "2589abd",
-  "note": "0.6.0 plus jimbo-ui main up to 2589abd (changes listed under Unreleased there).",
+  "version": "0.8.0",
+  "commit": "fc5d27d",
+  "note": "jimbo.ui 0.8.0 (fc5d27d).",
   "webRoot": "apps/web",
   "auth": "admin",
   "reference": {
     "web/src/components/ui/kit.tsx": "apps/web/src/components/ui/jimbo-kit.tsx (exact copy; Tinnitus extras in kit.tsx)",
     "web/index.html": "apps/web/index.html",
     "web/src/routes/AppShell.tsx": "apps/web/src/routes/AppShell.tsx",
-    "web/src/routes/BrandPage.tsx": "apps/web/src/routes/BrandPage.tsx",
-    "web/src/routes/StyleGuidePage.tsx": "apps/web/src/routes/StyleGuidePage.tsx",
-    "web/src/lib/useBrand.ts": "apps/web/src/lib/useBrand.ts"
+    "web/src/lib/useBrand.ts": "apps/web/src/lib/useBrand.ts",
+    "web/src/routes/JimboConfigPage.tsx": "apps/web/src/routes/JimboConfigPage.tsx",
+    "web/src/routes/config/ThemePanel.tsx": "apps/web/src/routes/config/ThemePanel.tsx",
+    "web/src/routes/config/StyleGuidePanel.tsx": "apps/web/src/routes/config/StyleGuidePanel.tsx",
+    "web/src/components/MapView.tsx": "apps/web/src/components/MapView.tsx (exact copy)"
   },
   "registry": {
     "registered": "2026-10-30",
@@ -61,7 +63,9 @@
       "save-bar",
       "offline-banner",
       "background-work",
-      "select-mode"
+      "select-mode",
+      "map-view",
+      "jimbo-config"
     ],
     "local": [
       {
@@ -93,12 +97,6 @@
         "path": "apps/web/src/components/PhotoCarousel.tsx",
         "kind": "candidate",
         "matches": "image-viewer"
-      },
-      {
-        "name": "VenueMap",
-        "path": "apps/web/src/components/VenueMap.tsx",
-        "kind": "candidate",
-        "matches": "map-view"
       },
       {
         "name": "MapPage (map, VenuePopup, VenuePanel)",
@@ -279,18 +277,6 @@
         "path": "apps/web/src/routes/StatsPage.tsx",
         "kind": "domain",
         "matches": null
-      },
-      {
-        "name": "BrandPage",
-        "path": "apps/web/src/routes/BrandPage.tsx",
-        "kind": "candidate",
-        "matches": "jimbo-config"
-      },
-      {
-        "name": "StyleGuidePage",
-        "path": "apps/web/src/routes/StyleGuidePage.tsx",
-        "kind": "candidate",
-        "matches": "jimbo-config"
       }
     ],
     "overrides": [
@@ -308,6 +294,11 @@
         "id": "view-switch",
         "path": "apps/web/src/components/ui/kit.tsx",
         "why": "VenueViewSwitch: the Venues list ⇄ map"
+      },
+      {
+        "id": "jimbo-config",
+        "path": "apps/web/src/routes/JimboConfigPage.tsx",
+        "why": "Brand tab shows the TINNITUS / a-go-go logo and takes a logo upload"
       }
     ]
   }

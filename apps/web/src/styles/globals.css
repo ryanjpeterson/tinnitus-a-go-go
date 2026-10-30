@@ -42,6 +42,19 @@
     /* Prevent pull-to-refresh in PWA mode */
     overscroll-behavior-y: contain;
   }
+  /* Part of the page in another theme (ThemeScope): the theme's variables are
+     set on the element, which repaints its own page colour and backdrop. */
+  .theme-scope {
+    background-color: rgb(var(--c-bg));
+    background-image: var(--bg-image);
+    background-size: var(--bg-size, 100% 100%);
+    background-position: var(--bg-position, 0 0);
+    background-repeat: var(--bg-repeat, no-repeat);
+    color: rgb(var(--c-text));
+    font-family: var(--font-body);
+    font-weight: var(--font-body-weight);
+    letter-spacing: var(--font-body-tracking);
+  }
   /* Prevent iOS tap highlight */
   * {
     -webkit-tap-highlight-color: transparent;

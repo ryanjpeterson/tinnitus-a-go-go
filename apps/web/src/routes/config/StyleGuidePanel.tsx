@@ -1,5 +1,5 @@
 /**
- * Style guide — /admin/style
+ * jimbo-ui config › Style guide — /jimbo-ui?tab=style
  *
  * Every shared building block, rendered with the real code in the current
  * theme. The written rules live in the jimbo-ui guide; this page is the living
@@ -14,11 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/Wordmark";
 import { ColorPicker } from "@/components/ColorPicker";
 import {
-  DateBlock, EmptyState, EntityRow, EventRow, LinkCard, List, ListGroupLabel, Loading, MediaCard, PageHeader, Pager,
+  Autocomplete, Badge, DateBlock, KeyValue, SwitchRow, EmptyState, EntityRow, EventRow, LinkCard, List, ListGroupLabel, Loading, MediaCard, PageHeader, Pager,
   PillTabs, RankedList, SearchField, Section, SelectField, Sheet, StatGrid, StatTile, StatusBadge, Tabs, ThemeDots, VenueViewSwitch,
 } from "@/components/ui/kit";
 import { FONTS, THEME_KEYS, themeHex } from "@/lib/theme";
 import { useBrand } from "@/lib/useBrand";
+
+const PLACES = ["Main hall", "Studio B", "Rooftop", "Riverside park", "Workshop room"];
 
 const TOKENS: { name: string; use: string }[] = [
   { name: "bg", use: "Page" },
@@ -62,7 +64,7 @@ function Block({ title, note, children }: { title: string; note?: string; childr
   );
 }
 
-export function StyleGuidePage() {
+export function StyleGuidePanel() {
   const { theme: own, colors: theme } = useBrand();
   const hex = themeHex(theme);
   const [tab, setTab] = useState<"one" | "two">("one");
@@ -73,11 +75,12 @@ export function StyleGuidePage() {
   const [sheet, setSheet] = useState(false);
   const [picked, setPicked] = useState(false);
   const [colour, setColour] = useState("#A8FF3E");
+  const [ac, setAc] = useState("");
+  const [on, setOn] = useState(true);
 
   return (
     <div className="space-y-10">
-      <PageHeader eyebrow="Admin · reference" title="Style guide" />
-      <p className="meta -mt-6 max-w-xl">The shared building blocks, live in the current theme. The rules are in the jimbo-ui guide.</p>
+      <p className="meta max-w-xl">The shared building blocks, live in the current theme (including a look you haven't saved yet). The rules are in the jimbo-ui guide.</p>
 
       <Block title="Brand" note="The TINNITUS logo (accent over highlight, unless one is uploaded) and its colours as flat circles — two to four; a faded one is inferred.">
         <div className="card flex flex-wrap items-center gap-6 p-5">
@@ -177,6 +180,17 @@ export function StyleGuidePage() {
           <Tabs value={tab} onChange={setTab} options={[{ value: "one", label: "Tabs" }, { value: "two", label: "Segmented" }]} />
           <PillTabs value={pill} onChange={setPill} options={[{ value: "a", label: "PillTabs" }, { value: "b", label: "Filter" }, { value: "c", label: "Chips" }]} />
           <VenueViewSwitch view="list" />
+          <Autocomplete label="Autocomplete" value={ac} onChange={setAc} placeholder="Type a place…"
+            options={PLACES.filter((p) => ac.trim() && p.toLowerCase().includes(ac.trim().toLowerCase())).map((p) => ({ id: p, label: p }))}
+            onPick={(o) => setAc(o.label)} onCreate={(t) => setAc(t)} />
+        </div>
+      </Block>
+
+      <Block title="Settings rows" note="KeyValue for read-only facts (inline, or stacked on detail pages); SwitchRow for on/off settings.">
+        <div className="card divide-etched overflow-hidden">
+          <KeyValue label="KeyValue">Inline — label left, value right</KeyValue>
+          <KeyValue label="Stacked" layout="stacked">A small label above the value</KeyValue>
+          <SwitchRow label="SwitchRow" hint="The whole row is the switch" checked={on} onChange={setOn} />
         </div>
       </Block>
 
@@ -189,6 +203,8 @@ export function StyleGuidePage() {
       <Block title="Status" note="One fixed tone per attendance status (jimbo.ui's tones); attended uses the accent.">
         <div className="card flex flex-wrap gap-2 p-5">
           {STATUSES.map((s) => <StatusBadge key={s} status={s} />)}
+          <Badge tone="accent" dot>With a dot</Badge>
+          <Badge tone="yellow" dot live>Live — pulsing</Badge>
         </div>
       </Block>
 
@@ -204,23 +220,24 @@ export function StyleGuidePage() {
       <Block title="Lists and cards" note="Lists sit in one card; rows are at least 64px tall for thumbs.">
         <List>
           <ListGroupLabel>ListGroupLabel</ListGroupLabel>
-          <EventRow to="/admin/style" date="2026-03-22" title="EventRow — a show" subtitle="A venue" status="attended" />
-          <EventRow to="/admin/style" date="2026-07-12" title="EventRow in select mode" subtitle="Tap to tick" selected={picked} onSelect={() => setPicked((p) => !p)} />
-          <EntityRow to="/admin/style" name="EntityRow — a person or place" sub="4 items" round />
+          <EventRow to="/jimbo-ui?tab=style" date="2026-03-22" title="EventRow — a show" subtitle="A venue" status="attended" />
+          <EventRow onOpen={() => setSheet(true)} date="2026-04-02" title="EventRow that opens a sheet" subtitle="onOpen instead of a link" status="attending" />
+          <EventRow to="/jimbo-ui?tab=style" date="2026-07-12" title="EventRow in select mode" subtitle="Tap to tick" selected={picked} onSelect={() => setPicked((p) => !p)} />
+          <EntityRow to="/jimbo-ui?tab=style" name="EntityRow — a person or place" sub="4 items" round />
         </List>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <MediaCard to="/admin/style" name="MediaCard" sub="Image card" meta="3 items" />
-          <MediaCard to="/admin/style" name="Portrait" sub="For posters" aspect="portrait" />
+          <MediaCard to="/jimbo-ui?tab=style" name="MediaCard" sub="Image card" meta="3 items" />
+          <MediaCard to="/jimbo-ui?tab=style" name="Portrait" sub="For posters" aspect="portrait" />
         </div>
-        <LinkCard to="/admin/style" eyebrow="LinkCard" title="A card that goes somewhere" sub="Eyebrow, title, sub line" accent />
+        <LinkCard to="/jimbo-ui?tab=style" eyebrow="LinkCard" title="A card that goes somewhere" sub="Eyebrow, title, sub line" accent />
         <Section title="Section" count={3}>
           <p className="p-4 text-sm text-text-muted">A titled card for a block of related content.</p>
         </Section>
         <Section title="RankedList" flush>
           <RankedList items={[
-            { id: "1", name: "Main hall", sub: "2021–2026", count: 12, href: "/admin/style" },
-            { id: "2", name: "Studio B", count: 7, href: "/admin/style" },
-            { id: "3", name: "Rooftop", count: 3, href: "/admin/style" },
+            { id: "1", name: "Main hall", sub: "2021–2026", count: 12, href: "/jimbo-ui?tab=style" },
+            { id: "2", name: "Studio B", count: 7, href: "/jimbo-ui?tab=style" },
+            { id: "3", name: "Rooftop", count: 3, href: "/jimbo-ui?tab=style" },
           ]} />
         </Section>
         <div className="card flex items-center gap-4 p-4">

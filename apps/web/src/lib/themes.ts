@@ -1,7 +1,10 @@
 /**
- * Theme templates for the Brand page, in categories: Everyday (Dark / Mid /
- * Light), Holidays, Countries (by region), Provinces and Sports (NHL, NBA,
- * MLB, NFL, and city tabs for Toronto, Ottawa and Chicago). Every one passes
+ * Theme templates for the config section's Theme tab, in categories:
+ * Everyday, Holidays, Countries (by region), Provinces, Sports (NHL, NBA,
+ * MLB, NFL, and city tabs for Toronto, Ottawa and Chicago) and Games. Each
+ * look comes once, as a family with a light, a mid and a dark page
+ * (`FAMILY_SETS`, `familyLook`): the tones it was written in, and the rest
+ * made from its own colours by `atTone`. Every one passes
  * the readability checks (text
  * 4.5:1, accent and highlight 3:1 and support 4.5:1 on the background, button
  * text 4.5:1) and keeps its colours clearly apart. The app's own default is
@@ -16,7 +19,7 @@
  */
 
 import { BRAND } from "./brand.config";
-import { fullTheme, THEME_KEYS, type Theme } from "./theme";
+import { atTone, fullTheme, PAGE_TONES, THEME_KEYS, toneOf, type PageTone, type Theme } from "./theme";
 
 /** `kit`: a sports theme's Home (team colour), Away (white; baseball road grey) or Retro look. */
 export type Template = { name: string; vibe: string; theme: Theme; kit?: "home" | "away" | "retro" };
@@ -440,6 +443,23 @@ const SETS: TemplateSet[] = [
       t("Nunavut", "Gold and white, red inukshuk, blue star", "#D72C20", "#E35147", "#FFFFFF", "#0055A4"),
     ] },
   ] },
+  { label: "Games", groups: [
+    // Palettes from the games' looks — colours only, no artwork.
+    { label: "The Legend of Zelda", templates: [
+      t("The Legend of Zelda", "1986 · cartridge gold, tunic green, red", "#F8B800", "#E04020", "#000000", "#2EB82E"),
+      t("A Link to the Past", "1991 · Dark World purple, tunic green, Triforce gold", "#5FD35F", "#F0C64A", "#221838", "#8FC2F0"),
+      t("Link's Awakening", "1993 · Koholint sand, sea and palm", "#2E7D32", "#B3471D", "#F6EED2", "#1E5AA8"),
+      t("Ocarina of Time", "1998 · Kokiri green, ocarina blue, Sacred Realm gold", "#62C451", "#F0C33C", "#0E1A24", "#5AB0E8"),
+      t("Majora's Mask", "2000 · mask orange and violet, a falling moon", "#FF8C2A", "#D86BF0", "#1A0E24", "#F2D04A"),
+      t("The Wind Waker", "2002 · open sea, red sail, sunshine", "#FFD84A", "#FF6A5A", "#0A3D62", "#8FE6F2"),
+      t("Twilight Princess", "2006 · twilight teal and dusk orange", "#3FD1C3", "#F28C28", "#101A1C", "#D6B05A"),
+      t("Skyward Sword", "2011 · sky blue, Loftwing red, goddess gold", "#1D63B8", "#C8302A", "#EEF5FB", "#7A5C00"),
+      t("Breath of the Wild", "2017 · Sheikah blue and guardian orange on slate", "#3FC8F0", "#F2A93B", "#12181C", "#A8D8A0"),
+      t("Tears of the Kingdom", "2023 · Zonai green, gloom red, Zonai gold", "#52E0A4", "#F0485E", "#0F1A16", "#E8C875"),
+      t("The Minish Cap", "2004 · forest, cap yellow, Picori pink", "#F6D55C", "#FF9A8A", "#2F4A2A", "#A8E0F0"),
+      t("Echoes of Wisdom", "2024 · rift violet, Tri gold, echo teal", "#B994FF", "#FFD15C", "#1A1430", "#6FE0D8"),
+    ] },
+  ] },
   { label: "Sports", tabs: true, groups: [
     { label: "NHL", templates: NHL },
     { label: "NBA", templates: NBA },
@@ -471,3 +491,70 @@ export const sameTheme = same;
 
 /** Every template once (city tabs repeat league teams), for search and checks. */
 export const ALL_TEMPLATES: Template[] = [...new Map(TEMPLATE_GROUPS.flatMap((g) => g.templates).map((x) => [`${x.name}|${x.vibe}`, x])).values()];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Families: each look once, in light, mid and dark
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** One look (a palette, a team, a flag) with the templates written for it, by page tone. */
+export type TemplateFamily = { key: string; name: string; vibe: string; authored: Partial<Record<PageTone, Template>>; colours: string[] };
+export type FamilyGroup = { label: string; families: TemplateFamily[] };
+export type FamilySet = { label: string; groups: FamilyGroup[]; tabs?: boolean };
+
+/** A team's kits and an everyday palette's tones share a name and the first part of their vibe ("Toronto · …"). */
+const familyKey = (x: Template) => `${x.name}|${x.vibe.split(" · ")[0]}`;
+const familyCache = new Map<string, TemplateFamily>();
+function toFamilies(templates: Template[]): TemplateFamily[] {
+  const out: TemplateFamily[] = [];
+  for (const x of templates) {
+    const key = familyKey(x);
+    let f = familyCache.get(key);
+    if (!f) {
+      f = { key, name: x.name, vibe: x.vibe.replace(" · away", "").replace(/ · retro\b/, ""), authored: {}, colours: [] };
+      familyCache.set(key, f);
+    }
+    const tone = toneOf(x.theme);
+    if (!f.authored[tone]) f.authored[tone] = x;
+    for (const h of [x.theme.accent, x.theme.highlight, x.theme.support]) if (h && !f.colours.includes(h.toUpperCase())) f.colours.push(h.toUpperCase());
+    if (!out.includes(f)) out.push(f);
+  }
+  return out;
+}
+
+/** The categories the Theme tab shows, one tile per look (Everyday's dark, mid and light lists are one). */
+export const FAMILY_SETS: FamilySet[] = TEMPLATE_SETS.map((s) => ({
+  label: s.label,
+  tabs: s.tabs,
+  groups: s.label === "Everyday"
+    ? [{ label: "Everyday", families: toFamilies(s.groups.flatMap((g) => g.templates)) }]
+    : s.groups.map((g) => ({ label: g.label, families: toFamilies(g.templates) })),
+}));
+
+/** Every look once. */
+export const ALL_FAMILIES: TemplateFamily[] = [...familyCache.values()];
+
+const made = new Map<string, Template | null>();
+/** Nearest tones to try when a look can't be made in the one asked for. */
+const NEAREST: Record<PageTone, PageTone[]> = { light: ["light", "mid", "dark"], mid: ["mid", "dark", "light"], dark: ["dark", "mid", "light"] };
+
+/** The template a family shows in a tone: as written, else made from its own colours; null if it can't be (each target is checked). */
+export function familyAt(f: TemplateFamily, tone: PageTone): Template | null {
+  if (f.authored[tone]) return f.authored[tone]!;
+  const id = `${f.key}|${tone}`;
+  if (!made.has(id)) {
+    const src = f.authored.dark ?? f.authored.mid ?? f.authored.light!;
+    const theme = atTone(src.theme, tone, f.colours);
+    made.set(id, theme ? { name: f.name, vibe: f.vibe, theme } : null);
+  }
+  return made.get(id)!;
+}
+
+/** What a tile shows for a tone: that look, or the nearest tone it comes in. */
+export function familyLook(f: TemplateFamily, tone: PageTone): { template: Template; tone: PageTone } {
+  for (const t of NEAREST[tone]) { const x = familyAt(f, t); if (x) return { template: x, tone: t }; }
+  const any = Object.values(f.authored)[0]!;
+  return { template: any, tone: toneOf(any.theme) };
+}
+
+/** The tones a family comes in. */
+export const familyTones = (f: TemplateFamily): PageTone[] => PAGE_TONES.filter((t) => familyAt(f, t));

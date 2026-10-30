@@ -336,8 +336,10 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   │                         notifications, offline saving)
 │   │       │   ├── ImportsPage.tsx       admin: CSV import + CSV / JSON / Markdown export
 │   │       │   ├── DataCleanupPage.tsx   admin: duplicates, festival suggestions, merges + undo, data health, setlist finder
-│   │       │   ├── BrandPage.tsx         admin: theme colours (live preview, presets, contrast checks), logo, favicon
-│   │       │   ├── StyleGuidePage.tsx    admin: every component, live in the current theme
+│   │       │   ├── JimboConfigPage.tsx   admin: jimbo-ui config (/jimbo-ui) — Theme, Brand (logo, favicon),
+│   │       │   │                         Style guide and About tabs
+│   │       │   ├── config/ThemePanel.tsx       its Theme tab: templates, colours, type, backdrop, checks
+│   │       │   ├── config/StyleGuidePanel.tsx  its Style guide tab: every component, live in the current theme
 │   │       │   ├── LoginPage, SignupPage, VerifyEmailPage
 │   │       │   └── RequireAuth, RequireAdmin     route guards
 │   │       ├── components/
@@ -350,7 +352,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   ├── PhotoCarousel.tsx full-screen photo/video viewer (swipe, swipe down to close)
 │   │       │   ├── FestivalPicker.tsx  put shows in a festival: pick one or start a new one
 │   │       │   ├── UploadIndicator.tsx corner progress ring for background uploads
-│   │       │   ├── VenueMap.tsx      venue map embed (Google Maps, OSM fallback)
+│   │       │   ├── MapView.tsx       jimbo.ui's themed map (Google Maps; a themed preview without a key)
 │   │       │   ├── ServicesPanel.tsx admin: service health links
 │   │       │   └── Wordmark.tsx      SVG logo
 │   │       ├── lib/
@@ -405,13 +407,13 @@ the full rules (brand, colour tokens, templates, type, layout, components,
 patterns); **[docs/brand.md](./docs/brand.md)** says which parts are Tinnitus's
 own, and `jimbo-ui.json` records the version this app is on. Files marked
 "Part of jimbo-ui (foundation)" are copied from jimbo-ui — change them there.
-The **Style guide** page (`/admin/style`) shows every component live in the
-current theme.
+Admins change the look in **Account → jimbo-ui config** (`/jimbo-ui`); its
+**Style guide** tab shows every component live in the current theme.
 
 In short: four brand colours (accent, highlight, background and support;
 defaults `#A8FF3E`, `#FF3D6E`, `#141416`, `#2EC5FF`), picked from the
-Everyday (dark / mid / light), Flags and Holidays templates
-or fine-tuned in **Account → Brand & theme**,
+templates (each look in light, mid and dark) or fine-tuned in
+**Account → jimbo-ui config**,
 feed `src/lib/theme.ts`, which derives every colour token (surfaces, borders,
 text, tints — light backgrounds flip to dark text) as CSS variables. Tailwind
 colours point at those variables, so components never use raw hex. The logo (TINNITUS in the
@@ -649,7 +651,7 @@ Data cleanup (`/admin/data` in the app):
 | `GET`   | `/admin/imports/:id`    | Get full status, row counts, and error samples for one import job  |
 | `GET`   | `/admin/copy`           | List all CMS copy items ordered by section + key                   |
 | `PATCH` | `/admin/copy/:key`      | Update the value of a single copy key. Body: `{ value: string }`   |
-| `PUT`    | `/admin/theme`         | Set the brand colours `{ accent, highlight, background, logo }` (#RRGGBB) |
+| `PUT`    | `/admin/theme`         | Set the theme `{ accent, background, highlight?, support?, fonts?, backdrop?, infer?, vibrancy?, contrast? }` (colours #RRGGBB); anything left out is cleared |
 | `DELETE` | `/admin/theme`         | Back to the default colours                                       |
 | `POST`   | `/admin/theme/:asset`  | Upload a `logo` or `favicon` (SVG/PNG/WebP/JPEG ≤ 1 MB; SVGs with scripts or embedded content are refused) |
 | `DELETE` | `/admin/theme/:asset`  | Remove it (back to the built-in, theme-coloured one)              |
@@ -970,7 +972,7 @@ An installable web app (add it to your phone's Home Screen). Phone-first layout:
 ### Admin
 - **Import & export** — CSV import (queued in the worker); export your log as CSV (with setlists), JSON or Markdown.
 - **Data cleanup** — suggested duplicate venues and artists with merge preview, merge history with undo, data health checks with one-tap fixes, setlist finder progress; similar names flagged when adding a show.
-- **Brand & theme** — Everyday (dark, mid, light), Flags and Holidays templates and a colour picker for the accent, highlight, support and background colours (the logo uses the accent and highlight), a live preview across the app and readability checks; everything else is derived from them (a light background switches to dark text). Upload a logo or favicon, or keep the built-in ones, which recolour with the theme. The **Style guide** shows every component in the current colours.
+- **jimbo-ui config** (Account → jimbo-ui config, `/jimbo-ui`) — **Theme**: templates by category, each in light, mid and dark, a search box and a colour picker for the accent, highlight, support and background colours (the logo uses the accent and highlight), type, a page backdrop, a live preview across the app and readability checks; everything else is derived from them (a light background switches to dark text). **Brand**: upload a logo or favicon, or keep the built-in ones, which recolour with the theme. **Style guide**: every component in the current colours. **About**: the jimbo.ui version and registry status.
 - Invites (accounts are invite-only), service health links.
 
 ### Needs HTTPS (dormant on plain http)

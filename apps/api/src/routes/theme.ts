@@ -1,9 +1,10 @@
 /**
- * Brand theme — the four colours the whole UI is derived from, plus an
- * optional uploaded logo and favicon. Stored in site_copy (section "theme").
+ * Brand theme — the colours the whole UI is derived from (accent and
+ * background; highlight and support optional), type, backdrop and look
+ * settings, plus an optional uploaded logo and favicon. Admin routes use requireAdmin. Stored in site_copy (section "theme").
  *
  *   GET    /public/theme              colours + logo/favicon URLs (no auth; every page needs it)
- *   PUT    /admin/theme               set the colours { accent, highlight, background, logo }
+ *   PUT    /admin/theme               set the theme (requireAdmin): colours, fonts, backdrop, infer, vibrancy, contrast
  *   DELETE /admin/theme               back to the default colours
  *   POST   /admin/theme/:asset        upload a logo or favicon (asset = logo | favicon)
  *   DELETE /admin/theme/:asset        remove it (back to the built-in one)
@@ -35,13 +36,20 @@ const fonts = z.object({
   headingsTracking: z.number().min(-0.1).max(0.3).optional(),
   bodyTracking: z.number().min(-0.1).max(0.3).optional(),
 });
-/** Page backdrop (jimbo.ui): a pattern over a base, with strength and size; stored as JSON. */
+/** Page backdrop (jimbo.ui): a pattern over a base, with strength, size, contrast and saturation; stored as JSON. */
 const BACKDROP_KEY = "theme.backdrop";
 const backdrop = z.object({
-  pattern: z.enum(["none", "ripples", "waves", "contours", "geometry", "burst", "dots", "arrows", "shapes"]).optional(),
+  pattern: z.enum([
+    "none", "ripples", "waves", "contours", "shapes", "blobs", "flow", "confetti", "burst",
+    "geometry", "hexagons", "diamonds", "grid", "arrows",
+    "halftone", "stripes", "sunburst", "deco",
+    "dots", "grain", "paper", "linen",
+  ]).optional(),
   base: z.enum(["solid", "gradient", "glow"]).optional(),
   intensity: z.number().min(0).max(1).optional(),
   scale: z.number().min(0.5).max(2).optional(),
+  contrast: z.number().min(0.3).max(2).optional(),
+  saturation: z.number().min(0).max(1.6).optional(),
 });
 /** Look settings (jimbo.ui): how missing colours are inferred, colour vibrancy and layer contrast. */
 const OPTION_KEYS = { infer: "theme.infer", vibrancy: "theme.vibrancy", contrast: "theme.contrast" } as const;

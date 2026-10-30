@@ -1,5 +1,5 @@
 /**
- * Admin brand & theme — /admin/brand
+ * jimbo-ui config › Theme — /jimbo-ui?tab=theme
  *
  * Pick a look from the categories — Everyday (dark, mid, light), Holidays, Countries, Provinces
  * and Sports (league and city tabs) — or search them all (each card is
@@ -9,24 +9,22 @@
  * serif style for headings and for body text.
  * Everything previews live across the app; the save bar appears when there's
  * something unsaved, and leaving the page without saving puts the saved
- * theme back. The logo and favicon can be replaced with uploads.
+ * theme back. The logo and favicon live on the Brand tab.
  *
- * Tinnitus's copy of jimbo.ui's reference Brand page. Its own parts: the
- * TINNITUS / a-go-go logo in the theme previews and logo uploads (jimbo.ui
- * apps use header text and only a favicon upload).
+ * Tinnitus's copy of jimbo.ui's reference Theme panel. Its own part: the
+ * TINNITUS / a-go-go logo in the theme previews.
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { applyTheme, BACKDROP_BASES, BACKDROPS, backdropCss, brandConfigLine, contrast, exportTheme, FONT_GROUPS, FONTS, fullTheme, importTheme, loadFonts, ownColours, themeHex, tokensCss, type Theme, THEME_KEYS } from "@/lib/theme";
-import { ALL_TEMPLATES, sameTheme, TEMPLATE_SETS, type Template, type TemplateGroup } from "@/lib/themes";
+import { applyTheme, BACKDROP_BASES, BACKDROP_GROUPS, BACKDROPS, backdropCss, brandConfigLine, contrast, exportTheme, FONT_GROUPS, FONTS, fullTheme, importTheme, loadFonts, ownColours, PAGE_TONES, themeHex, toneOf, tokensCss, type PageTone, type Theme, THEME_KEYS } from "@/lib/theme";
+import { ALL_FAMILIES, FAMILY_SETS, familyAt, familyLook, sameTheme, type Template, type TemplateFamily } from "@/lib/themes";
 import { useBrand } from "@/lib/useBrand";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ColorPicker";
 import { Wordmark } from "@/components/Wordmark";
-import { PageHeader, PillTabs, RangeField, SearchField, Sheet, Tabs } from "@/components/ui/kit";
+import { PillTabs, RangeField, SearchField, Sheet, Tabs } from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Templates
@@ -91,19 +89,24 @@ function ThemeCard({ name, vibe, theme: input, selected, onPick }: { name: strin
   );
 }
 
-/** A labelled grid of theme tiles (two across on phones, three from sm). */
-function TemplateGrid({ label, templates, draft, pick }: { label?: string; templates: Template[]; draft: Theme; pick: (t: Template) => void }) {
+const TONE_LABEL: Record<PageTone, string> = { light: "Light", mid: "Mid", dark: "Dark" };
+
+/** A labelled grid of looks (two across on phones, three from sm), each in the chosen page tone. */
+function TemplateGrid({ label, families, tone, draft, pick }: { label?: string; families: TemplateFamily[]; tone: PageTone; draft: Theme; pick: (t: Template) => void }) {
   return (
     <div className="space-y-2 pt-1">
       {label && <p className="eyebrow px-0.5">{label}</p>}
-      {templates.length ? (
+      {families.length ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {templates.map((tpl) => (
-            <ThemeCard key={`${tpl.name}|${tpl.vibe}`} {...tpl} selected={same(draft, tpl.theme)} onPick={() => pick(tpl)} />
-          ))}
+          {families.map((f) => {
+            const look = familyLook(f, tone);
+            // A look that can't be made in this tone shows its nearest, and says so.
+            const vibe = look.tone === tone ? f.vibe : `${TONE_LABEL[look.tone]} only · ${f.vibe}`;
+            return <ThemeCard key={f.key} name={f.name} vibe={vibe} theme={look.template.theme} selected={same(draft, look.template.theme)} onPick={() => pick(look.template)} />;
+          })}
         </div>
       ) : (
-        <p className="meta px-0.5">No looks match. Try a team, a place or a colour.</p>
+        <p className="meta px-0.5">No looks match. Try a team, a place, a game or a colour.</p>
       )}
     </div>
   );
@@ -126,21 +129,23 @@ const FIELDS: { key: ColourKey; label: string; short?: string; hint: string; swa
     swatches: ["#141416", "#000000", "#0A0A12", "#1A0F1F", "#071A1F", "#17110D", "#F6F4EF", "#F3EAD6"] },
 ];
 
-export function BrandPage() {
+export function ThemePanel() {
   const qc = useQueryClient();
   const brand = useBrand();
   // The colours as set: highlight and support may be missing (inferred). `shown` fills them in.
   const [draft, setDraft] = useState<Theme>(ownColours(brand.theme));
   const shown = fullTheme(draft);
   const [editing, setEditing] = useState<ColourKey>("accent");
-  // Open on the category (and sub-tab) holding the saved theme.
-  const home = (() => {
-    for (const s of TEMPLATE_SETS) for (const g of s.groups) if (g.templates.some((x) => same(x.theme, brand.theme))) return { set: s.label, group: g.label };
-    return { set: TEMPLATE_SETS[0]!.label, group: "" };
-  })();
+  // Open on the category (and sub-tab) holding the saved look, in its page tone.
+  const [home] = useState(() => {
+    const has = (f: TemplateFamily) => Object.values(f.authored).some((x) => same(x!.theme, brand.theme))
+      || PAGE_TONES.some((t) => !f.authored[t] && familyAt(f, t) && same(familyAt(f, t)!.theme, brand.theme));
+    for (const s of FAMILY_SETS) for (const g of s.groups) if (g.families.some(has)) return { set: s.label, group: g.label };
+    return { set: FAMILY_SETS[0]!.label, group: "" };
+  });
   const [set, setSet] = useState(home.set);
   const [subTab, setSubTab] = useState(home.group);
-  const [kit, setKit] = useState<"home" | "away" | "retro">("home");
+  const [tone, setTone] = useState<PageTone>(() => toneOf(brand.theme));
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -151,6 +156,8 @@ export function BrandPage() {
   // The type pickers show each style in its own face.
   useEffect(() => { loadFonts(Object.keys(FONTS)); }, []);
   const [fontTab, setFontTab] = useState<Partial<Record<"headings" | "body", string>>>({});
+  const [bdGroup, setBdGroup] = useState<(typeof BACKDROP_GROUPS)[number]>(
+    () => BACKDROPS.find((b) => b.key === fullTheme(brand.theme).backdrop.pattern)?.group ?? "Abstract");
   const setBackdrop = (patch: NonNullable<Theme["backdrop"]>) => setDraft((d) => ownColours({ ...d, backdrop: { ...d.backdrop, ...patch } }));
   const setFonts = (patch: NonNullable<Theme["fonts"]>) => setDraft((d) => ownColours({ ...d, fonts: { ...d.fonts, ...patch } }));
   const saved = useRef(brand.theme);
@@ -183,10 +190,8 @@ export function BrandPage() {
   ].filter((w): w is string => !!w);
 
   const field = FIELDS.find((f) => f.key === editing)!;
-  const current = TEMPLATE_SETS.find((s) => s.label === set)!;
-  const group: TemplateGroup | undefined = current.groups.find((g) => g.label === subTab) ?? current.groups[0];
-  // Sports tabs offer the kits their teams have: Home, Away and (some Toronto and Ottawa teams) Retro.
-  const kits = (["home", "away", "retro"] as const).filter((k) => (current.tabs ? [group!] : current.groups).some((g) => g.templates.some((x) => x.kit === k)));
+  const current = FAMILY_SETS.find((s) => s.label === set)!;
+  const group = current.groups.find((g) => g.label === subTab) ?? current.groups[0];
   // A template sets the colours; the type and backdrop you've chosen stay.
   const pick = (tpl: Template) => setDraft(ownColours({ ...tpl.theme, fonts: draft.fonts, backdrop: draft.backdrop }));
   // Lower-case and without accents, so "quebec" finds Québec.
@@ -194,9 +199,9 @@ export function BrandPage() {
   const words = plain(query.trim()).split(/\s+/).filter(Boolean);
   // Search matches a look's name and vibe, and the category and tab it's in (so "nhl" or "toronto" works).
   const results = words.length
-    ? ALL_TEMPLATES.filter((tpl) => {
-        const where = TEMPLATE_SETS.flatMap((s) => s.groups.filter((g) => g.templates.includes(tpl)).map((g) => `${s.label} ${g.label}`)).join(" ");
-        const hay = plain(`${tpl.name} ${tpl.vibe} ${tpl.kit ?? ""} ${where}`);
+    ? ALL_FAMILIES.filter((f) => {
+        const where = FAMILY_SETS.flatMap((s) => s.groups.filter((g) => g.families.includes(f)).map((g) => `${s.label} ${g.label}`)).join(" ");
+        const hay = plain(`${f.name} ${f.vibe} ${where}`);
         return words.every((w) => hay.includes(w));
       })
     : [];
@@ -204,34 +209,29 @@ export function BrandPage() {
   const inferred = optional && !draft[editing];
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 pb-24">
-      <PageHeader eyebrow="Admin" title="Brand & theme" />
-
+    <div className="space-y-8 pb-24">
       {/* 1. Templates */}
       <section className="space-y-3">
         <div className="px-0.5">
           <h2 className="h-section">Pick a look</h2>
-          <p className="meta mt-1">Tap one to try it — the whole app changes. Nothing's saved until you say so.</p>
+          <p className="meta mt-1">Pick light, mid or dark, then tap a look to try it — the whole app changes. Nothing's saved until you say so.</p>
         </div>
-        <SearchField value={query} onChange={setQuery} placeholder="Search — team, place, colour" />
+        <SearchField value={query} onChange={setQuery} placeholder="Search — team, place, game, colour" />
+        {/* Every look comes on a light, a mid and a dark page. */}
+        <Tabs value={tone} onChange={setTone} options={PAGE_TONES.map((t) => ({ value: t, label: TONE_LABEL[t] }))} />
         {query.trim() ? (
-          <TemplateGrid label={`${results.length} ${results.length === 1 ? "look" : "looks"}`} templates={results} draft={draft} pick={pick} />
+          <TemplateGrid label={`${results.length} ${results.length === 1 ? "look" : "looks"}`} families={results} tone={tone} draft={draft} pick={pick} />
         ) : (
           <>
             <PillTabs value={set} onChange={(v) => { setSet(v); setSubTab(""); }}
-              options={TEMPLATE_SETS.map((s) => ({ value: s.label, label: s.label }))} />
+              options={FAMILY_SETS.map((s) => ({ value: s.label, label: s.label }))} />
             {current.tabs && (
               <div className="rounded-xl border border-border bg-surface-2/60 p-2">
                 <PillTabs value={group!.label} onChange={setSubTab} options={current.groups.map((g) => ({ value: g.label, label: g.label }))} />
               </div>
             )}
-            {kits.length > 1 && (
-              <Tabs value={kits.includes(kit) ? kit : "home"} onChange={setKit}
-                options={kits.map((k) => ({ value: k, label: { home: "Home", away: "Away", retro: "Retro" }[k] }))} />
-            )}
             {(current.tabs ? [group!] : current.groups).map((g) => (
-              <TemplateGrid key={g.label} label={g.label !== set ? g.label : undefined} draft={draft} pick={pick}
-                templates={kits.length > 1 ? g.templates.filter((x) => x.kit === (kits.includes(kit) ? kit : "home")) : g.templates} />
+              <TemplateGrid key={g.label} label={g.label !== set ? g.label : undefined} draft={draft} pick={pick} tone={tone} families={g.families} />
             ))}
           </>
         )}
@@ -299,11 +299,12 @@ export function BrandPage() {
       <section className="space-y-3">
         <div className="px-0.5">
           <h2 className="h-section">Backdrop</h2>
-          <p className="meta mt-1">An abstract pattern behind every page, in your colours. Cards stay solid on top, so text stays readable.</p>
+          <p className="meta mt-1">A pattern behind every page — abstract, geometric, vintage or a texture — in your colours. Cards stay solid on top, so text stays readable.</p>
         </div>
         <div className="card space-y-4 p-4 sm:p-5">
+          <PillTabs value={bdGroup} onChange={setBdGroup} options={BACKDROP_GROUPS.map((g) => ({ value: g, label: g }))} />
           <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Backdrop pattern">
-            {BACKDROPS.map((b) => {
+            {BACKDROPS.filter((b) => b.group === null || b.group === bdGroup).map((b) => {
               const active = shown.backdrop.pattern === b.key;
               const look = backdropCss({ ...draft, backdrop: { ...draft.backdrop, pattern: b.key } });
               return (
@@ -326,6 +327,10 @@ export function BrandPage() {
               onChange={(v) => setBackdrop({ intensity: v })} format={(v) => `${Math.round(v * 100)}%`} />
             <RangeField label="Size" min={0.5} max={2} step={0.05} value={shown.backdrop.scale!}
               onChange={(v) => setBackdrop({ scale: v })} format={(v) => `${Math.round(v * 100)}%`} />
+            <RangeField label="Contrast" min={0.3} max={2} step={0.05} value={shown.backdrop.contrast!}
+              onChange={(v) => setBackdrop({ contrast: v })} format={(v) => `${Math.round(v * 100)}%`} />
+            <RangeField label="Saturation" min={0} max={1.6} step={0.05} value={shown.backdrop.saturation!}
+              onChange={(v) => setBackdrop({ saturation: v })} format={(v) => (v === 0 ? "Greys" : `${Math.round(v * 100)}%`)} />
           </div>
         </div>
       </section>
@@ -375,16 +380,6 @@ export function BrandPage() {
 
       <ShareTheme draft={draft} onImport={(t) => setDraft(ownColours(t))} />
 
-      <BrandAssets logoUrl={brand.logoUrl} faviconUrl={brand.faviconUrl} onChange={refresh} />
-
-      <Link to="/admin/style" className="card flex items-center justify-between gap-3 p-4 hover:border-accent">
-        <span>
-          <span className="eyebrow block">Reference</span>
-          <span className="mt-0.5 block text-[15px] font-semibold">Style guide — every component in these colours</span>
-        </span>
-        <span className="text-text-subtle">›</span>
-      </Link>
-
       {/* Save bar — floats above the tab bar while there's something unsaved */}
       {(dirty || note) && (
         <div className="fixed inset-x-0 z-40 flex justify-center px-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] sm:bottom-6">
@@ -402,60 +397,6 @@ export function BrandPage() {
         </div>
       )}
     </div>
-  );
-}
-
-/** Upload or remove a custom logo and favicon. */
-function BrandAssets({ logoUrl, faviconUrl, onChange }: { logoUrl: string | null; faviconUrl: string | null; onChange: () => Promise<unknown> }) {
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const upload = async (asset: "logo" | "favicon", file: File | undefined) => {
-    if (!file) return;
-    setBusy(asset);
-    setError(null);
-    try { await api.uploadBrandAsset(asset, file); await onChange(); }
-    catch (err) { setError(err instanceof Error ? err.message : "Upload failed."); }
-    finally { setBusy(null); }
-  };
-  const remove = async (asset: "logo" | "favicon") => {
-    setBusy(asset);
-    try { await api.removeBrandAsset(asset); await onChange(); }
-    finally { setBusy(null); }
-  };
-
-  const row = (asset: "logo" | "favicon", label: string, hint: string, url: string | null, preview: React.ReactNode) => (
-    <div className="flex items-center gap-4">
-      <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-2 p-2">{preview}</div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-semibold">{label}</p>
-        <p className="text-xs text-text-subtle">{url ? "Custom upload" : hint}</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <label className={`btn btn-sm btn-secondary cursor-pointer ${busy === asset ? "pointer-events-none opacity-50" : ""}`}>
-            {busy === asset ? "Uploading…" : url ? "Replace" : "Upload"}
-            <input type="file" accept="image/svg+xml,image/png,image/webp,image/jpeg" className="sr-only"
-              onChange={(e) => { void upload(asset, e.target.files?.[0]); e.target.value = ""; }} />
-          </label>
-          {url && <button onClick={() => void remove(asset)} className="btn btn-sm btn-ghost">Use built-in</button>}
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <section className="space-y-3">
-      <div className="px-0.5">
-        <h2 className="h-section">Logo & favicon</h2>
-        <p className="meta mt-1">The built-in ones follow your colours. Upload SVG, PNG or WebP (under 1 MB) to replace either.</p>
-      </div>
-      <div className="card space-y-4 p-4 sm:p-5">
-        {row("logo", "Logo", "Built-in — accent + highlight colours", logoUrl,
-          logoUrl ? <img src={logoUrl} alt="" className="max-h-full max-w-full object-contain" /> : <Wordmark size="sm" />)}
-        {row("favicon", "Favicon", "Built-in — recoloured from the theme", faviconUrl,
-          <img src={faviconUrl ?? (document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.href ?? "/favicon.svg")} alt="" className="h-10 w-10" />)}
-        {error && <p className="text-sm text-accent-pink">{error}</p>}
-      </div>
-    </section>
   );
 }
 

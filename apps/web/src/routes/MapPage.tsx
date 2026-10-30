@@ -1,7 +1,7 @@
 /**
  * MapPage — full-screen map showing all venues with coordinates.
  *
- * Uses the same dark Google Maps styling as VenueMap, with clustered markers
+ * Uses the theme's map style and pins (like jimbo.ui's MapView), with clustered markers
  * when zoomed out and individual venue pins when zoomed in.
  */
 

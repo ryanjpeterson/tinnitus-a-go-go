@@ -184,6 +184,7 @@ services:
       VITE_MAILPIT_URL: ${VITE_MAILPIT_URL:-}
     volumes:
       - ./apps/web:/app/apps/web
+      - ./jimbo-ui.json:/app/jimbo-ui.json:ro
       - ./packages:/app/packages
     ports:
       - "4444:4444"

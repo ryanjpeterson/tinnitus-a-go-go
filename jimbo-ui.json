@@ -3,6 +3,7 @@
   "commit": "2589abd",
   "note": "0.6.0 plus jimbo-ui main up to 2589abd (changes listed under Unreleased there).",
   "webRoot": "apps/web",
+  "auth": "admin",
   "reference": {
     "web/src/components/ui/kit.tsx": "apps/web/src/components/ui/jimbo-kit.tsx (exact copy; Tinnitus extras in kit.tsx)",
     "web/index.html": "apps/web/index.html",
@@ -10,5 +11,304 @@
     "web/src/routes/BrandPage.tsx": "apps/web/src/routes/BrandPage.tsx",
     "web/src/routes/StyleGuidePage.tsx": "apps/web/src/routes/StyleGuidePage.tsx",
     "web/src/lib/useBrand.ts": "apps/web/src/lib/useBrand.ts"
+  },
+  "registry": {
+    "registered": "2026-10-30",
+    "audited": "2026-10-30"
+  },
+  "components": {
+    "uses": [
+      "button",
+      "color-picker",
+      "card",
+      "field",
+      "label",
+      "chip",
+      "dot",
+      "app-shell",
+      "top-bar-button",
+      "dock-icon",
+      "theme-card",
+      "badge",
+      "tones",
+      "status-dot",
+      "chevron",
+      "page-header",
+      "banner",
+      "hero",
+      "image-viewer",
+      "section",
+      "list",
+      "list-group-label",
+      "date-block",
+      "event-row",
+      "entity-row",
+      "media-card",
+      "link-card",
+      "stat-tile",
+      "stat-grid",
+      "ranked-list",
+      "search-field",
+      "range-field",
+      "select-field",
+      "tabs",
+      "pill-tabs",
+      "pager",
+      "sheet",
+      "loading",
+      "empty-state",
+      "view-switch",
+      "save-bar",
+      "offline-banner",
+      "background-work",
+      "select-mode"
+    ],
+    "local": [
+      {
+        "name": "Wordmark",
+        "path": "apps/web/src/components/Wordmark.tsx",
+        "kind": "domain",
+        "matches": "header-title"
+      },
+      {
+        "name": "Card, CardHeader, CardContent, CardFooter",
+        "path": "apps/web/src/components/ui/card.tsx",
+        "kind": "candidate",
+        "matches": "card"
+      },
+      {
+        "name": "Input",
+        "path": "apps/web/src/components/ui/input.tsx",
+        "kind": "candidate",
+        "matches": "field"
+      },
+      {
+        "name": "Label",
+        "path": "apps/web/src/components/ui/label.tsx",
+        "kind": "candidate",
+        "matches": "label"
+      },
+      {
+        "name": "PhotoCarousel",
+        "path": "apps/web/src/components/PhotoCarousel.tsx",
+        "kind": "candidate",
+        "matches": "image-viewer"
+      },
+      {
+        "name": "VenueMap",
+        "path": "apps/web/src/components/VenueMap.tsx",
+        "kind": "candidate",
+        "matches": "map-view"
+      },
+      {
+        "name": "MapPage (map, VenuePopup, VenuePanel)",
+        "path": "apps/web/src/routes/MapPage.tsx",
+        "kind": "domain",
+        "matches": "map-view"
+      },
+      {
+        "name": "VenueAutocomplete",
+        "path": "apps/web/src/routes/AddConcertModal.tsx",
+        "kind": "candidate",
+        "matches": "autocomplete"
+      },
+      {
+        "name": "VenueAutocomplete",
+        "path": "apps/web/src/routes/AddFestivalModal.tsx",
+        "kind": "candidate",
+        "matches": "autocomplete"
+      },
+      {
+        "name": "VenueAutocomplete",
+        "path": "apps/web/src/routes/ConcertDetailPage.tsx",
+        "kind": "candidate",
+        "matches": "autocomplete"
+      },
+      {
+        "name": "ArtistAutocomplete",
+        "path": "apps/web/src/routes/AddFestivalModal.tsx",
+        "kind": "candidate",
+        "matches": "autocomplete"
+      },
+      {
+        "name": "ArtistAutocomplete",
+        "path": "apps/web/src/routes/FestivalDetailPage.tsx",
+        "kind": "candidate",
+        "matches": "autocomplete"
+      },
+      {
+        "name": "ArtistInput",
+        "path": "apps/web/src/routes/AddConcertModal.tsx",
+        "kind": "candidate",
+        "matches": "autocomplete"
+      },
+      {
+        "name": "Detail rows (dl)",
+        "path": "apps/web/src/routes/ConcertDetailPage.tsx",
+        "kind": "candidate",
+        "matches": "key-value"
+      },
+      {
+        "name": "Stat cells (dl)",
+        "path": "apps/web/src/routes/DataCleanupPage.tsx",
+        "kind": "candidate",
+        "matches": "stat-tile"
+      },
+      {
+        "name": "Stat cells (dl)",
+        "path": "apps/web/src/routes/ImportsPage.tsx",
+        "kind": "candidate",
+        "matches": "stat-tile"
+      },
+      {
+        "name": "NotificationKinds switches",
+        "path": "apps/web/src/routes/AccountPage.tsx",
+        "kind": "candidate",
+        "matches": "switch-row"
+      },
+      {
+        "name": "OfflineCard progress bar",
+        "path": "apps/web/src/routes/AccountPage.tsx",
+        "kind": "candidate",
+        "matches": "progress-bar"
+      },
+      {
+        "name": "UploadIndicator",
+        "path": "apps/web/src/components/UploadIndicator.tsx",
+        "kind": "candidate",
+        "matches": "background-work"
+      },
+      {
+        "name": "OfflineBanner",
+        "path": "apps/web/src/routes/AppShell.tsx",
+        "kind": "candidate",
+        "matches": "offline-banner"
+      },
+      {
+        "name": "YearBars, MiniVBars",
+        "path": "apps/web/src/routes/StatsPage.tsx",
+        "kind": "candidate",
+        "matches": "bar-chart"
+      },
+      {
+        "name": "Heatmap",
+        "path": "apps/web/src/routes/StatsPage.tsx",
+        "kind": "candidate",
+        "matches": "heatmap"
+      },
+      {
+        "name": "Milestones",
+        "path": "apps/web/src/routes/StatsPage.tsx",
+        "kind": "candidate",
+        "matches": "timeline"
+      },
+      {
+        "name": "ShareButton",
+        "path": "apps/web/src/components/ui/kit.tsx",
+        "kind": "candidate",
+        "matches": "share-button"
+      },
+      {
+        "name": "SearchSheet (Group, Row, Avatar)",
+        "path": "apps/web/src/routes/SearchSheet.tsx",
+        "kind": "domain",
+        "matches": "sheet"
+      },
+      {
+        "name": "StatusBadge, STATUS",
+        "path": "apps/web/src/components/ui/kit.tsx",
+        "kind": "domain",
+        "matches": "badge"
+      },
+      {
+        "name": "InviteBadge",
+        "path": "apps/web/src/routes/SignupPage.tsx",
+        "kind": "domain",
+        "matches": "badge"
+      },
+      {
+        "name": "AddConcertModal",
+        "path": "apps/web/src/routes/AddConcertModal.tsx",
+        "kind": "domain",
+        "matches": "sheet"
+      },
+      {
+        "name": "AddFestivalModal",
+        "path": "apps/web/src/routes/AddFestivalModal.tsx",
+        "kind": "domain",
+        "matches": "sheet"
+      },
+      {
+        "name": "FestivalPicker",
+        "path": "apps/web/src/components/FestivalPicker.tsx",
+        "kind": "domain",
+        "matches": "sheet"
+      },
+      {
+        "name": "Show editors (meta, attendance, lineup, setlist, flyer, photos)",
+        "path": "apps/web/src/routes/ConcertDetailPage.tsx",
+        "kind": "domain",
+        "matches": null
+      },
+      {
+        "name": "FollowUpPrompt",
+        "path": "apps/web/src/routes/FollowUpPrompt.tsx",
+        "kind": "domain",
+        "matches": null
+      },
+      {
+        "name": "Data cleanup tools",
+        "path": "apps/web/src/routes/DataCleanupPage.tsx",
+        "kind": "domain",
+        "matches": null
+      },
+      {
+        "name": "ServicesPanel",
+        "path": "apps/web/src/components/ServicesPanel.tsx",
+        "kind": "domain",
+        "matches": null
+      },
+      {
+        "name": "Year review (FlyerWall, YearPicker, YearArrow)",
+        "path": "apps/web/src/routes/YearReviewPage.tsx",
+        "kind": "domain",
+        "matches": "media-card"
+      },
+      {
+        "name": "OnThisDay",
+        "path": "apps/web/src/routes/StatsPage.tsx",
+        "kind": "domain",
+        "matches": null
+      },
+      {
+        "name": "BrandPage",
+        "path": "apps/web/src/routes/BrandPage.tsx",
+        "kind": "candidate",
+        "matches": "jimbo-config"
+      },
+      {
+        "name": "StyleGuidePage",
+        "path": "apps/web/src/routes/StyleGuidePage.tsx",
+        "kind": "candidate",
+        "matches": "jimbo-config"
+      }
+    ],
+    "overrides": [
+      {
+        "id": "app-shell",
+        "path": "apps/web/src/routes/AppShell.tsx",
+        "why": "Wordmark in the top bar, admin menu, offline banner, follow-up prompt"
+      },
+      {
+        "id": "event-row",
+        "path": "apps/web/src/components/ui/kit.tsx",
+        "why": "takes the app's attendance status"
+      },
+      {
+        "id": "view-switch",
+        "path": "apps/web/src/components/ui/kit.tsx",
+        "why": "VenueViewSwitch: the Venues list ⇄ map"
+      }
+    ]
   }
 }

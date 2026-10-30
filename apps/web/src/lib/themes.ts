@@ -337,6 +337,7 @@ const SETS: TemplateSet[] = [
   { label: "Everyday", groups: [
     { label: "Dark", templates: [
       t("Volt", "Lime, hot pink, sky", "#A8FF3E", "#FF3D6E", "#141416", "#2EC5FF"),
+      t("Pilot", "Lime, hot pink, cyan — the original", "#A8FF3E", "#FF3D6E", "#141416", "#3DFFE8"),
       t("Neon night", "Cyan, magenta, lemon", "#2EF2FF", "#FF2ED1", "#0A0A12", "#FFE53D"),
       t("Acid", "Yellow, orange, violet", "#F5FF2E", "#FF5A1F", "#0D0D0B", "#B98CFF"),
       t("Sunset strip", "Orange, pink, teal", "#FF8A3D", "#FF3D7F", "#1A0F1F", "#3DDCC8"),

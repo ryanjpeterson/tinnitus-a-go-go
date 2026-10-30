@@ -45,7 +45,7 @@ const TOKENS: { name: string; use: string }[] = [
   { name: "support-900", use: "Support wash (avatars)" },
 ];
 
-const ORB = { accent: "orb-accent", highlight: "orb-highlight", support: "orb-support" } as const;
+const DOT = { accent: "dot-accent", highlight: "dot-highlight", support: "dot-support" } as const;
 const LIT = { accent: "lit-accent", highlight: "lit-highlight", support: "lit-support" } as const;
 
 const STATUSES = ["attended", "attending", "interested", "missed", "cancelled"] as const;
@@ -79,13 +79,13 @@ export function StyleGuidePage() {
       <PageHeader eyebrow="Admin · reference" title="Style guide" />
       <p className="meta -mt-6 max-w-xl">The shared building blocks, live in the current theme. The rules are in the jimbo-ui guide.</p>
 
-      <Block title="Brand" note="The TINNITUS logo (accent over highlight, unless one is uploaded) and its colours as circles — two to four; a dashed ring means inferred.">
+      <Block title="Brand" note="The TINNITUS logo (accent over highlight, unless one is uploaded) and its colours as flat circles — two to four; a faded one is inferred.">
         <div className="card flex flex-wrap items-center gap-6 p-5">
           <Wordmark size="lg" />
           <div className="flex flex-wrap gap-3">
             {THEME_KEYS.map((k) => (
               <div key={k} className="text-center">
-                <div className={`mx-auto h-14 w-14 rounded-full ${k === "background" ? "border border-border" : ORB[k]} ${own[k] ? "" : "outline-dashed outline-2 outline-offset-2 outline-text-subtle"}`}
+                <div className={`mx-auto h-12 w-12 rounded-full ${k === "background" ? "border border-border" : DOT[k]} ${own[k] ? "" : "opacity-55"}`}
                   style={k === "background" ? { background: theme[k] } : undefined} />
                 <p className="mt-1.5 text-xs font-semibold capitalize">{k}</p>
                 <p className="font-mono text-[11px] text-text-subtle">{own[k] ? theme[k] : "inferred"}</p>
@@ -95,31 +95,38 @@ export function StyleGuidePage() {
         </div>
       </Block>
 
-      <Block title="Shades and depth" note="Each brand colour comes lighter and darker, as a solid fill with a slight outline, and as washes. Use them for depth, never as new colours.">
+      <Block title="Shades and depth" note="Each brand colour comes lighter and darker, as a solid fill and as washes. Use them for depth, never as new colours.">
         <div className="card space-y-4 p-5">
           {(["accent", "highlight", "support"] as const).map((k) => (
             <div key={k} className="flex items-center gap-3">
-              <p className="w-20 shrink-0 text-xs font-semibold capitalize">{k}</p>
-              <div className="flex items-center">
+              <p className="w-16 shrink-0 text-xs font-semibold capitalize">{k}</p>
+              <div className="flex min-w-0 items-center gap-1">
                 {["lighter", "light", "", "dark", "darker"].map((v) => (
-                  <span key={v} className="-ml-1.5 h-8 w-8 rounded-full ring-2 ring-surface first:ml-0"
+                  <span key={v} className="h-6 w-6 shrink-0 rounded-full"
                     style={{ background: `rgb(var(--c-${k}${v ? `-${v}` : ""}))` }} title={`${k}${v ? `-${v}` : ""}`} />
                 ))}
               </div>
-              <span className={`${LIT[k]} ml-auto whitespace-nowrap rounded-control px-3 py-1 text-xs font-bold`}>Solid fill</span>
+              <span className={`${LIT[k]} ml-auto shrink-0 whitespace-nowrap rounded-control px-2.5 py-1 text-xs font-bold`}>Fill</span>
             </div>
           ))}
         </div>
       </Block>
 
-      <Block title="Glass and orbs" note="Frosted .glass over the page's colour orbs; .orb-* circles and ThemeDots are the motif — use them here and there, not everywhere.">
-        <div className="relative overflow-hidden rounded-2xl p-5">
-          <span className="orb-accent absolute -left-6 -top-8 h-32 w-32" />
-          <span className="orb-highlight absolute right-6 top-6 h-20 w-20" />
-          <span className="orb-support absolute -bottom-10 left-1/3 h-28 w-28" />
-          <div className="card-glass relative flex items-center gap-3 p-4">
-            <ThemeDots size={14} />
-            <p className="text-sm font-semibold">.card-glass over orbs</p>
+      <Block title="Circles" note="Always one flat fill — no gradient, outline, ring, glow or shadow. Side by side, never overlapping. 8 px inline, 10 px status, 16 px swatches, 40–48 px editor swatches and avatars.">
+        <div className="card space-y-4 p-5">
+          <div className="flex flex-wrap items-center gap-6">
+            <span className="flex items-center gap-2 text-sm"><ThemeDots /> ThemeDots (8 px)</span>
+            <span className="flex items-center gap-2 text-sm"><span className="dot-support h-2 w-2" /> label dot</span>
+            <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-yellow-400" /> status</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {(["dot-accent", "dot-highlight", "dot-support"] as const).map((d) => <span key={d} className={`${d} h-4 w-4 shrink-0`} />)}
+            <span className="h-4 w-4 shrink-0 rounded-full border border-border bg-bg" />
+            <span className="ml-2 text-sm text-text-muted">swatches (16 px; the page colour gets a hairline border)</span>
+          </div>
+          <div className="glass flex items-center gap-3 rounded-2xl p-4">
+            <span className="dot-support flex h-10 w-10 items-center justify-center font-display text-on-support">A</span>
+            <p className="text-sm font-semibold">An avatar on .glass</p>
           </div>
         </div>
       </Block>

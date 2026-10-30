@@ -36,9 +36,9 @@ const same = sameTheme;
 /** Same colours *and* the same ones left to inference — what decides whether there's anything to save. */
 const sameOwn = (a: Theme, b: Theme) => JSON.stringify(ownColours(a)).toUpperCase() === JSON.stringify(ownColours(b)).toUpperCase();
 
-/** A flat circle of one colour with a slight outline in its darker shade — the circle motif, from hex shades. */
-const orb = (c: Record<string, string>, k: string): React.CSSProperties =>
-  ({ background: c[k], boxShadow: `inset 0 0 0 1px ${c[`${k}-darker`]}8c` });
+/** A flat circle of one colour (guide: Circles) — inferred colours show faded. */
+const dot = (c: Record<string, string>, k: string, inferred = false): React.CSSProperties =>
+  ({ background: c[k], opacity: inferred ? 0.55 : 1 });
 
 /** A miniature of the app in a theme: top bar with the app's name, a label, a card, buttons, a date, an avatar. */
 function ThemeCard({ name, vibe, theme: input, selected, onPick }: { name: string; vibe: string; theme: Theme; selected: boolean; onPick: () => void }) {
@@ -53,7 +53,7 @@ function ThemeCard({ name, vibe, theme: input, selected, onPick }: { name: strin
           <span className="font-display text-[15px] leading-none" style={{ color: theme.accent }}>
             TINNITUS<span className="block text-[10px]" style={{ color: theme.highlight }}>a-go-go</span>
           </span>
-          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold" style={{ ...orb(c, "support"), color: c["on-support"] }}>A</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold" style={{ ...dot(c, "support"), color: c["on-support"] }}>A</span>
         </div>
         <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: theme.support }}>On this day</p>
         <div className="rounded-lg p-2" style={{ background: c.surface, border: `1px solid ${c.border}` }}>
@@ -69,19 +69,17 @@ function ThemeCard({ name, vibe, theme: input, selected, onPick }: { name: strin
           </div>
         </div>
         <div className="flex gap-1.5">
-          <span className="rounded-md px-2.5 py-1 text-[9px] font-bold" style={{ background: c.accent, boxShadow: `inset 0 0 0 1px ${c["accent-darker"]}8c`, color: c["on-accent"] }}>Save</span>
+          <span className="rounded-md px-2.5 py-1 text-[9px] font-bold" style={{ background: c.accent, color: c["on-accent"] }}>Save</span>
           <span className="rounded-md px-2.5 py-1 text-[9px] font-bold" style={{ background: c["surface-2"], color: c.text }}>Cancel</span>
         </div>
       </div>
       <div className="space-y-1.5 border-t border-border bg-surface px-3 py-2">
-        {/* Every colour the theme uses, as circles; inferred ones have a dashed ring. */}
+        {/* Every colour the theme uses, as flat circles side by side; inferred ones faded. */}
         <span className="flex items-center gap-1" aria-label={`Colours: ${(["accent", "highlight", "support", "background"] as const).map((k) => theme[k]).join(", ")}`}>
           {(["accent", "highlight", "support"] as const).map((k) => (
-            <span key={k} title={input[k] ? k : `${k} (inferred)`}
-              className={`h-4 w-4 rounded-full ${input[k] ? "" : "outline-dashed outline-1 outline-offset-1 outline-text-subtle"}`}
-              style={orb(c, k)} />
+            <span key={k} title={input[k] ? k : `${k} (inferred)`} className="h-4 w-4 rounded-full" style={dot(c, k, !input[k])} />
           ))}
-          <span title="background" className="h-4 w-4 rounded-full ring-1 ring-text-subtle/60" style={{ background: theme.background }} />
+          <span title="background" className="h-4 w-4 rounded-full border border-border" style={{ background: theme.background }} />
           {selected && <span className="ml-auto text-xs font-bold text-accent">✓</span>}
         </span>
         <span className="block min-w-0">
@@ -252,8 +250,8 @@ export function BrandPage() {
               return (
                 <button key={f.key} type="button" role="tab" aria-selected={active} onClick={() => setEditing(f.key)}
                   className={`flex min-w-0 flex-col items-center gap-1.5 rounded-2xl border p-2 transition-colors ${active ? "border-text-base bg-surface-2" : "border-border hover:border-text-subtle"}`}>
-                  <span className={`h-10 w-10 rounded-full sm:h-12 sm:w-12 ${draft[f.key] ? "" : "outline-dashed outline-2 outline-offset-2 outline-text-subtle"}`}
-                    style={f.key === "background" ? { background: shown.background, boxShadow: `inset 0 0 0 1px ${hex.border}` } : orb(hex, f.key)} />
+                  <span className={`h-10 w-10 rounded-full sm:h-12 sm:w-12 ${f.key === "background" ? "border border-border" : ""}`}
+                    style={f.key === "background" ? { background: shown.background } : dot(hex, f.key, !draft[f.key])} />
                   <span className="max-w-full truncate text-xs font-semibold">
                     {f.short ? <><span className="sm:hidden">{f.short}</span><span className="hidden sm:inline">{f.label}</span></> : f.label}
                   </span>

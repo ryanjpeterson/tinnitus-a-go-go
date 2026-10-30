@@ -93,12 +93,12 @@
   .card-glass {
     @apply glass rounded-2xl;
   }
-  /* Orbs: a brand colour as a flat circle with a slight outline in its own
-     darker shade — the circle motif. Size and place them with utilities. */
-  .orb-accent    { background: rgb(var(--c-accent));    box-shadow: inset 0 0 0 1px rgb(var(--c-accent-darker) / 0.55); }
-  .orb-highlight { background: rgb(var(--c-highlight)); box-shadow: inset 0 0 0 1px rgb(var(--c-highlight-darker) / 0.55); }
-  .orb-support   { background: rgb(var(--c-support));   box-shadow: inset 0 0 0 1px rgb(var(--c-support-darker) / 0.55); }
-  .orb-accent, .orb-highlight, .orb-support { @apply rounded-full; }
+  /* Dots: a brand colour as a flat circle — one solid fill, no gradient,
+     outline, ring or shadow. The circle motif; size them with utilities
+     (guide: Circles). The old .orb-* names are the same thing. */
+  .dot-accent, .orb-accent       { @apply rounded-full bg-accent; }
+  .dot-highlight, .orb-highlight { @apply rounded-full bg-highlight; }
+  .dot-support, .orb-support     { @apply rounded-full bg-support; }
   .eyebrow {
     @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-text-subtle;
   }

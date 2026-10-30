@@ -62,8 +62,8 @@ export const TONES: Record<Tone, { text: string; chip: string; border: string; t
   muted:  { text: "text-text-subtle", chip: "bg-surface-2 text-text-subtle border-border",      border: "border-border",     tint: "bg-surface-2",  dot: "bg-text-subtle" },
 };
 
-/** A status dot: a small flat circle with a slight outline (add a tone's `dot`). */
-export const STATUS_DOT = "h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-inset ring-black/25";
+/** A status dot: a 10 px flat circle (add a tone's `dot`). */
+export const STATUS_DOT = "h-2.5 w-2.5 shrink-0 rounded-full";
 
 /** A status as a labelled chip — for detail pages and headers. */
 export function Badge({ tone, children, className }: { tone: Tone; children: ReactNode; className?: string }) {
@@ -96,16 +96,15 @@ export function Chevron({ dir = "right", className }: { dir?: "left" | "right" |
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * The theme's colours as small overlapping lit circles (accent, highlight,
- * support) — jimbo.ui's motif. Use here and there: in empty states, beside a
- * brand moment. Not above page titles. Decorative; follows the live theme.
+ * The theme's colours (accent, highlight, support) as flat dots side by side —
+ * jimbo.ui's motif. In empty states and brand moments only; never above a page
+ * title. Decorative; follows the live theme.
  */
-export function ThemeDots({ size = 10, className }: { size?: number; className?: string }) {
+export function ThemeDots({ size = 8, className }: { size?: number; className?: string }) {
   return (
-    <span aria-hidden="true" className={cn("inline-flex shrink-0 items-center", className)}>
-      {(["orb-accent", "orb-highlight", "orb-support"] as const).map((orb, i) => (
-        <span key={orb} className={cn(orb, "ring-2 ring-bg")}
-          style={{ width: size, height: size, marginLeft: i ? -size * 0.3 : 0, zIndex: 3 - i }} />
+    <span aria-hidden="true" className={cn("inline-flex shrink-0 items-center", className)} style={{ gap: size >= 16 ? 6 : 4 }}>
+      {(["dot-accent", "dot-highlight", "dot-support"] as const).map((dot) => (
+        <span key={dot} className={dot} style={{ width: size, height: size }} />
       ))}
     </span>
   );
@@ -253,11 +252,7 @@ export function Banner({ backdrop, glow = "accent", back, badge, children }: {
         <img src={backdrop} alt="" aria-hidden="true"
           className="absolute inset-0 -z-20 h-full w-full scale-150 object-cover blur-2xl saturate-150" />
       ) : (
-        <div className={cn("absolute inset-0 -z-20 bg-gradient-to-br via-support-950/60 to-bg", glowCls)}>
-          {/* No image: two soft orbs give the frost something to blur. */}
-          <span className="orb-highlight absolute -right-10 -top-12 h-44 w-44 opacity-30 blur-2xl" />
-          <span className="orb-support absolute -bottom-16 left-1/4 h-40 w-40 opacity-25 blur-2xl" />
-        </div>
+        <div className={cn("absolute inset-0 -z-20 bg-gradient-to-br via-support-950/60 to-bg", glowCls)} />
       )}
       {/* Light overall dim, fading into the page at the bottom so there's no hard edge. */}
       <div className="absolute inset-0 -z-10 bg-black/35" />
@@ -407,7 +402,7 @@ export function List({ children, className }: { children: ReactNode; className?:
 export function ListGroupLabel({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center gap-2 bg-gradient-to-r from-support-900/50 via-support-950/40 to-transparent px-4 py-2 text-xs font-semibold uppercase tracking-wider text-support">
-      <span aria-hidden="true" className="orb-support h-2 w-2" />
+      <span aria-hidden="true" className="dot-support h-2 w-2" />
       {children}
     </div>
   );
@@ -502,7 +497,7 @@ export function EntityRow({ to, name, imageUrl, sub, meta, round = false }: {
         {imageUrl ? (
           <img src={imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
         ) : (
-          <div className="orb-support flex h-full w-full items-center justify-center font-display text-base text-on-support">{initials(name)}</div>
+          <div className="dot-support flex h-full w-full items-center justify-center font-display text-base text-on-support">{initials(name)}</div>
         )}
       </div>
       <div className="min-w-0 flex-1">
@@ -557,7 +552,7 @@ export function MediaCard({ to, name, imageUrl, sub, meta, aspect = "video", con
 }
 
 /** Tappable summary card: eyebrow, title, sub line, chevron. */
-const ORB = { accent: "orb-accent", highlight: "orb-highlight", support: "orb-support" } as const;
+const DOT = { accent: "dot-accent", highlight: "dot-highlight", support: "dot-support" } as const;
 /** A soft pool of the colour in a card's top-right corner, over the card's own gradient. */
 const GLOW = {
   accent: "bg-[radial-gradient(circle_at_100%_0%,rgb(var(--c-accent)/0.2),transparent_55%),linear-gradient(rgb(var(--c-surface)/0.9),rgb(var(--c-bg-deep)/0.9))]",
@@ -603,7 +598,7 @@ export function StatTile({ label, value, sub, accent = "muted" }: {
   return (
     <div className={cn("card relative overflow-hidden p-4 sm:p-5", accent !== "muted" && GLOW[accent])}>
       <p className="eyebrow mb-1 flex items-center gap-1.5">
-        {accent !== "muted" && <span aria-hidden="true" className={cn(ORB[accent], "h-2.5 w-2.5")} />}
+        {accent !== "muted" && <span aria-hidden="true" className={cn(DOT[accent], "h-2 w-2")} />}
         {label}
       </p>
       <p className={cn("font-display text-[32px] leading-none sm:text-4xl", col)}>
@@ -899,7 +894,7 @@ export function EmptyState({ title, body, action, tone = "muted" }: {
 }) {
   return (
     <div className="card px-6 py-14 text-center">
-      <ThemeDots size={tone === "error" ? 18 : 22} className="mb-4" />
+      <ThemeDots size={12} className="mb-4" />
       <p className={cn("text-lg font-semibold", tone === "error" ? "text-highlight" : "text-text-base")}>{title}</p>
       {body && <p className="mx-auto mt-1 max-w-sm text-sm text-text-muted">{body}</p>}
       {action && <div className="mt-5 flex justify-center">{action}</div>}

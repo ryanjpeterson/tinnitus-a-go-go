@@ -53,6 +53,17 @@ export default {
         rose: { 800: tok("highlight-800"), 900: tok("highlight-900"), 950: tok("highlight-950") },
         danger: "#FF5252",
       },
+      // Every text size follows the theme's size setting: × --fs (globals.css) —
+      // the body size, or the headings size inside .font-display. Line heights
+      // are ratios so they follow too. Pixel sizes the kit uses are named here
+      // (text-15 = 15px × --fs); use them instead of text-[15px].
+      fontSize: {
+        ...Object.fromEntries([["xs", 0.75, 1.333], ["sm", 0.875, 1.43], ["base", 1, 1.5], ["lg", 1.125, 1.556], ["xl", 1.25, 1.4],
+          ["2xl", 1.5, 1.333], ["3xl", 1.875, 1.2], ["4xl", 2.25, 1.111], ["5xl", 3, 1], ["6xl", 3.75, 1], ["7xl", 4.5, 1], ["8xl", 6, 1], ["9xl", 8, 1]]
+          .map(([k, rem, lh]) => [k, [`calc(${rem}rem * var(--fs, 1))`, { lineHeight: String(lh) }]])),
+        ...Object.fromEntries([7, 8, 9, 10, 10.5, 11, 12, 13, 15, 17, 22, 24, 26, 28, 30, 32, 40]
+          .map((px) => [String(px), `calc(${px}px * var(--fs, 1))`])),
+      },
       fontFamily: {
         // Headings and body follow the theme's type styles (sans, mono or serif),
         // set by src/lib/theme.ts as --font-display / --font-body; defaults in globals.css.

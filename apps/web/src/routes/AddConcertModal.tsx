@@ -975,7 +975,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
           {/* Possible duplicates */}
           {similar && (
             <div className="space-y-3 rounded-xl border border-yellow-700 bg-yellow-950/30 p-4">
-              <p className="text-[15px] font-semibold text-yellow-300">Already in your log?</p>
+              <p className="text-15 font-semibold text-yellow-300">Already in your log?</p>
               {similar.map((w) => (
                 <div key={String(w.field)} className="flex items-center justify-between gap-3">
                   <p className="min-w-0 text-sm text-text-muted">

@@ -216,7 +216,7 @@ function VenuePanel({ venues, selected, onCity, onVenue, onAll }: {
   if (!open) {
     return (
       <button onClick={() => setOpen(true)}
-        className="pointer-events-auto absolute left-4 top-4 flex h-11 items-center gap-2 rounded-control border border-border bg-bg/95 px-4 text-[15px] font-semibold shadow-xl backdrop-blur-md">
+        className="pointer-events-auto absolute left-4 top-4 flex h-11 items-center gap-2 rounded-control border border-border bg-bg/95 px-4 text-15 font-semibold shadow-xl backdrop-blur-md">
         Venues <span className="text-text-subtle">{venues.length}</span>
       </button>
     );
@@ -248,7 +248,7 @@ function VenuePanel({ venues, selected, onCity, onVenue, onAll }: {
                 className="flex min-h-[52px] w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-2/70"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-semibold">{g.label}</span>
+                  <span className="block truncate text-15 font-semibold">{g.label}</span>
                   <span className="block text-xs text-text-subtle">
                     {g.venues.length} venue{g.venues.length === 1 ? "" : "s"} · {g.shows} show{g.shows === 1 ? "" : "s"}
                   </span>

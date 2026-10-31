@@ -149,7 +149,7 @@ function FlyerWall({ shows }: { shows: YearReviewResponse["shows"] }) {
             </div>
           )}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-2 pb-1.5 pt-5">
-            <p className="truncate text-[11px] font-semibold leading-tight text-white/90">
+            <p className="truncate text-11 font-semibold leading-tight text-white/90">
               {fmtDate(t.date)}
               {t.festival && <span className="text-yellow-300"> · {t.days > 1 ? `${t.days} days` : "festival"}</span>}
             </p>
@@ -374,7 +374,7 @@ export function YearReviewPage() {
                 className="group flex min-h-[64px] items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 p-3.5 transition-colors hover:border-yellow-500/60"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] font-semibold transition-colors group-hover:text-yellow-400">{f.name}</p>
+                  <p className="truncate text-15 font-semibold transition-colors group-hover:text-yellow-400">{f.name}</p>
                   <p className="text-sm text-text-subtle">{fmtDate(f.startDate)}</p>
                 </div>
                 <span className="shrink-0 text-sm font-semibold text-yellow-400">{plural(f.days, "day")}</span>
@@ -390,7 +390,7 @@ export function YearReviewPage() {
           {d.topSongs.length > 0 ? (
             <ol className="space-y-1.5">
               {d.topSongs.map((s, i) => (
-                <li key={`${s.song}-${s.artistSlug ?? i}`} className="flex items-baseline gap-3 text-[15px]">
+                <li key={`${s.song}-${s.artistSlug ?? i}`} className="flex items-baseline gap-3 text-15">
                   <span className="w-5 shrink-0 text-right text-sm text-text-subtle">{i + 1}</span>
                   <span className="min-w-0 flex-1 truncate">
                     {s.song}

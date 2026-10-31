@@ -72,7 +72,7 @@ export const LIVE = "animate-pulse";
 /** A status as a labelled chip — for detail pages, headers and settings. `dot`: a status dot before the label (`live` pulses it). */
 export function Badge({ tone, children, dot = false, live = false, className }: { tone: Tone; children: ReactNode; dot?: boolean; live?: boolean; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-semibold", TONES[tone].chip, className)}>
+    <span className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-11 font-semibold", TONES[tone].chip, className)}>
       {dot && <span aria-hidden="true" className={cn("h-2 w-2 shrink-0 rounded-full", TONES[tone].dot, live && LIVE)} />}
       {children}
     </span>
@@ -187,8 +187,8 @@ export function HeroSection({ eyebrow, title, children, actions, pattern = "ripp
         style={{ backgroundImage: look.image, backgroundSize: look.size, backgroundPosition: look.position, backgroundRepeat: look.repeat }} />
       <div className={cn("flex flex-col justify-end gap-3 py-10 sm:py-14", size === "lg" ? "min-h-[62dvh]" : "min-h-[34dvh]", align === "center" && "items-center text-center")}>
         {eyebrow && <p className="eyebrow text-support">{eyebrow}</p>}
-        <h1 className="font-display text-[40px] leading-[1.02] text-text-base sm:text-6xl">{title}</h1>
-        {children && <div className={cn("max-w-xl text-[17px] text-text-muted", align === "center" && "mx-auto")}>{children}</div>}
+        <h1 className="font-display text-40 leading-[1.02] text-text-base sm:text-6xl">{title}</h1>
+        {children && <div className={cn("max-w-xl text-17 text-text-muted", align === "center" && "mx-auto")}>{children}</div>}
         {actions && <div className="mt-2 flex flex-wrap gap-2">{actions}</div>}
       </div>
     </FullBleed>
@@ -377,8 +377,8 @@ export function Hero({ imageUrl, imageAlt, eyebrow, title, children, actions, ba
         </div>
         <div className="min-w-0 flex-1">
           {eyebrow && <p className="eyebrow mb-1.5 text-text-muted">{eyebrow}</p>}
-          <h1 className="font-display text-[28px] leading-[1.05] text-white break-words sm:text-6xl">{title}</h1>
-          {children && <div className="mt-2 space-y-0.5 text-[15px] text-text-muted sm:mt-3 sm:text-lg">{children}</div>}
+          <h1 className="font-display text-28 leading-[1.05] text-white break-words sm:text-6xl">{title}</h1>
+          {children && <div className="mt-2 space-y-0.5 text-15 text-text-muted sm:mt-3 sm:text-lg">{children}</div>}
         </div>
       </div>
       {actions && <div className="flex flex-wrap gap-2 pb-6 sm:pb-8">{actions}</div>}
@@ -474,9 +474,9 @@ export function DateBlock({ date, showYear = false, approximate = false }: { dat
   const p = dateParts(date);
   return (
     <div className="flex w-[52px] shrink-0 flex-col items-center overflow-hidden rounded-xl border border-border bg-surface-2 leading-none shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),0_6px_14px_-8px_rgba(0,0,0,0.6)] sm:w-14">
-      <span className="lit-highlight w-full py-[3px] text-center text-[10px] font-bold tracking-wider">{p.month}</span>
-      <span className="pt-1 font-display text-[24px] leading-[1.05] text-text-base sm:text-[26px]">{approximate ? "~" : p.day}</span>
-      <span className="pb-1.5 text-[10.5px] font-medium text-text-subtle">{showYear ? p.year : p.weekday}</span>
+      <span className="lit-highlight w-full py-[3px] text-center text-10 font-bold tracking-wider">{p.month}</span>
+      <span className="pt-1 font-display text-24 leading-[1.05] text-text-base sm:text-26">{approximate ? "~" : p.day}</span>
+      <span className="pb-1.5 text-10.5 font-medium text-text-subtle">{showYear ? p.year : p.weekday}</span>
     </div>
   );
 }
@@ -514,7 +514,7 @@ export function EventRow({ to, onOpen, date, title, subtitle, meta, imageUrl, st
         </span>
         <DateBlock date={date} showYear={showYear} approximate={approximate} />
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-text-base sm:text-base">{title}</p>
+          <p className="line-clamp-2 text-15 font-semibold leading-snug text-text-base sm:text-base">{title}</p>
           {subtitle && <p className="mt-0.5 truncate text-sm text-text-muted">{subtitle}</p>}
           {meta && <p className="mt-0.5 truncate text-xs text-text-subtle">{meta}</p>}
         </div>
@@ -530,7 +530,7 @@ export function EventRow({ to, onOpen, date, title, subtitle, meta, imageUrl, st
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-text-base group-hover:text-accent sm:text-base">{title}</p>
+        <p className="line-clamp-2 text-15 font-semibold leading-snug text-text-base group-hover:text-accent sm:text-base">{title}</p>
         {subtitle && <p className="mt-0.5 truncate text-sm text-text-muted">{subtitle}</p>}
         {meta && <p className="mt-0.5 truncate text-xs text-text-subtle">{meta}</p>}
       </div>
@@ -551,13 +551,13 @@ export function EventRow({ to, onOpen, date, title, subtitle, meta, imageUrl, st
 export function KeyValue({ label, children, layout = "inline" }: { label: ReactNode; children: ReactNode; layout?: "inline" | "stacked" }) {
   return layout === "inline" ? (
     <div className="flex min-h-[56px] items-center justify-between gap-4 px-4 py-3">
-      <span className="text-[15px] font-semibold text-text-base">{label}</span>
+      <span className="text-15 font-semibold text-text-base">{label}</span>
       <span className="min-w-0 text-right text-sm text-text-muted">{children}</span>
     </div>
   ) : (
     <div className="px-4 py-3">
       <p className="text-xs font-semibold text-text-subtle">{label}</p>
-      <div className="mt-0.5 text-[15px] text-text-base">{children}</div>
+      <div className="mt-0.5 text-15 text-text-base">{children}</div>
     </div>
   );
 }
@@ -570,7 +570,7 @@ export function SwitchRow({ label, hint, checked, onChange, disabled }: {
     <button type="button" role="switch" aria-checked={checked} disabled={disabled} onClick={() => onChange(!checked)}
       className="flex min-h-[60px] w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-2/60 disabled:opacity-60">
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-semibold">{label}</span>
+        <span className="block text-15 font-semibold">{label}</span>
         {hint && <span className="block text-sm text-text-muted">{hint}</span>}
       </span>
       <span className={cn("relative h-7 w-12 shrink-0 rounded-full border transition-colors", checked ? "lit-accent border-accent" : "border-border bg-surface-2")}>
@@ -626,7 +626,7 @@ export function Autocomplete({ label, value, onChange, options, onPick, onCreate
             <li key={o.id} role="option" aria-selected={i === active}>
               <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => choose(i)}
                 className={cn("block min-h-[44px] w-full px-3 py-2 text-left", i === active && "bg-surface-2")}>
-                <span className="block truncate text-[15px] font-semibold">{o.label}</span>
+                <span className="block truncate text-15 font-semibold">{o.label}</span>
                 {o.sub && <span className="block truncate text-xs text-text-subtle">{o.sub}</span>}
               </button>
             </li>
@@ -634,7 +634,7 @@ export function Autocomplete({ label, value, onChange, options, onPick, onCreate
           {canCreate && (
             <li role="option" aria-selected={active === options.length}>
               <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => choose(options.length)}
-                className={cn("block min-h-[44px] w-full px-3 py-2 text-left text-[15px] font-semibold text-accent", active === options.length && "bg-surface-2")}>
+                className={cn("block min-h-[44px] w-full px-3 py-2 text-left text-15 font-semibold text-accent", active === options.length && "bg-surface-2")}>
                 Add “{text}”
               </button>
             </li>
@@ -664,7 +664,7 @@ export function EntityRow({ to, name, imageUrl, sub, meta, round = false }: {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold text-text-base group-hover:text-accent sm:text-base">{name}</p>
+        <p className="truncate text-15 font-semibold text-text-base group-hover:text-accent sm:text-base">{name}</p>
         {sub && <p className="mt-0.5 truncate text-sm text-text-muted">{sub}</p>}
       </div>
       {meta && <span className="shrink-0 text-sm font-medium text-text-subtle">{meta}</span>}
@@ -706,7 +706,7 @@ export function MediaCard({ to, name, imageUrl, sub, meta, aspect = "video", con
         {badge && <div className="absolute left-2 top-2">{badge}</div>}
       </div>
       <div className="flex flex-1 flex-col gap-0.5 p-3">
-        <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-text-base group-hover:text-accent">{name}</p>
+        <p className="line-clamp-2 text-15 font-semibold leading-snug text-text-base group-hover:text-accent">{name}</p>
         {sub && <p className="truncate text-sm text-text-muted">{sub}</p>}
         {meta && <p className="mt-auto truncate pt-1 text-xs font-medium text-text-subtle">{meta}</p>}
       </div>
@@ -766,7 +766,7 @@ export function StatTile({ label, value, sub, accent = "muted", trend }: {
         {accent !== "muted" && <span aria-hidden="true" className={cn(DOT[accent], "h-2 w-2")} />}
         {label}
       </p>
-      <p className={cn("font-display text-[32px] leading-none sm:text-4xl", col)}>
+      <p className={cn("font-display text-32 leading-none sm:text-4xl", col)}>
         {typeof value === "number" ? value.toLocaleString() : value}
       </p>
       {trend && trend.length > 1 && <Sparkline values={trend} tone={accent === "muted" ? "accent" : accent} className="mt-3" />}
@@ -927,11 +927,11 @@ export function TrendChart({ labels, series, format = compactNumber, height = 18
             {ticks.map((t) => (
               <g key={t}>
                 <line x1={pad.left} x2={width - pad.right} y1={y(t)} y2={y(t)} strokeWidth={1} className="stroke-border/70" />
-                <text x={pad.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-text-subtle text-[11px] tabular-nums">{format(t)}</text>
+                <text x={pad.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-text-subtle text-11 tabular-nums">{format(t)}</text>
               </g>
             ))}
             {xLabels.map((i) => (
-              <text key={i} x={x(i)} y={height - 6} textAnchor={i === 0 ? "start" : i === last ? "end" : "middle"} className="fill-text-subtle text-[11px]">{labels[i]}</text>
+              <text key={i} x={x(i)} y={height - 6} textAnchor={i === 0 ? "start" : i === last ? "end" : "middle"} className="fill-text-subtle text-11">{labels[i]}</text>
             ))}
             {lines.length === 1 && lines[0]!.values.length > 1 && (
               <path className={WASH[lines[0]!.tone]}
@@ -1026,7 +1026,7 @@ export function BarChart({ items, direction = "horizontal", tone = "accent", for
       </div>
       <div className="flex">
         {items.map((it, i) => (
-          <span key={it.id} className="min-w-0 flex-1 truncate text-center text-[11px] text-text-subtle">{i % every === 0 ? it.label : ""}</span>
+          <span key={it.id} className="min-w-0 flex-1 truncate text-center text-11 text-text-subtle">{i % every === 0 ? it.label : ""}</span>
         ))}
       </div>
       {table}
@@ -1057,7 +1057,7 @@ export function RankedList({ items, unit = "item" }: { items: RankedItem[]; unit
               <Link key={item.id} to={item.href} className={rowBase}>
                 <span className={cn("w-7 shrink-0 text-right font-display text-xl", rankColor(rank))}>{rank}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-semibold text-text-base group-hover:text-accent">{item.name}</p>
+                  <p className="truncate text-15 font-semibold text-text-base group-hover:text-accent">{item.name}</p>
                   {item.sub && <p className="truncate text-sm text-text-subtle">{item.sub}</p>}
                 </div>
                 <span className="shrink-0 text-sm font-semibold text-text-muted">
@@ -1177,7 +1177,7 @@ export function Tabs<T extends string>({ value, onChange, options, size = "md" }
             className={cn(
               "h-10 truncate rounded-lg font-semibold transition-colors sm:h-9 sm:px-4 sm:text-sm",
               // Four or more tabs: tighter on phones so every label fits.
-              options.length > 3 ? "px-2.5 text-sm" : "px-4 text-[15px]",
+              options.length > 3 ? "px-2.5 text-sm" : "px-4 text-15",
               active ? "lit-accent" : "text-text-muted hover:text-text-base",
             )}>
             {o.label}
@@ -1240,7 +1240,7 @@ export function Pager({ page, totalPages, total, pageSize, onPage }: {
   if (totalPages <= 1) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
-  const btn = "glass inline-flex h-12 flex-1 items-center justify-center gap-1 rounded-xl text-[15px] font-semibold transition-colors hover:border-accent disabled:opacity-30 disabled:hover:border-white/10 sm:h-11 sm:flex-none sm:px-5";
+  const btn = "glass inline-flex h-12 flex-1 items-center justify-center gap-1 rounded-xl text-15 font-semibold transition-colors hover:border-accent disabled:opacity-30 disabled:hover:border-white/10 sm:h-11 sm:flex-none sm:px-5";
   return (
     <nav className="mt-6 flex items-center gap-3" aria-label="Pagination">
       <button className={btn} disabled={page <= 1} onClick={() => onPage(page - 1)}>

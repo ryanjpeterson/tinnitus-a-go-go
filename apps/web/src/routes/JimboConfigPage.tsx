@@ -114,12 +114,12 @@ function AboutPanel() {
       <div className="card divide-y divide-border">
         {rows.map(([k, v]) => (
           <p key={k} className="flex min-h-[56px] items-center justify-between gap-4 px-4 py-3">
-            <span className="text-[15px] font-semibold">{k}</span><span className="text-right text-sm text-text-muted">{v}</span>
+            <span className="text-15 font-semibold">{k}</span><span className="text-right text-sm text-text-muted">{v}</span>
           </p>
         ))}
       </div>
       <a href={JIMBO_UI.showcase} target="_blank" rel="noreferrer" className="card flex items-center justify-between gap-3 p-4 hover:border-accent">
-        <span><span className="eyebrow block">Showcase</span><span className="mt-0.5 block text-[15px] font-semibold">See this release in action</span></span>
+        <span><span className="eyebrow block">Showcase</span><span className="mt-0.5 block text-15 font-semibold">See this release in action</span></span>
         <span className="text-text-subtle">›</span>
       </a>
     </div>
@@ -149,7 +149,7 @@ function BrandAssets({ logoUrl, faviconUrl, onChange }: { logoUrl: string | null
     <div className="flex items-center gap-4">
       <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-2 p-2">{preview}</div>
       <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-semibold">{label}</p>
+        <p className="text-15 font-semibold">{label}</p>
         <p className="text-xs text-text-subtle">{url ? "Custom upload" : hint}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <label className={`btn btn-sm btn-secondary cursor-pointer ${busy === asset ? "pointer-events-none opacity-50" : ""}`}>

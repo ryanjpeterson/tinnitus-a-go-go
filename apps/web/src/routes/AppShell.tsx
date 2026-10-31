@@ -126,7 +126,7 @@ export function AppShell() {
                   key={link.to}
                   to={link.to}
                   className={() =>
-                    `relative flex items-center text-[15px] font-semibold transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:rounded-t after:transition-colors ${
+                    `relative flex items-center text-15 font-semibold transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:rounded-t after:transition-colors ${
                       inTab(link)
                         ? "text-text-base after:bg-accent-lime"
                         : "text-text-muted hover:text-text-base after:bg-transparent"
@@ -135,7 +135,7 @@ export function AppShell() {
                 >
                   {link.label}
                   {link.to === "/shows" && followupCount > 0 && isAdmin && (
-                    <span className="ml-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent-pink px-1.5 text-[11px] font-bold leading-none text-on-highlight">
+                    <span className="ml-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent-pink px-1.5 text-11 font-bold leading-none text-on-highlight">
                       {followupCount}
                     </span>
                   )}
@@ -290,12 +290,12 @@ export function AppShell() {
                 <span className="relative">
                   <BottomNavIcon name={link.label} active={isActive} />
                   {link.to === "/shows" && followupCount > 0 && isAdmin && (
-                    <span className="absolute -right-2 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent-pink px-1 text-[10px] font-bold leading-none text-on-highlight ring-2 ring-surface">
+                    <span className="absolute -right-2 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent-pink px-1 text-10 font-bold leading-none text-on-highlight ring-2 ring-surface">
                       {followupCount > 9 ? "9+" : followupCount}
                     </span>
                   )}
                 </span>
-                <span className={`text-[10.5px] tracking-wide ${isActive ? "font-bold" : "font-semibold"}`}>{link.label}</span>
+                <span className={`text-10.5 tracking-wide ${isActive ? "font-bold" : "font-semibold"}`}>{link.label}</span>
               </NavLink>
             );
           })}

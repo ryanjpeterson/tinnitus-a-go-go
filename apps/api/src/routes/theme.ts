@@ -35,15 +35,17 @@ const fonts = z.object({
   bodyWeight: z.number().int().min(100).max(900).optional(),
   headingsTracking: z.number().min(-0.1).max(0.3).optional(),
   bodyTracking: z.number().min(-0.1).max(0.3).optional(),
+  headingsSize: z.number().min(0.8).max(1.3).optional(),
+  bodySize: z.number().min(0.8).max(1.3).optional(),
 });
 /** Page backdrop (jimbo.ui): a pattern over a base, with strength, size, contrast and saturation; stored as JSON. */
 const BACKDROP_KEY = "theme.backdrop";
 const backdrop = z.object({
   pattern: z.enum([
-    "none", "ripples", "waves", "contours", "shapes", "blobs", "flow", "confetti", "burst",
-    "geometry", "hexagons", "diamonds", "grid", "arrows",
-    "halftone", "stripes", "sunburst", "deco",
-    "dots", "grain", "paper", "linen",
+    "none", "ripples", "waves", "contours", "shapes", "blobs", "flow", "confetti", "burst", "swirl", "ribbons", "scribble", "rain",
+    "geometry", "hexagons", "diamonds", "grid", "arrows", "squares", "zigzag", "rings", "crosses", "scales", "cubes", "checks",
+    "halftone", "stripes", "sunburst", "deco", "pinstripe", "gingham", "polka", "plaid", "argyle", "racing", "trellis", "bauhaus",
+    "dots", "grain", "paper", "linen", "concrete", "brushed", "sand", "speckle", "crosshatch", "twill", "carbon", "ribbed",
   ]).optional(),
   base: z.enum(["solid", "gradient", "glow"]).optional(),
   intensity: z.number().min(0).max(1).optional(),

@@ -50,16 +50,16 @@ function ThemeCard({ name, vibe, theme: input, selected, onPick }: { name: strin
       style={selected ? { ["--tw-ring-color" as string]: theme.accent } : undefined}>
       <div className="space-y-2.5 p-3" style={{ background: theme.background, color: c.text }}>
         <div className="flex items-center justify-between">
-          <span className="font-display text-[15px] leading-none" style={{ color: theme.accent }}>
-            TINNITUS<span className="block text-[10px]" style={{ color: theme.highlight }}>a-go-go</span>
+          <span className="font-display text-15 leading-none" style={{ color: theme.accent }}>
+            TINNITUS<span className="block text-10" style={{ color: theme.highlight }}>a-go-go</span>
           </span>
-          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold" style={{ ...dot(c, "support"), color: c["on-support"] }}>A</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-8 font-bold" style={{ ...dot(c, "support"), color: c["on-support"] }}>A</span>
         </div>
-        <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: theme.support }}>On this day</p>
+        <p className="text-9 font-bold uppercase tracking-widest" style={{ color: theme.support }}>On this day</p>
         <div className="rounded-lg p-2" style={{ background: c.surface, border: `1px solid ${c.border}` }}>
           <div className="flex items-center gap-2">
             <span className="w-6 text-center leading-none">
-              <span className="block text-[7px] font-bold" style={{ color: theme.highlight }}>JUL</span>
+              <span className="block text-7 font-bold" style={{ color: theme.highlight }}>JUL</span>
               <span className="block font-display text-sm">12</span>
             </span>
             <span className="min-w-0 flex-1">
@@ -69,8 +69,8 @@ function ThemeCard({ name, vibe, theme: input, selected, onPick }: { name: strin
           </div>
         </div>
         <div className="flex gap-1.5">
-          <span className="rounded-md px-2.5 py-1 text-[9px] font-bold" style={{ background: c.accent, color: c["on-accent"] }}>Save</span>
-          <span className="rounded-md px-2.5 py-1 text-[9px] font-bold" style={{ background: c["surface-2"], color: c.text }}>Cancel</span>
+          <span className="rounded-md px-2.5 py-1 text-9 font-bold" style={{ background: c.accent, color: c["on-accent"] }}>Save</span>
+          <span className="rounded-md px-2.5 py-1 text-9 font-bold" style={{ background: c["surface-2"], color: c.text }}>Cancel</span>
         </div>
       </div>
       <div className="space-y-1.5 border-t border-border bg-surface px-3 py-2">
@@ -84,7 +84,7 @@ function ThemeCard({ name, vibe, theme: input, selected, onPick }: { name: strin
         </span>
         <span className="block min-w-0">
           <span className="block truncate text-sm font-semibold">{name}</span>
-          <span className="block truncate text-[11px] text-text-subtle">{vibe}</span>
+          <span className="block truncate text-11 text-text-subtle">{vibe}</span>
         </span>
       </div>
     </button>
@@ -335,7 +335,7 @@ export function BackdropPanel({ d }: { d: ThemeDraft }) {
                 onClick={() => setBackdrop({ pattern: b.key })}
                 className={`overflow-hidden rounded-xl border text-left transition-colors ${active ? "border-accent ring-1 ring-accent" : "border-border hover:border-text-subtle"}`}>
                 <span className="block h-16" style={{ backgroundColor: shown.background, backgroundImage: look.image, backgroundSize: look.size, backgroundPosition: look.position, backgroundRepeat: look.repeat }} />
-                <span className={`block truncate border-t border-border bg-surface px-2 py-1.5 text-[11px] font-semibold ${active ? "text-accent" : "text-text-muted"}`}>{b.label}</span>
+                <span className={`block truncate border-t border-border bg-surface px-2 py-1.5 text-11 font-semibold ${active ? "text-accent" : "text-text-muted"}`}>{b.label}</span>
               </button>
             );
           })}
@@ -369,13 +369,14 @@ export function TypePanel({ d }: { d: ThemeDraft }) {
   const setFonts = (patch: NonNullable<Theme["fonts"]>) => setDraft((t) => ownColours({ ...t, fonts: { ...t.fonts, ...patch } }));
   return (
     <section className="space-y-3">
-      <Intro title="Type">A font for headings and one for body text, each with its own weight and spacing. Decorative faces are for headings only.</Intro>
+      <Intro title="Type">A font for headings and one for body text, each with its own weight, spacing and size. Decorative faces are for headings only.</Intro>
       <div className="card space-y-5 p-4 sm:p-5">
         {(["headings", "body"] as const).map((part) => {
           const key = shown.fonts[part]!;
           const def = FONTS[key]!;
           const weightKey = part === "headings" ? "headingsWeight" : "bodyWeight";
           const trackKey = part === "headings" ? "headingsTracking" : "bodyTracking";
+          const sizeKey = part === "headings" ? "headingsSize" : "bodySize";
           const groups = FONT_GROUPS.filter((g) => part === "headings" || g !== "Decorative");
           const group = fontTab[part] ?? def.group;
           return (
@@ -388,8 +389,8 @@ export function TypePanel({ d }: { d: ThemeDraft }) {
                   return (
                     <button key={k} type="button" role="radio" aria-checked={active} onClick={() => setFonts({ [part]: k })}
                       className={`flex min-w-0 flex-col items-center gap-1 rounded-xl border p-2.5 transition-colors ${active ? "border-accent bg-accent-950" : "border-border bg-surface-2 hover:border-text-subtle"}`}>
-                      <span className="text-[24px] leading-none" style={{ fontFamily: f.css, fontWeight: part === "headings" ? Math.min(f.weights[1], 800) : 400 }}>Aa</span>
-                      <span className={`max-w-full truncate text-[11px] font-semibold ${active ? "text-accent" : "text-text-muted"}`}>{f.label}</span>
+                      <span className="text-24 leading-none" style={{ fontFamily: f.css, fontWeight: part === "headings" ? Math.min(f.weights[1], 800) : 400 }}>Aa</span>
+                      <span className={`max-w-full truncate text-11 font-semibold ${active ? "text-accent" : "text-text-muted"}`}>{f.label}</span>
                     </button>
                   );
                 })}
@@ -400,6 +401,10 @@ export function TypePanel({ d }: { d: ThemeDraft }) {
                 <RangeField label="Letter spacing" min={-0.05} max={0.15} step={0.005}
                   value={shown.fonts[trackKey]!} onChange={(v) => setFonts({ [trackKey]: v })}
                   format={(v) => `${v > 0 ? "+" : ""}${v.toFixed(3)} em`} />
+                {/* Every size of this text, up or down by a part of an em: +0.10 em is 10% bigger throughout. */}
+                <RangeField label="Size" min={0.8} max={1.3} step={0.05}
+                  value={shown.fonts[sizeKey]!} onChange={(v) => setFonts({ [sizeKey]: Math.round(v * 100) / 100 })}
+                  format={(v) => (Math.abs(v - 1) < 0.001 ? "As designed" : `${v > 1 ? "+" : "−"}${Math.abs(v - 1).toFixed(2)} em`)} />
               </div>
             </div>
           );

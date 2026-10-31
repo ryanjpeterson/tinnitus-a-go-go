@@ -698,7 +698,7 @@ export function FestivalDetailPage() {
                       {/* A day with several sets: the day, then each set (its own show) */}
                       <div className="flex min-h-[64px] items-center gap-3 border-b border-border px-4 py-3">
                         <DateBlock date={date} />
-                        <span className="flex-1 text-[15px] font-semibold">
+                        <span className="flex-1 text-15 font-semibold">
                           Day {dayNumber(date, dayIdx)}
                           <span className="block text-sm font-normal text-text-subtle">{shows.length} sets</span>
                         </span>
@@ -725,7 +725,7 @@ export function FestivalDetailPage() {
                       <div className="border-b border-border">
                         <Link to={`/shows/${shows[0]!.slug}`} className="group flex min-h-[64px] items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2/70">
                           <DateBlock date={date} />
-                          <span className="flex-1 text-[15px] font-semibold group-hover:text-accent-lime">
+                          <span className="flex-1 text-15 font-semibold group-hover:text-accent-lime">
                             Day {dayNumber(date, dayIdx)}
                             <span className="block text-sm font-normal text-text-subtle">Open this day</span>
                           </span>

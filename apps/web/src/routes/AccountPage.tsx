@@ -55,16 +55,16 @@ export function AccountPage() {
       {/* Profile info — read-only */}
       <div className="card space-y-3 p-4 sm:p-5">
         <h2 className="h-section mb-3">Profile</h2>
-        <div className="flex justify-between gap-3 text-[15px]">
+        <div className="flex justify-between gap-3 text-15">
           <span className="text-text-muted">Username</span>
           <span className="text-text-base">@{user?.username}</span>
         </div>
-        <div className="flex justify-between gap-3 text-[15px]">
+        <div className="flex justify-between gap-3 text-15">
           <span className="text-text-muted">Email</span>
           <span className="text-text-base">{user?.email}</span>
         </div>
         {user?.isAdmin && (
-          <div className="flex justify-between gap-3 text-[15px]">
+          <div className="flex justify-between gap-3 text-15">
             <span className="text-text-muted">Role</span>
             <span className="text-accent-lime text-sm">Admin</span>
           </div>
@@ -145,7 +145,7 @@ export function AccountPage() {
 
       {/* Sign out — the only sign-out control on mobile, where the header has no room for one */}
       <div className="space-y-3">
-        <Button variant="secondary" onClick={() => void signOut()} className="h-12 w-full rounded-control text-[15px] text-accent-pink">
+        <Button variant="secondary" onClick={() => void signOut()} className="h-12 w-full rounded-control text-15 text-accent-pink">
           Sign out
         </Button>
         <p className="text-center text-sm text-text-subtle">Tinnitus A Go Go · v{__APP_VERSION__}</p>
@@ -280,7 +280,7 @@ function NotificationKinds() {
             onClick={() => void toggle(k.key)}
             className="flex min-h-[60px] w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-2/60 disabled:opacity-60">
             <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold">{k.label}</span>
+              <span className="block text-15 font-semibold">{k.label}</span>
               <span className="block text-sm text-text-muted">{k.detail}</span>
             </span>
             <span className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${on ? "bg-accent-lime" : "bg-surface-2"}`}>

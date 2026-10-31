@@ -76,7 +76,7 @@ export function JimboUpdates({ releases, current = JIMBO_UI.version, uses = JIMB
   if (!u) {
     return (
       <div className="card flex min-h-[56px] items-center justify-between gap-4 px-4 py-3">
-        <span className="text-[15px] font-semibold">Up to date</span>
+        <span className="text-15 font-semibold">Up to date</span>
         <span className="text-sm text-text-muted">{current} is the latest release</span>
       </div>
     );

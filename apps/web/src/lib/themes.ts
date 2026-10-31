@@ -460,6 +460,14 @@ const SETS: TemplateSet[] = [
       t("Echoes of Wisdom", "2024 · rift violet, Tri gold, echo teal", "#B994FF", "#FFD15C", "#1A1430", "#6FE0D8"),
     ] },
   ] },
+  { label: "Brands", groups: [
+    // Companies' own palettes — colours only, no logos.
+    { label: "Brands", templates: [
+      // Marcone (Pantone 1795 red, black wordmark) with mSupply, its parent's navy.
+      t("Marcone", "Parts red and mSupply navy", "#D22630", "#1B365D", "#FBF7F6", "#A71E26"),
+      t("Marcone", "Parts red and mSupply navy", "#D22630", "#DF4C55", "#101F35", null, { infer: "tonal" }),
+    ] },
+  ] },
   { label: "Sports", tabs: true, groups: [
     { label: "NHL", templates: NHL },
     { label: "NBA", templates: NBA },

@@ -92,7 +92,7 @@ export function StyleGuidePanel() {
                 <div className={`mx-auto h-12 w-12 rounded-full ${k === "background" ? "border border-border" : DOT[k]} ${own[k] ? "" : "opacity-55"}`}
                   style={k === "background" ? { background: theme[k] } : undefined} />
                 <p className="mt-1.5 text-xs font-semibold capitalize">{k}</p>
-                <p className="font-mono text-[11px] text-text-subtle">{own[k] ? theme[k] : "inferred"}</p>
+                <p className="font-mono text-11 text-text-subtle">{own[k] ? theme[k] : "inferred"}</p>
               </div>
             ))}
           </div>
@@ -142,7 +142,7 @@ export function StyleGuidePanel() {
               <span className="h-9 w-9 shrink-0 rounded-lg border border-border" style={{ background: `rgb(var(--c-${t.name}))` }} />
               <span className="min-w-0">
                 <span className="block truncate font-mono text-xs font-semibold">{t.name}</span>
-                <span className="block truncate text-[11px] text-text-subtle">{hex[t.name]} · {t.use}</span>
+                <span className="block truncate text-11 text-text-subtle">{hex[t.name]} · {t.use}</span>
               </span>
             </div>
           ))}
@@ -154,7 +154,7 @@ export function StyleGuidePanel() {
           <p className="eyebrow">.eyebrow — label above a title</p>
           <p className="h-page">.h-page — Page title</p>
           <p className="h-section">.h-section — Section title</p>
-          <p className="text-[15px]">Body — 15px Inter. Plain sentences, sentence case.</p>
+          <p className="text-15">Body — 15px Inter. Plain sentences, sentence case.</p>
           <p className="meta">.meta — secondary line, 14px muted</p>
           <p className="font-display text-5xl text-accent">128</p>
         </div>
@@ -298,7 +298,7 @@ export function StyleGuidePanel() {
       {sheet && (
         <Sheet title="Sheet" subtitle="Title, optional subtitle, scrolling body." onClose={() => setSheet(false)}>
           <div className="space-y-3 p-5">
-            <p className="text-[15px]">Close with ×, Escape, or a tap outside.</p>
+            <p className="text-15">Close with ×, Escape, or a tap outside.</p>
             <Button className="w-full" onClick={() => setSheet(false)}>Done</Button>
           </div>
         </Sheet>

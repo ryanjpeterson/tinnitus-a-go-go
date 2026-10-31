@@ -78,7 +78,7 @@ function DuplicateGroup({ type, group }: { type: DataEntityType; group: DupGroup
               <input type="radio" name={`keep-${group.records[0]!.id}`} checked={r.id === keepId}
                 onChange={() => setKeepId(r.id)} className="h-5 w-5 shrink-0 accent-[rgb(var(--c-accent))]" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-semibold">{r.name}</span>
+                <span className="block truncate text-15 font-semibold">{r.name}</span>
                 <span className="meta block truncate">
                   {[r.sub, plural(r.showCount, "show"), years(r.firstDate, r.lastDate)].filter(Boolean).join(" · ")}
                 </span>
@@ -105,7 +105,7 @@ function DuplicateGroup({ type, group }: { type: DataEntityType; group: DupGroup
           <div className="space-y-4 p-5">
             {previews.map((p) => (
               <div key={p.remove.id} className="rounded-xl bg-surface-2 p-4">
-                <p className="text-[15px] font-semibold">{p.remove.name} → {p.keep.name}</p>
+                <p className="text-15 font-semibold">{p.remove.name} → {p.keep.name}</p>
                 <p className="meta mt-1">
                   {p.moves.length > 0 ? `Moves ${p.moves.map((m) => `${m.count} ${m.label}`).join(", ")}.` : "Nothing to move."}
                   {p.fills.length > 0 && ` Fills in ${p.fills.join(", ")}.`}
@@ -161,7 +161,7 @@ function Check({ check }: { check: HealthCheck }) {
     <div className="card overflow-hidden">
       <div className="flex items-start justify-between gap-3 px-4 py-3.5">
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold">{check.title}</p>
+          <p className="text-15 font-semibold">{check.title}</p>
           <p className="meta">{check.description}</p>
         </div>
         <span className={`mt-0.5 shrink-0 rounded-md px-2.5 py-0.5 text-sm font-semibold ${n > 0 ? "bg-yellow-950 text-yellow-300" : "bg-lime-950 text-accent-lime"}`}>
@@ -190,11 +190,11 @@ function Check({ check }: { check: HealthCheck }) {
           {shown.map((it) => (
             it.href ? (
               <Link key={it.id} to={it.href} className="flex min-h-[48px] items-center justify-between gap-3 px-4 py-2 hover:bg-surface-2/60">
-                <span className="truncate text-[15px]">{it.label}</span>
+                <span className="truncate text-15">{it.label}</span>
                 {it.sub && <span className="meta shrink-0">{it.sub}</span>}
               </Link>
             ) : (
-              <p key={it.id} className="px-4 py-2 text-[15px]">{it.label}</p>
+              <p key={it.id} className="px-4 py-2 text-15">{it.label}</p>
             )
           ))}
           {n > 5 && (
@@ -237,7 +237,7 @@ function SetlistFinder() {
     <div className="card p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold">Setlist finder</p>
+          <p className="text-15 font-semibold">Setlist finder</p>
           <p className="meta">
             {d.available
               ? `Searches setlist.fm every hour for artists on attended shows without a setlist, 30 at a time. ${d.callsToday} of ${d.dailyBudget} calls used today${d.callsToday >= d.dailyBudget ? " — paused until midnight UTC" : ""}.`
@@ -307,7 +307,7 @@ function History() {
         {q.data!.merges.map((m) => (
           <div key={m.id} className="flex min-h-[64px] items-center gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
-              <p className={`truncate text-[15px] font-semibold ${m.undoneAt ? "text-text-subtle line-through" : ""}`}>
+              <p className={`truncate text-15 font-semibold ${m.undoneAt ? "text-text-subtle line-through" : ""}`}>
                 {m.removedName} → {m.keptName}
               </p>
               <p className="meta">
@@ -365,7 +365,7 @@ function FestivalSuggestions() {
           <div key={key} className="card space-y-3 p-4 sm:p-5">
             <div>
               <p className="eyebrow">{s.kind === "join" ? "Part of a festival?" : "A festival?"}</p>
-              <h3 className="mt-1 text-[17px] font-semibold">
+              <h3 className="mt-1 text-17 font-semibold">
                 {s.kind === "join" ? <>Add to <Link to={`/festivals/${s.festival!.slug}`} className="hover:text-accent-lime">{s.festival!.name}</Link></> : `${plural(s.shows.length, "show")} at ${s.venue ?? "one venue"}`}
               </h3>
               <p className="meta mt-0.5">{fmtDate(s.shows[0]!.date)}{s.shows.length > 1 && ` – ${fmtDate(s.shows[s.shows.length - 1]!.date)}`}</p>

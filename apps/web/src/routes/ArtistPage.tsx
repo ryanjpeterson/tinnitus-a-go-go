@@ -485,7 +485,7 @@ export function ArtistPage() {
             {stats.topSongs.map((s, i) => (
               <li key={s.song} className="flex min-h-[52px] items-center gap-3 px-4 py-2">
                 <span className={`w-6 shrink-0 text-right font-display text-lg ${i === 0 ? "text-accent-lime" : "text-text-subtle"}`}>{i + 1}</span>
-                <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{s.song}</span>
+                <span className="min-w-0 flex-1 truncate text-15 font-semibold">{s.song}</span>
                 <span className="shrink-0 text-sm text-text-muted">{s.times}×<span className="ml-1.5 text-text-subtle">last {s.last.slice(0, 4)}</span></span>
               </li>
             ))}
@@ -500,7 +500,7 @@ export function ArtistPage() {
             {setlistsQ.data!.setlists.map((setlist) => (
               <div key={setlist.id} className="p-4 sm:p-5">
                 <div className="mb-3 flex items-baseline gap-2">
-                  <Link to={`/shows/${setlist.concertId}`} className="min-w-0 truncate text-[15px] font-semibold hover:text-accent-lime">
+                  <Link to={`/shows/${setlist.concertId}`} className="min-w-0 truncate text-15 font-semibold hover:text-accent-lime">
                     {fmtDate(setlist.concertDate)}
                     {setlist.venue && <span className="font-normal text-text-muted"> · {setlist.venue.name}{setlist.venue.city && `, ${setlist.venue.city}`}</span>}
                   </Link>
@@ -512,7 +512,7 @@ export function ArtistPage() {
                   )}
                 </div>
                 {setlist.songs.length > 0 ? (
-                  <ol className="space-y-1 text-[15px] text-text-muted">
+                  <ol className="space-y-1 text-15 text-text-muted">
                     {setlist.songs.map((song, i) => (
                       <li key={i} className="flex items-baseline gap-3">
                         <span className="w-6 text-right text-sm tabular-nums text-text-subtle">{song.position}</span>
@@ -561,7 +561,7 @@ export function ArtistPage() {
 
       {artist.bio && (
         <Section title="About">
-          <p className={`text-[15px] leading-relaxed text-text-muted ${bioOpen ? "" : "line-clamp-4"}`}>{artist.bio}</p>
+          <p className={`text-15 leading-relaxed text-text-muted ${bioOpen ? "" : "line-clamp-4"}`}>{artist.bio}</p>
           {artist.bio.length > 280 && (
             <button onClick={() => setBioOpen((v) => !v)} className="mt-2 text-sm font-semibold text-accent-lime">
               {bioOpen ? "Show less" : "Read more"}

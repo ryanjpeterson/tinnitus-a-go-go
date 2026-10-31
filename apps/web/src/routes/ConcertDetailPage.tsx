@@ -1815,7 +1815,7 @@ function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDetail; is
                         {initials(a.name)}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className={clsx("block truncate", top ? "text-base font-semibold" : "text-[15px] text-text-muted")}>{a.name}</span>
+                        <span className={clsx("block truncate", top ? "text-base font-semibold" : "text-15 text-text-muted")}>{a.name}</span>
                         {top && <span className="block text-xs font-semibold uppercase tracking-wider text-accent-lime/80">{ROLE_LABEL[a.role] ?? "Headliner"}</span>}
                       </span>
                       <Chevron className="text-text-subtle transition-transform group-hover:translate-x-0.5 group-hover:text-accent-lime" />

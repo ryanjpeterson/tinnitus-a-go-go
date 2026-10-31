@@ -246,7 +246,7 @@ function Milestones({ milestones }: { milestones: DeepStatsResponse["milestones"
                 {ordinal(m.n)}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-text-base group-hover:text-accent-lime">
+                <p className="line-clamp-2 text-15 font-semibold leading-snug text-text-base group-hover:text-accent-lime">
                   {showTitle(m.info, showName(m.headlinerHint, m.seriesName))}
                 </p>
                 {sub && <p className="truncate text-sm text-text-muted">{sub}</p>}

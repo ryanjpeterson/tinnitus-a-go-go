@@ -182,7 +182,7 @@ function Row({ to, lead, title, sub, onGo }: { to: string; lead: React.ReactNode
     <Link to={to} onClick={onGo} className="group flex min-h-[64px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-2/70 active:bg-surface-2">
       {lead}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold group-hover:text-accent-lime">{title}</p>
+        <p className="truncate text-15 font-semibold group-hover:text-accent-lime">{title}</p>
         {sub && <p className="truncate text-sm text-text-muted">{sub}</p>}
       </div>
       <Chevron className="text-text-subtle" />

@@ -1,7 +1,7 @@
 // Part of jimbo-ui (foundation — don't edit here; change jimbo-ui and update).
 /** Which jimbo-ui this app's foundation files came from, and where to see and look things up. */
 export const JIMBO_UI = {
-  version: "0.9.0",
+  version: "0.10.0",
   showcase: "https://claude.ai/artifact/F4KAFYCkxZGZB7zKdaWjWC",
   repo: "https://github.com/ryanjpeterson/jimbo-ui",
   registry: "https://github.com/ryanjpeterson/jimbo-ui/blob/main/registry/apps.json",

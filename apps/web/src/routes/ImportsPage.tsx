@@ -139,7 +139,7 @@ export function ImportsPage() {
                 className="flex min-h-[64px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-2/70"
               >
                 <span className="min-w-0">
-                  <span className="block truncate text-[15px] font-semibold">{row.originalFilename ?? row.id}</span>
+                  <span className="block truncate text-15 font-semibold">{row.originalFilename ?? row.id}</span>
                   <span className="meta">{new Date(row.createdAt).toLocaleString()}</span>
                 </span>
                 <span className={`shrink-0 text-sm font-semibold capitalize ${STATUS_COLORS[row.status]}`}>{row.status}</span>
@@ -195,7 +195,7 @@ function ExportSection() {
           <button key={e.format} type="button" onClick={() => void download(e.format)} disabled={busy !== null}
             className="flex min-h-[64px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-2/70 disabled:opacity-60">
             <span className="min-w-0">
-              <span className="block text-[15px] font-semibold">{e.label}</span>
+              <span className="block text-15 font-semibold">{e.label}</span>
               <span className="meta block">{e.sub}</span>
             </span>
             <span className="shrink-0 text-sm font-semibold text-accent-lime">{busy === e.format ? "Preparing…" : "Download"}</span>

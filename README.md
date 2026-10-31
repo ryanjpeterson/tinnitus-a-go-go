@@ -418,7 +418,7 @@ feed `src/lib/theme.ts`, which derives every colour token (surfaces, borders,
 text, tints — light backgrounds flip to dark text) as CSS variables. Tailwind
 colours point at those variables, so components never use raw hex. The logo (TINNITUS in the
 accent, a-go-go in the highlight) and favicon follow the theme unless an uploaded logo/favicon replaces them.
-Archivo 800 for headings, Inter for everything else.
+Archivo 800 for headings, Inter for everything else by default; the theme can change the fonts, weights, spacing and sizes.
 
 ---
 
@@ -972,7 +972,7 @@ An installable web app (add it to your phone's Home Screen). Phone-first layout:
 ### Admin
 - **Import & export** — CSV import (queued in the worker); export your log as CSV (with setlists), JSON or Markdown.
 - **Data cleanup** — suggested duplicate venues and artists with merge preview, merge history with undo, data health checks with one-tap fixes, setlist finder progress; similar names flagged when adding a show.
-- **jimbo-ui config** (Account → jimbo-ui config, `/jimbo-ui`) — **Looks**: templates by category, each in light, mid and dark, with a search box and *Share this look*; **Colours**: a picker for the accent, highlight, support and background colours (the logo uses the accent and highlight) with readability checks; **Type**; **Backdrop**: a pattern behind every page. All four preview live across the app and share one save bar; everything else is derived from them (a light background switches to dark text). **Brand**: upload a logo or favicon, or keep the built-in ones, which recolour with the theme. **Style guide**: every component in the current colours. **About**: the jimbo.ui version, registry status and any newer jimbo.ui release, with what updating would change.
+- **jimbo-ui config** (Account → jimbo-ui config, `/jimbo-ui`) — **Looks**: templates by category, each in light, mid and dark, with a search box and *Share this look*; **Colours**: a picker for the accent, highlight, support and background colours (the logo uses the accent and highlight) with readability checks; **Type**: fonts, weight, spacing and size for headings and body; **Backdrop**: one of 48 patterns behind every page. All four preview live across the app and share one save bar; everything else is derived from them (a light background switches to dark text). **Brand**: upload a logo or favicon, or keep the built-in ones, which recolour with the theme. **Style guide**: every component in the current colours. **About**: the jimbo.ui version, registry status and any newer jimbo.ui release, with what updating would change.
 - Invites (accounts are invite-only), service health links.
 
 ### Needs HTTPS (dormant on plain http)

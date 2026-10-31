@@ -113,7 +113,7 @@ export function UploadIndicator() {
               className="stroke-accent-lime/70" strokeDasharray={`${(R - 7) * 2.2} ${(R - 7) * 6}`} />
           </svg>
         )}
-        <span className="relative text-[13px] font-bold tabular-nums">
+        <span className="relative text-13 font-bold tabular-nums">
           {active.length > 0
             ? (paused
               ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>

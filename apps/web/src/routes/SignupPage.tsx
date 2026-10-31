@@ -82,7 +82,7 @@ export function SignupPage() {
   }
 
   return (
-    <main className="flex min-h-full items-center justify-center px-4 pb-10 pt-[calc(2.5rem+env(safe-area-inset-top))]">
+    <main className="flex min-h-full items-center justify-center px-4 pb-10 pt-[calc(2.5rem+var(--safe-top))]">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-8 flex justify-center">
           <Wordmark size="lg" svg />

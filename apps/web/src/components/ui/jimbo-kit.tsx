@@ -298,10 +298,10 @@ export function ImageViewer({ src, alt, onClose }: { src: string; alt: string; o
   // opens from is its own stacking context).
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label={alt} onClick={onClose}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 pt-[calc(1rem+env(safe-area-inset-top))] backdrop-blur-md">
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 pt-[calc(1rem+var(--safe-top))] backdrop-blur-md">
       <img src={src} alt={alt} className="max-h-full max-w-full rounded-lg object-contain shadow-2xl" />
       <button onClick={onClose} aria-label="Close"
-        className="absolute right-4 top-[calc(1rem+env(safe-area-inset-top))] flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md hover:bg-white/20">
+        className="absolute right-4 top-[calc(1rem+var(--safe-top))] flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md hover:bg-white/20">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
           <path d="M6 6l12 12M18 6L6 18" />
         </svg>
@@ -966,7 +966,7 @@ export function Sheet({ title, subtitle, onClose, children, wide = false }: {
             </svg>
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">{children}</div>
+        <div className="flex-1 overflow-y-auto overscroll-contain pb-[var(--safe-bottom)]">{children}</div>
       </div>
     </div>,
     document.body,

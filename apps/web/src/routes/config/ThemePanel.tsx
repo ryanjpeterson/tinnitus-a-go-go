@@ -382,7 +382,7 @@ export function ThemePanel() {
 
       {/* Save bar — floats above the tab bar while there's something unsaved */}
       {(dirty || note) && (
-        <div className="fixed inset-x-0 z-40 flex justify-center px-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] sm:bottom-6">
+        <div className="fixed inset-x-0 z-40 flex justify-center px-3 bottom-[var(--above-dock)]">
           <div className="flex w-full max-w-md items-center gap-2 rounded-2xl border border-border bg-surface/95 p-2 pl-4 shadow-2xl shadow-black/50 backdrop-blur-xl">
             <p className="min-w-0 flex-1 truncate text-sm font-semibold">{dirty ? "Unsaved look" : note}</p>
             {dirty ? (

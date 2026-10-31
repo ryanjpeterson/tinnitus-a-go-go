@@ -102,7 +102,7 @@ export function AppShell() {
   }, []);
 
   return (
-    <div className="min-h-full overflow-x-clip">
+    <div className="min-h-[100dvh] overflow-x-clip">
       {/* Global "Add show" modal — triggered by N shortcut from any page (admin only) */}
       {isAdmin && globalAddOpen && <AddConcertModal onClose={() => setGlobalAddOpen(false)} />}
 
@@ -113,7 +113,7 @@ export function AppShell() {
 
       {/* Sticky app bar. Top padding clears the iOS status bar / notch in
           standalone mode (black-translucent). */}
-      <header className="sticky top-0 z-40 border-b border-border bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-border bg-bg/90 pt-[var(--safe-top)] backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 sm:h-16 sm:px-6">
           <div className="flex h-full items-center gap-8">
             <Link to="/" aria-label="Home">
@@ -202,7 +202,7 @@ export function AppShell() {
       {/* Pull-to-refresh indicator, sliding down from under the app bar */}
       {(pull > 0 || refreshing) && (
         <div aria-hidden className="pointer-events-none fixed inset-x-0 z-30 flex justify-center"
-          style={{ top: `calc(3.5rem + env(safe-area-inset-top) + ${Math.round(Math.min(pull, 1) * 56)}px - 40px)` }}>
+          style={{ top: `calc(var(--top-bar) + ${Math.round(Math.min(pull, 1) * 56)}px - 40px)` }}>
           <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface shadow-xl"
             style={{ opacity: Math.min(pull, 1) }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
@@ -214,7 +214,7 @@ export function AppShell() {
         </div>
       )}
 
-      <main className="mx-auto max-w-5xl px-4 pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-8">
+      <main className="mx-auto max-w-5xl px-4 pt-6 pb-[var(--dock-space)] sm:px-6 sm:pt-8">
         <Routes>
           {/* Handle legacy /app/* and /concerts routes with redirects */}
           <Route path="/app/concerts" element={<Navigate to="/shows" replace />} />
@@ -261,11 +261,11 @@ export function AppShell() {
       {/* Mobile tab bar — a floating, frosted dock above the home indicator.
           Content scrolls under it (and fades out behind it). */}
       {location.pathname !== "/map" && (
-        <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-[calc(6rem+env(safe-area-inset-bottom))] bg-gradient-to-t from-bg via-bg/70 to-transparent sm:hidden" />
+        <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-[calc(6rem+var(--safe-bottom))] bg-gradient-to-t from-bg via-bg/70 to-transparent sm:hidden" />
       )}
       <nav
         aria-label="Main"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 select-none px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:hidden"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 select-none pb-[calc(0.75rem+var(--safe-bottom))] pl-[calc(0.75rem+var(--safe-left))] pr-[calc(0.75rem+var(--safe-right))] sm:hidden"
       >
         <div className="pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-1 rounded-[20px] border border-border bg-surface/95 p-1.5 shadow-[0_10px_40px_-8px_rgba(0,0,0,0.75)] ring-1 ring-black/30 backdrop-blur-md">
           {navLinks.map((link) => {
@@ -372,7 +372,7 @@ function OfflineBanner() {
   if (!offline && waiting === 0) return null;
   const changes = `${waiting} change${waiting === 1 ? "" : "s"}`;
   return (
-    <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 border-b border-yellow-800/60 bg-yellow-950/95 px-4 py-2 text-center text-sm font-semibold text-yellow-200 backdrop-blur sm:top-[calc(4rem+env(safe-area-inset-top))]">
+    <div className="sticky top-[var(--top-bar)] z-30 border-b border-yellow-800/60 bg-yellow-950/95 px-4 py-2 text-center text-sm font-semibold text-yellow-200 backdrop-blur">
       {offline
         ? <>Offline — showing what's saved on this device.{waiting > 0 ? ` ${changes} will sync when you're back online.` : " Attendance changes will sync later."}</>
         : <>Syncing {changes} made offline…</>}

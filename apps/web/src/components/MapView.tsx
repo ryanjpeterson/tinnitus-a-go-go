@@ -103,7 +103,7 @@ function MapPreview({ theme, pins, selected, onSelect, className, height }: {
  */
 export function MapPinCard({ title, sub, onClose, children }: { title: string; sub?: ReactNode; onClose: () => void; children?: ReactNode }) {
   return (
-    <div className="absolute inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-80">
+    <div className="absolute inset-x-4 bottom-[calc(6rem+var(--safe-bottom))] z-10 sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-80">
       <div className="card p-4 shadow-2xl">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">

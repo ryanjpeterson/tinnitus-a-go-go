@@ -29,6 +29,7 @@
  */
 
 import { BRAND } from "./brand.config";
+import { ensureFullScreenViewport } from "./viewport";
 
 /** A font in `FONTS` (or an older style name: "sans", "mono", "serif"). */
 export type FontKey = string;
@@ -807,6 +808,7 @@ export function themeVars(theme: Theme): Record<string, string> {
 }
 
 export function applyTheme(theme: Theme): void {
+  ensureFullScreenViewport();
   const root = document.documentElement;
   const vars = themeVars(theme);
   const f = fullTheme(theme).fonts;

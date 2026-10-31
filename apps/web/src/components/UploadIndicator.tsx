@@ -48,7 +48,7 @@ export function UploadIndicator() {
   if (jobs.length === 0) return null;
 
   return (
-    <div className="fixed right-4 z-[45] flex flex-col items-end gap-2 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] sm:bottom-6 sm:right-6">
+    <div className="fixed right-4 z-[45] flex flex-col items-end gap-2 bottom-[var(--above-dock)] sm:right-6">
       {open && (
         <div className="w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-surface/95 shadow-2xl shadow-black/60 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">

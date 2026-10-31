@@ -31,7 +31,7 @@ function VenuePopup({ venue, here, onSelect, onClose }: {
   onClose: () => void;
 }) {
   return (
-    <div className="absolute bottom-[calc(6rem+env(safe-area-inset-bottom))] left-4 right-4 z-10 sm:bottom-4 sm:left-auto sm:right-4 sm:w-80">
+    <div className="absolute bottom-[calc(6rem+var(--safe-bottom))] left-4 right-4 z-10 sm:bottom-4 sm:left-auto sm:right-4 sm:w-80">
       <div className="card p-4 shadow-2xl shadow-black/60">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -371,8 +371,8 @@ export function MapPage() {
   // The map fills the screen edge to edge below the app bar, running under the
   // floating tab bar on phones, breaking out of the page column and padding.
   return (
-    <div className="relative -mt-6 ml-[calc(50%-50vw)] w-screen -mb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:-mb-8 sm:-mt-8">
-      <div className="relative h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] min-h-[360px] sm:h-[calc(100dvh-4rem-env(safe-area-inset-top))]">
+    <div className="relative -mt-6 ml-[calc(50%-50vw)] w-screen -mb-[var(--dock-space)] sm:-mt-8">
+      <div className="relative h-[calc(100dvh-var(--top-bar))] min-h-[360px]">
         {/* Venues tab: back to the list */}
         <div className="absolute right-4 top-4 z-20"><VenueViewSwitch view="map" floating /></div>
         <APIProvider apiKey={API_KEY}>

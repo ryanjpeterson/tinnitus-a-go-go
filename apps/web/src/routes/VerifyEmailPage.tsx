@@ -39,7 +39,7 @@ export function VerifyEmailPage() {
   }, [token, refresh]);
 
   return (
-    <div className="flex min-h-full items-center justify-center px-4 pb-10 pt-[calc(2.5rem+env(safe-area-inset-top))]">
+    <div className="flex min-h-full items-center justify-center px-4 pb-10 pt-[calc(2.5rem+var(--safe-top))]">
       <div className="card w-full max-w-md p-6 text-center sm:p-8">
         <Wordmark size="lg" svg className="mx-auto mb-6" />
 

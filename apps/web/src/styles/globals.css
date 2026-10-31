@@ -82,6 +82,18 @@
     background-repeat: var(--bg-repeat, no-repeat);
   }
   #root { position: relative; z-index: 0; }
+  /* Full-width openers (Banner, HeroSection) fade into the page instead of
+     ending on a hard edge: the layer behind them goes transparent towards the
+     bottom (and the top too with .fade-both), so the page's backdrop — its
+     pattern and glow — shows through. Mask the background layer, never the text. */
+  .fade-out {
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+  }
+  .fade-out.fade-both {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 55%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 55%, transparent 100%);
+  }
   /* Part of the page in another theme (ThemeScope): the theme's variables are
      set on the element, which repaints its own page colour and backdrop. */
   .theme-scope {
@@ -205,10 +217,11 @@
   /* Etched dividers between stacked items (rows in a list): a full-strength
      border with a faint light line under it, so each row reads as its own
      strip in dark and light themes alike. Use on the parent, like divide-y;
-     it also reaches one level down, so rows grouped in wrappers (a month's
-     label and rows in a <div>) get lines between them too. */
+     it also reaches one level down into groups — a wrapper that starts with
+     a ListGroupLabel (a month's label and its rows) — but not into an
+     ordinary row, so a <div> row's own children get no lines. */
   .divide-etched > :not(:first-child),
-  .divide-etched > div > :not(:first-child) {
+  .divide-etched > :has(> .list-group-label:first-child) > :not(:first-child) {
     border-top: 1px solid rgb(var(--c-border));
     box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.05);
   }

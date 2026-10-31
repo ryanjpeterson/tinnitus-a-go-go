@@ -1,7 +1,7 @@
 {
-  "version": "0.8.3",
-  "commit": "3ce7afc",
-  "note": "jimbo.ui 0.8.3 (3ce7afc).",
+  "version": "0.8.4",
+  "commit": "6bf1362",
+  "note": "jimbo.ui 0.8.4 plus jimbo-ui main up to 6bf1362 (the update check, listed under Unreleased there).",
   "webRoot": "apps/web",
   "auth": "admin",
   "reference": {
@@ -12,7 +12,8 @@
     "web/src/routes/JimboConfigPage.tsx": "apps/web/src/routes/JimboConfigPage.tsx",
     "web/src/routes/config/ThemePanel.tsx": "apps/web/src/routes/config/ThemePanel.tsx",
     "web/src/routes/config/StyleGuidePanel.tsx": "apps/web/src/routes/config/StyleGuidePanel.tsx",
-    "web/src/components/MapView.tsx": "apps/web/src/components/MapView.tsx (exact copy)"
+    "web/src/components/MapView.tsx": "apps/web/src/components/MapView.tsx (exact copy)",
+    "web/src/routes/config/UpdatesPanel.tsx": "apps/web/src/routes/config/UpdatesPanel.tsx (exact copy)"
   },
   "registry": {
     "registered": "2026-10-30",

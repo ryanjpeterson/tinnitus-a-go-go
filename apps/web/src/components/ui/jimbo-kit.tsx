@@ -15,12 +15,13 @@
  * domain pieces (statuses, rows, switches) built from the same tokens.
  */
 
-import { useEffect, useState, type ReactNode } from "react";
+import { Children, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/cn";
 import { backdropCss, fullTheme, loadFonts, themeVars, type BackdropPattern, type Theme } from "@/lib/theme";
 import { useBrand } from "@/lib/useBrand";
+import { BRAND } from "@/lib/brand.config";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Small helpers
@@ -164,7 +165,7 @@ export function FullBleed({ children, tone = "none", flush = false, pad = true, 
  * gradient. Use at the top of a landing or home page; `size="lg"` fills most
  * of the first screen. Pulls up under the top bar like `Banner`.
  */
-export function HeroSection({ eyebrow, title, children, actions, pattern = "ripples", size = "md", align = "left" }: {
+export function HeroSection({ eyebrow, title, children, actions, pattern = "ripples", size = "md", align = "left", pullUp = true }: {
   eyebrow?: ReactNode;
   title: ReactNode;
   /** A line or two under the title. */
@@ -173,12 +174,17 @@ export function HeroSection({ eyebrow, title, children, actions, pattern = "ripp
   pattern?: BackdropPattern;
   size?: "md" | "lg";
   align?: "left" | "center";
+  /** Tuck up under the top bar (the default, when it opens the page). Turn off when something sits above it. */
+  pullUp?: boolean;
 }) {
   const { theme } = useBrand();
   const look = backdropCss({ ...theme, backdrop: { pattern, base: "gradient", intensity: 0.75, scale: 0.8 } });
   return (
-    <FullBleed pad={false} className="-mt-6 mb-2 border-b border-border sm:-mt-8"
-      style={{ backgroundImage: look.image, backgroundSize: look.size, backgroundPosition: look.position, backgroundRepeat: look.repeat }}>
+    <FullBleed pad={false} className={cn("isolate mb-2", pullUp && "-mt-6 sm:-mt-8")}>
+      {/* The pattern fades out top and bottom (.fade-out, plus .fade-in when something sits above),
+          so the opener melts into the page's backdrop instead of ending on a line. */}
+      <div aria-hidden="true" className={cn("fade-out absolute inset-0 -z-10", !pullUp && "fade-both")}
+        style={{ backgroundImage: look.image, backgroundSize: look.size, backgroundPosition: look.position, backgroundRepeat: look.repeat }} />
       <div className={cn("flex flex-col justify-end gap-3 py-10 sm:py-14", size === "lg" ? "min-h-[62dvh]" : "min-h-[34dvh]", align === "center" && "items-center text-center")}>
         {eyebrow && <p className="eyebrow text-support">{eyebrow}</p>}
         <h1 className="font-display text-[40px] leading-[1.02] text-text-base sm:text-6xl">{title}</h1>
@@ -239,7 +245,7 @@ export function BackButton({ to, label, overlay = false }: { to: string; label: 
  * Full-width banner at the top of a page: the backdrop runs edge to edge of
  * the screen with no frame, while its content lines up with the page column.
  */
-export function Banner({ backdrop, glow = "accent", back, badge, children }: {
+export function Banner({ backdrop, glow = "accent", back, badge, children, pullUp = true }: {
   /** Image blurred to fill the banner; falls back to a soft accent gradient. */
   backdrop?: string | null;
   glow?: "accent" | "highlight" | "support" | "yellow" | "purple";
@@ -247,6 +253,8 @@ export function Banner({ backdrop, glow = "accent", back, badge, children }: {
   /** Top-right of the banner, opposite the back button (e.g. a status flag). */
   badge?: ReactNode;
   children: ReactNode;
+  /** Tuck up under the top bar (the default, when it opens the page). Turn off when something sits above it. */
+  pullUp?: boolean;
 }) {
   const glowCls = {
     accent: "from-accent-900/70",
@@ -258,18 +266,19 @@ export function Banner({ backdrop, glow = "accent", back, badge, children }: {
 
   return (
     // Breaks out of the page column to the full screen width and up against the app bar.
-    <section className="relative isolate -mt-6 mb-6 ml-[calc(50%-50vw)] w-screen overflow-hidden sm:-mt-8 sm:mb-8">
+    <section className={cn("relative isolate mb-6 ml-[calc(50%-50vw)] w-screen overflow-hidden sm:mb-8", pullUp && "-mt-6 sm:-mt-8")}>
       {/* Backdrop: the image itself, blurred and scaled up so it fills the whole
-          banner edge to edge (scaling hides the soft edges blur leaves behind). */}
-      {backdrop ? (
-        <img src={backdrop} alt="" aria-hidden="true"
-          className="absolute inset-0 -z-20 h-full w-full scale-150 object-cover blur-2xl saturate-150" />
-      ) : (
-        <div className={cn("absolute inset-0 -z-20 bg-gradient-to-br via-support-950/60 to-bg", glowCls)} />
-      )}
-      {/* Light overall dim, fading into the page at the bottom so there's no hard edge. */}
-      <div className="absolute inset-0 -z-10 bg-black/35" />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-bg via-bg/40 to-transparent" />
+          banner edge to edge (scaling hides the soft edges blur leaves behind),
+          under a light dim. The whole layer fades out at the bottom (.fade-out), so
+          the page's own backdrop shows through — never a hard edge or a band of page colour. */}
+      <div aria-hidden="true" className={cn("fade-out absolute inset-0 -z-10 overflow-hidden", !pullUp && "fade-both")}>
+        {backdrop ? (
+          <img src={backdrop} alt="" className="absolute inset-0 h-full w-full scale-150 object-cover blur-2xl saturate-150" />
+        ) : (
+          <div className={cn("absolute inset-0 bg-gradient-to-br via-support-950/60 to-transparent", glowCls)} />
+        )}
+        <div className="absolute inset-0 bg-black/35" />
+      </div>
 
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         {(back || badge) && (
@@ -315,7 +324,7 @@ export function ImageViewer({ src, alt, onClose }: { src: string; alt: string; o
  * Banner for detail pages: thumbnail (tap for full size), eyebrow, big title,
  * meta lines and pill actions over the blurred image.
  */
-export function Hero({ imageUrl, imageAlt, eyebrow, title, children, actions, back, badge, accent = "accent", square = false }: {
+export function Hero({ imageUrl, imageAlt, eyebrow, title, children, actions, back, badge, accent = "accent", square = false, pullUp = true }: {
   imageUrl?: string | null;
   imageAlt?: string;
   eyebrow?: ReactNode;
@@ -328,6 +337,8 @@ export function Hero({ imageUrl, imageAlt, eyebrow, title, children, actions, ba
   accent?: "accent" | "highlight" | "support" | "yellow" | "purple";
   /** Square thumbnail (people, places) instead of a portrait one (posters). */
   square?: boolean;
+  /** As `Banner`'s: off when something sits above the hero. */
+  pullUp?: boolean;
 }) {
   const glow = {
     accent: "from-accent-900/70",
@@ -343,7 +354,7 @@ export function Hero({ imageUrl, imageAlt, eyebrow, title, children, actions, ba
   );
 
   return (
-    <Banner backdrop={imageUrl} glow={accent} back={back} badge={badge}>
+    <Banner backdrop={imageUrl} glow={accent} back={back} badge={badge} pullUp={pullUp}>
       {viewing && imageUrl && <ImageViewer src={imageUrl} alt={imageAlt ?? title} onClose={() => setViewing(false)} />}
       <div className="flex items-end gap-4 pb-6 pt-6 sm:gap-8 sm:pb-8 sm:pt-10">
         <div className={thumbCls}>
@@ -379,13 +390,14 @@ export function Hero({ imageUrl, imageAlt, eyebrow, title, children, actions, ba
 // Sections and lists
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Titled block. `flush` drops the inner padding for edge-to-edge lists. */
-export function Section({ title, count, action, children, flush = false, className }: {
+/** Titled block. `flush` drops the inner padding for edge-to-edge lists; `plain` drops the card (for a grid of tiles under a title). */
+export function Section({ title, count, action, children, flush = false, plain = false, className }: {
   title?: ReactNode;
   count?: number;
   action?: ReactNode;
   children: ReactNode;
   flush?: boolean;
+  plain?: boolean;
   className?: string;
 }) {
   return (
@@ -401,20 +413,52 @@ export function Section({ title, count, action, children, flush = false, classNa
           {action}
         </div>
       )}
-      <div className={cn("card", flush ? "overflow-hidden" : "p-4 sm:p-5")}>{children}</div>
+      {plain ? children : <div className={cn("card", flush ? "overflow-hidden" : "p-4 sm:p-5")}>{children}</div>}
     </section>
   );
 }
 
-/** Divided list inside a card — pair with EventRow / EntityRow. */
-export function List({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("card divide-etched overflow-hidden", className)}>{children}</div>;
+export type ListLayout = "rows" | "tiles";
+
+/**
+ * Divided list inside a card — pair with EventRow / EntityRow. `layout="tiles"`
+ * shows the same items as a grid of cards instead (one column on phones, two
+ * or three wider); `bare` leaves out the card around rows, for use inside a
+ * `Section flush`. Let people pick with `LayoutSwitch` + `useListLayout`.
+ */
+export function List({ children, layout = "rows", bare = false, className }: { children: ReactNode; layout?: ListLayout; bare?: boolean; className?: string }) {
+  if (layout === "tiles") {
+    return (
+      <div className={cn("grid gap-3 sm:grid-cols-2 lg:grid-cols-3", className)}>
+        {Children.toArray(children).map((child, i) => <div key={i} className="card overflow-hidden">{child}</div>)}
+      </div>
+    );
+  }
+  return <div className={cn(!bare && "card overflow-hidden", "divide-etched", className)}>{children}</div>;
+}
+
+/** Rows or tiles, remembered per list (`key`) in this browser. */
+export function useListLayout(key: string, initial: ListLayout = "rows"): [ListLayout, (l: ListLayout) => void] {
+  const storageKey = `${BRAND.storagePrefix}.layout.${key}`;
+  const [layout, setLayout] = useState<ListLayout>(() => {
+    try { const v = localStorage.getItem(storageKey); return v === "rows" || v === "tiles" ? v : initial; } catch { return initial; }
+  });
+  const set = (l: ListLayout) => {
+    setLayout(l);
+    try { localStorage.setItem(storageKey, l); } catch { /* storage unavailable: the choice lasts until reload */ }
+  };
+  return [layout, set];
+}
+
+/** The rows ⇄ tiles switch for a `List` — small `Tabs`, sized for a `Section`'s action slot. */
+export function LayoutSwitch({ value, onChange }: { value: ListLayout; onChange: (l: ListLayout) => void }) {
+  return <Tabs size="sm" value={value} onChange={onChange} options={[{ value: "rows", label: "List" }, { value: "tiles", label: "Tiles" }]} />;
 }
 
 /** Sticky-style group label between rows (month headers etc.). */
 export function ListGroupLabel({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center gap-2 bg-gradient-to-r from-support-900/50 via-support-950/40 to-transparent px-4 py-2 text-xs font-semibold uppercase tracking-wider text-support">
+    <div className="list-group-label flex items-center gap-2 bg-gradient-to-r from-support-900/50 via-support-950/40 to-transparent px-4 py-2 text-xs font-semibold uppercase tracking-wider text-support">
       <span aria-hidden="true" className="dot-support h-2 w-2" />
       {children}
     </div>
@@ -707,11 +751,13 @@ export function LinkCard({ to, eyebrow, title, sub, accent = false }: {
 // Numbers
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function StatTile({ label, value, sub, accent = "muted" }: {
+export function StatTile({ label, value, sub, accent = "muted", trend }: {
   label: string;
   value: string | number;
   sub?: ReactNode;
   accent?: "accent" | "highlight" | "support" | "muted";
+  /** Recent values, oldest first: a sparkline under the number, its latest point in the tile's colour. */
+  trend?: number[];
 }) {
   const col = { accent: "text-accent", highlight: "text-highlight", support: "text-support", muted: "text-text-base" }[accent];
   return (
@@ -723,6 +769,7 @@ export function StatTile({ label, value, sub, accent = "muted" }: {
       <p className={cn("font-display text-[32px] leading-none sm:text-4xl", col)}>
         {typeof value === "number" ? value.toLocaleString() : value}
       </p>
+      {trend && trend.length > 1 && <Sparkline values={trend} tone={accent === "muted" ? "accent" : accent} className="mt-3" />}
       {sub && <p className="mt-1.5 text-sm text-text-subtle">{sub}</p>}
     </div>
   );
@@ -730,6 +777,261 @@ export function StatTile({ label, value, sub, accent = "muted" }: {
 
 export function StatGrid({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{children}</div>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Charts — flat SVG in the theme's colours. Series take accent, support and
+// highlight in that order (three at most); a chart never relies on colour
+// alone: one series needs no legend, two or three get a readout that names
+// each with its line key and value. Every chart has a hidden table of its
+// numbers for screen readers, and a readout row instead of a hover-only
+// tooltip, so a tap shows a value as well as a hover.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ChartTone = "accent" | "support" | "highlight";
+const SERIES_TONES: ChartTone[] = ["accent", "support", "highlight"];
+const STROKE: Record<ChartTone, string> = { accent: "stroke-accent", support: "stroke-support", highlight: "stroke-highlight" };
+const FILL: Record<ChartTone, string> = { accent: "fill-accent", support: "fill-support", highlight: "fill-highlight" };
+const WASH: Record<ChartTone, string> = { accent: "fill-accent/10", support: "fill-support/10", highlight: "fill-highlight/10" };
+const KEY: Record<ChartTone, string> = { accent: "bg-accent", support: "bg-support", highlight: "bg-highlight" };
+
+/** 1,284 → "1,284"; 12,900 → "12.9K". */
+export function compactNumber(n: number): string {
+  return Math.abs(n) >= 10_000 ? new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(n) : n.toLocaleString();
+}
+
+/** Round axis ticks from 0 up past `max`: 0 / 5 / 10 / 15, 0 / 1K / 2K… */
+function niceTicks(max: number, count = 3): number[] {
+  if (max <= 0) return [0, 1];
+  const raw = max / count;
+  const pow = 10 ** Math.floor(Math.log10(raw));
+  const step = ([1, 2, 2.5, 5, 10].find((m) => m * pow >= raw) ?? 10) * pow;
+  return Array.from({ length: Math.ceil(max / step) + 1 }, (_, i) => +(i * step).toPrecision(12));
+}
+
+/** The element's width, kept up to date (charts draw in real pixels, so lines and dots never stretch). */
+function useWidth<T extends HTMLElement>(): [RefObject<T>, number] {
+  const ref = useRef<T>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setWidth(el.clientWidth);
+    const ro = new ResizeObserver(([e]) => setWidth(e?.contentRect.width ?? 0));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width];
+}
+
+/** The numbers behind a chart, for screen readers. (In a hidden div: a table ignores sr-only's 1 px width and would widen the page.) */
+function ChartTable({ caption, columns, rows }: { caption: string; columns: string[]; rows: (string | number)[][] }) {
+  return (
+    <div className="sr-only">
+      <table>
+        <caption>{caption}</caption>
+        <thead><tr>{columns.map((c) => <th key={c} scope="col">{c}</th>)}</tr></thead>
+        <tbody>{rows.map((r, i) => <tr key={i}>{r.map((v, j) => (j === 0 ? <th key={j} scope="row">{v}</th> : <td key={j}>{v}</td>))}</tr>)}</tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * A small trend line with no axes — under a StatTile's number, or beside a
+ * row. A 2 px line in the subtle text colour, the latest point as a dot in
+ * the tone, so "now" stands out from the history.
+ */
+export function Sparkline({ values, tone = "accent", height = 28, className }: { values: number[]; tone?: ChartTone; height?: number; className?: string }) {
+  const [ref, width] = useWidth<HTMLDivElement>();
+  const pad = 5;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const x = (i: number) => pad + (i / Math.max(values.length - 1, 1)) * (width - pad * 2);
+  const y = (v: number) => pad + (max === min ? 0.5 : 1 - (v - min) / (max - min)) * (height - pad * 2);
+  const last = values.length - 1;
+  return (
+    <div ref={ref} className={cn("w-full", className)} style={{ height }}
+      role="img" aria-label={`Trend: ${values[0]?.toLocaleString()} to ${values[last]?.toLocaleString()}`}>
+      {width > 0 && values.length > 1 && (
+        <svg width={width} height={height} aria-hidden="true" className="overflow-visible">
+          <polyline points={values.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" className="stroke-text-subtle/70" />
+          <circle cx={x(last)} cy={y(values[last]!)} r={4} strokeWidth={2} className={cn(FILL[tone], "stroke-surface")} />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+export type TrendSeries = { label: string; values: number[]; tone?: ChartTone };
+
+/**
+ * Change over time: one to three lines over the same labels (days, weeks).
+ * One series gets a soft wash under its line. Drag, tap or use the arrow keys
+ * to move the crosshair; the readout above shows the values there (the
+ * latest by default) and names each series, so it doubles as the legend.
+ * One y-axis only — two measures of different sizes are two charts.
+ */
+export function TrendChart({ labels, series, format = compactNumber, height = 180, title }: {
+  labels: string[];
+  series: TrendSeries[];
+  format?: (n: number) => string;
+  height?: number;
+  /** What's plotted, for screen readers (the Section title usually says it on screen). */
+  title?: string;
+}) {
+  const [ref, width] = useWidth<HTMLDivElement>();
+  const last = labels.length - 1;
+  const [active, setActive] = useState<number | null>(null);
+  const at = active ?? last;
+  const lines = series.slice(0, 3).map((s, i) => ({ ...s, tone: s.tone ?? SERIES_TONES[i]! }));
+  const ticks = niceTicks(Math.max(...lines.flatMap((l) => l.values), 0));
+  const top = ticks[ticks.length - 1]!;
+  const gutter = Math.max(...ticks.map((t) => format(t).length)) * 7 + 10;
+  const pad = { top: 8, right: 8, bottom: 24, left: gutter };
+  const plotW = Math.max(width - pad.left - pad.right, 1);
+  const plotH = height - pad.top - pad.bottom;
+  const x = (i: number) => pad.left + (labels.length > 1 ? (i / last) * plotW : plotW / 2);
+  const y = (v: number) => pad.top + (1 - v / top) * plotH;
+  const nearest = (clientX: number, el: Element) => {
+    const r = el.getBoundingClientRect();
+    return Math.min(last, Math.max(0, Math.round(((clientX - r.left - pad.left) / plotW) * last)));
+  };
+  const onPointer = (e: ReactPointerEvent<SVGRectElement>) => setActive(nearest(e.clientX, e.currentTarget.ownerSVGElement!));
+  const onKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      setActive(Math.min(last, Math.max(0, at + (e.key === "ArrowRight" ? 1 : -1))));
+    }
+  };
+  // First, middle and last labels: enough to read the span without collisions.
+  const xLabels = [...new Set([0, Math.round(last / 2), last])].filter((i) => labels.length > 1 || i === 0);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1" aria-live="polite">
+        <span className="text-xs font-semibold text-text-subtle">{labels[at]}</span>
+        {lines.map((l) => (
+          <span key={l.label} className="flex items-baseline gap-2">
+            {lines.length > 1 && <span aria-hidden="true" className={cn("h-0.5 w-3 self-center rounded-full", KEY[l.tone])} />}
+            <span className="text-lg font-semibold tabular-nums text-text-base">{l.values[at] != null ? format(l.values[at]!) : "—"}</span>
+            {lines.length > 1 && <span className="text-sm text-text-muted">{l.label}</span>}
+          </span>
+        ))}
+      </div>
+      <div ref={ref} tabIndex={0} onKeyDown={onKey} onBlur={() => setActive(null)}
+        aria-label={`${title ?? lines.map((l) => l.label).join(", ")}: use the arrow keys to read each point`}
+        className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent" style={{ height }} data-no-swipe>
+        {width > 0 && (
+          <svg width={width} height={height} aria-hidden="true" className="touch-pan-y select-none overflow-visible">
+            {ticks.map((t) => (
+              <g key={t}>
+                <line x1={pad.left} x2={width - pad.right} y1={y(t)} y2={y(t)} strokeWidth={1} className="stroke-border/70" />
+                <text x={pad.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-text-subtle text-[11px] tabular-nums">{format(t)}</text>
+              </g>
+            ))}
+            {xLabels.map((i) => (
+              <text key={i} x={x(i)} y={height - 6} textAnchor={i === 0 ? "start" : i === last ? "end" : "middle"} className="fill-text-subtle text-[11px]">{labels[i]}</text>
+            ))}
+            {lines.length === 1 && lines[0]!.values.length > 1 && (
+              <path className={WASH[lines[0]!.tone]}
+                d={`M${x(0)},${y(0)} ${lines[0]!.values.map((v, i) => `L${x(i)},${y(v)}`).join(" ")} L${x(lines[0]!.values.length - 1)},${y(0)} Z`} />
+            )}
+            {lines.map((l) => (
+              <polyline key={l.label} points={l.values.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none"
+                strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" className={STROKE[l.tone]} />
+            ))}
+            <line x1={x(at)} x2={x(at)} y1={pad.top} y2={pad.top + plotH} strokeWidth={1} className="stroke-text-subtle/60" />
+            {lines.map((l) => l.values[at] != null && (
+              <circle key={l.label} cx={x(at)} cy={y(l.values[at]!)} r={4.5} strokeWidth={2} className={cn(FILL[l.tone], "stroke-surface")} />
+            ))}
+            {/* The hit area: the whole plot, so the pointer only has to be near a point. */}
+            <rect x={pad.left} y={0} width={plotW} height={height} fill="transparent"
+              onPointerDown={onPointer} onPointerMove={onPointer} onPointerLeave={(e) => { if (e.pointerType === "mouse") setActive(null); }} />
+          </svg>
+        )}
+      </div>
+      <ChartTable caption={title ?? "Values over time"} columns={["", ...lines.map((l) => l.label)]}
+        rows={labels.map((lab, i) => [lab, ...lines.map((l) => (l.values[i] != null ? format(l.values[i]!) : "—"))])} />
+    </div>
+  );
+}
+
+export type BarItem = { id: string; label: string; value: number; to?: string };
+
+/**
+ * Compares a few amounts as bars, in one tone. `horizontal` (the default):
+ * a row each, label left, the value at the bar's tip — good for long names
+ * and lists that link (`to`). `vertical`: columns over a short run (days,
+ * months); tap or hover a column, or tab to it, to read its value above the
+ * chart (the largest shows until you do).
+ */
+export function BarChart({ items, direction = "horizontal", tone = "accent", format = compactNumber, height = 160, title }: {
+  items: BarItem[];
+  direction?: "horizontal" | "vertical";
+  tone?: ChartTone;
+  format?: (n: number) => string;
+  /** Vertical only: the plot's height in px. */
+  height?: number;
+  title?: string;
+}) {
+  const max = Math.max(...items.map((i) => i.value), 0) || 1;
+  const biggest = items.reduce((b, it, i) => (it.value > (items[b]?.value ?? -Infinity) ? i : b), 0);
+  const [active, setActive] = useState<number | null>(null);
+  const table = <ChartTable caption={title ?? "Amounts"} columns={["", "Value"]} rows={items.map((i) => [i.label, format(i.value)])} />;
+
+  if (direction === "horizontal") {
+    return (
+      <div className="space-y-1">
+        {items.map((it) => {
+          const body = (
+            <>
+              <span className="w-[32%] shrink-0 truncate text-sm font-semibold text-text-muted group-hover:text-text-base">{it.label}</span>
+              <span className="flex h-3 flex-1 items-center">
+                {/* Square at the baseline, a 4 px round on the data end. */}
+                <span className={cn("block h-full min-w-[2px] rounded-r-[4px]", KEY[tone])} style={{ width: `${(it.value / max) * 100}%` }} />
+              </span>
+              <span className="w-12 shrink-0 text-right text-sm font-semibold tabular-nums">{format(it.value)}</span>
+            </>
+          );
+          const cls = "group flex h-11 items-center gap-3 rounded-lg px-1";
+          return it.to
+            ? <Link key={it.id} to={it.to} className={cn(cls, "transition-colors hover:bg-surface-2/70")}>{body}</Link>
+            : <div key={it.id} className={cls}>{body}</div>;
+        })}
+        {table}
+      </div>
+    );
+  }
+
+  const shown = active ?? biggest;
+  const every = Math.ceil(items.length / 8);
+  return (
+    <div className="space-y-3">
+      <p className="flex items-baseline gap-2" aria-live="polite">
+        <span className="text-lg font-semibold tabular-nums">{items[shown] ? format(items[shown]!.value) : "—"}</span>
+        <span className="text-sm text-text-muted">{items[shown]?.label}{active == null && items.length > 1 ? " · highest" : ""}</span>
+      </p>
+      {/* A finger lifting also "leaves", so only a mouse moving away puts the readout back. */}
+      <div className="flex border-b border-border" style={{ height }} onPointerLeave={(e) => { if (e.pointerType === "mouse") setActive(null); }} data-no-swipe>
+        {items.map((it, i) => (
+          <button key={it.id} type="button" aria-label={`${it.label}: ${format(it.value)}`}
+            onPointerEnter={() => setActive(i)} onPointerDown={() => setActive(i)} onFocus={() => setActive(i)}
+            className="group flex h-full min-w-0 flex-1 items-end justify-center px-[1px] outline-none">
+            <span className={cn("block w-full max-w-6 rounded-t-[4px] transition-opacity", KEY[tone],
+              shown === i ? "opacity-100" : "opacity-70 group-hover:opacity-100", "group-focus-visible:ring-2 group-focus-visible:ring-text-base")}
+              style={{ height: `${Math.max((it.value / max) * 100, it.value > 0 ? 2 : 0)}%` }} />
+          </button>
+        ))}
+      </div>
+      <div className="flex">
+        {items.map((it, i) => (
+          <span key={it.id} className="min-w-0 flex-1 truncate text-center text-[11px] text-text-subtle">{i % every === 0 ? it.label : ""}</span>
+        ))}
+      </div>
+      {table}
+    </div>
+  );
 }
 
 export type RankedItem = {
@@ -841,12 +1143,29 @@ export function SelectField<T extends string>({ value, onChange, options, label,
   );
 }
 
-/** Two to four tabs for views of one thing (Upcoming / Past). Full width on phones. */
-export function Tabs<T extends string>({ value, onChange, options }: {
+/** Two to four tabs for views of one thing (Upcoming / Past). Full width on phones; `size="sm"` is a compact inline switch for a section's action slot. */
+export function Tabs<T extends string>({ value, onChange, options, size = "md" }: {
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: string }[];
+  size?: "md" | "sm";
 }) {
+  if (size === "sm") {
+    return (
+      <div role="tablist" className="glass inline-grid shrink-0 rounded-control p-0.5" style={{ gridTemplateColumns: `repeat(${options.length}, auto)` }}>
+        {options.map((o) => {
+          const active = o.value === value;
+          return (
+            // 36 px tall, with the row's padding making up a 44 px target.
+            <button key={o.value} role="tab" aria-selected={active} onClick={() => onChange(o.value)}
+              className={cn("h-9 rounded-lg px-3 text-sm font-semibold transition-colors", active ? "lit-accent" : "text-text-muted hover:text-text-base")}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
   return (
     <div role="tablist" className="glass grid rounded-xl p-1 sm:inline-grid sm:min-w-[320px]"
       // Four or more tabs size to their labels (equal widths would clip the longest).

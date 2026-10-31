@@ -14,8 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/Wordmark";
 import { ColorPicker } from "@/components/ColorPicker";
 import {
-  Autocomplete, Badge, DateBlock, KeyValue, SwitchRow, EmptyState, EntityRow, EventRow, LinkCard, List, ListGroupLabel, Loading, MediaCard, PageHeader, Pager,
-  PillTabs, RankedList, SearchField, Section, SelectField, Sheet, StatGrid, StatTile, StatusBadge, Tabs, ThemeDots, VenueViewSwitch,
+  Autocomplete, Badge, BarChart, DateBlock, KeyValue, LayoutSwitch, SwitchRow, EmptyState, EntityRow, EventRow, LinkCard, List, ListGroupLabel, Loading, MediaCard, PageHeader, Pager,
+  PillTabs, RankedList, SearchField, Section, SelectField, Sheet, Sparkline, StatGrid, StatTile, StatusBadge, Tabs, ThemeDots, TrendChart, useListLayout, VenueViewSwitch,
 } from "@/components/ui/kit";
 import { FONTS, THEME_KEYS, themeHex } from "@/lib/theme";
 import { useBrand } from "@/lib/useBrand";
@@ -73,6 +73,7 @@ export function StyleGuidePanel() {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(2);
   const [sheet, setSheet] = useState(false);
+  const [layout, setLayout] = useListLayout("style-guide");
   const [picked, setPicked] = useState(false);
   const [colour, setColour] = useState("#A8FF3E");
   const [ac, setAc] = useState("");
@@ -217,7 +218,45 @@ export function StyleGuidePanel() {
         </StatGrid>
       </Block>
 
-      <Block title="Lists and cards" note="Lists sit in one card; rows are at least 64px tall for thumbs.">
+      <Block title="Charts" note="Series take accent, support, highlight in that order, three at most. Tap, hover or arrow-key a chart to read a value; one series has no legend, more get named in the readout.">
+        <StatGrid>
+          <StatTile label="StatTile · trend" value="1.2K" accent="accent" trend={[620, 700, 810, 760, 940, 1100, 1210]} sub="A Sparkline under it" />
+          <StatTile label="Sparkline · support" value={38} accent="support" trend={[44, 40, 41, 37, 39, 36, 38]} />
+        </StatGrid>
+        <Section title="TrendChart · one series">
+          <TrendChart labels={["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]} series={[{ label: "Visits", values: [120, 180, 150, 210, 260, 240, 300] }]} />
+        </Section>
+        <Section title="TrendChart · two series">
+          <TrendChart labels={["Wk 1", "Wk 2", "Wk 3", "Wk 4", "Wk 5", "Wk 6"]} format={(n) => `${n}m`}
+            series={[{ label: "Build", values: [12, 14, 11, 16, 13, 12] }, { label: "Tests", values: [6, 7, 7, 9, 8, 6] }]} />
+        </Section>
+        <div className="grid gap-6 sm:grid-cols-2">
+          <Section title="BarChart · horizontal">
+            <BarChart items={[
+              { id: "a", label: "Main hall", value: 42, to: "/jimbo-ui?tab=style" },
+              { id: "b", label: "Studio B", value: 27 },
+              { id: "c", label: "Rooftop", value: 9 },
+            ]} />
+          </Section>
+          <Section title="BarChart · vertical">
+            <BarChart direction="vertical" tone="support" height={120}
+              items={["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"].map((m, i) => ({ id: String(i), label: m, value: [3, 5, 2, 6, 8, 4, 9, 7, 5, 6, 3, 4][i]! }))} />
+          </Section>
+        </div>
+        <div className="card flex items-center gap-4 p-4">
+          <Sparkline values={[3, 4, 2, 5, 6, 5, 8]} className="w-28" />
+          <p className="meta">Sparkline on its own — beside a row or in a card.</p>
+        </div>
+      </Block>
+
+      <Block title="Lists and cards" note={'Lists sit in one card; rows are at least 64px tall for thumbs. The same List shows as tiles with layout="tiles".'}>
+        <Section title="List · rows or tiles" action={<LayoutSwitch value={layout} onChange={setLayout} />} plain>
+          <List layout={layout}>
+            <EventRow onOpen={() => setSheet(true)} date="2026-05-04" title="The same item" subtitle="As a row, or as a tile" status="attended" />
+            <EventRow onOpen={() => setSheet(true)} date="2026-05-11" title="Another item" subtitle="LayoutSwitch picks; useListLayout remembers" />
+            <EventRow onOpen={() => setSheet(true)} date="2026-05-18" title="A third" subtitle="One column on phones" status="attending" />
+          </List>
+        </Section>
         <List>
           <ListGroupLabel>ListGroupLabel</ListGroupLabel>
           <EventRow to="/jimbo-ui?tab=style" date="2026-03-22" title="EventRow — a show" subtitle="A venue" status="attended" />

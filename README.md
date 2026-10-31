@@ -336,9 +336,9 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   │                         notifications, offline saving)
 │   │       │   ├── ImportsPage.tsx       admin: CSV import + CSV / JSON / Markdown export
 │   │       │   ├── DataCleanupPage.tsx   admin: duplicates, festival suggestions, merges + undo, data health, setlist finder
-│   │       │   ├── JimboConfigPage.tsx   admin: jimbo-ui config (/jimbo-ui) — Theme, Brand (logo, favicon),
-│   │       │   │                         Style guide and About tabs
-│   │       │   ├── config/ThemePanel.tsx       its Theme tab: templates, colours, type, backdrop, checks
+│   │       │   ├── JimboConfigPage.tsx   admin: jimbo-ui config (/jimbo-ui) — Looks, Colours, Type, Backdrop,
+│   │       │   │                         Brand (logo, favicon), Style guide and About tabs
+│   │       │   ├── config/ThemePanel.tsx       its Looks, Colours, Type and Backdrop tabs (one draft, one save bar)
 │   │       │   ├── config/StyleGuidePanel.tsx  its Style guide tab: every component, live in the current theme
 │   │       │   ├── LoginPage, SignupPage, VerifyEmailPage
 │   │       │   └── RequireAuth, RequireAdmin     route guards
@@ -972,7 +972,7 @@ An installable web app (add it to your phone's Home Screen). Phone-first layout:
 ### Admin
 - **Import & export** — CSV import (queued in the worker); export your log as CSV (with setlists), JSON or Markdown.
 - **Data cleanup** — suggested duplicate venues and artists with merge preview, merge history with undo, data health checks with one-tap fixes, setlist finder progress; similar names flagged when adding a show.
-- **jimbo-ui config** (Account → jimbo-ui config, `/jimbo-ui`) — **Theme**: templates by category, each in light, mid and dark, a search box and a colour picker for the accent, highlight, support and background colours (the logo uses the accent and highlight), type, a page backdrop, a live preview across the app and readability checks; everything else is derived from them (a light background switches to dark text). **Brand**: upload a logo or favicon, or keep the built-in ones, which recolour with the theme. **Style guide**: every component in the current colours. **About**: the jimbo.ui version, registry status and any newer jimbo.ui release, with what updating would change.
+- **jimbo-ui config** (Account → jimbo-ui config, `/jimbo-ui`) — **Looks**: templates by category, each in light, mid and dark, with a search box and *Share this look*; **Colours**: a picker for the accent, highlight, support and background colours (the logo uses the accent and highlight) with readability checks; **Type**; **Backdrop**: a pattern behind every page. All four preview live across the app and share one save bar; everything else is derived from them (a light background switches to dark text). **Brand**: upload a logo or favicon, or keep the built-in ones, which recolour with the theme. **Style guide**: every component in the current colours. **About**: the jimbo.ui version, registry status and any newer jimbo.ui release, with what updating would change.
 - Invites (accounts are invite-only), service health links.
 
 ### Needs HTTPS (dormant on plain http)

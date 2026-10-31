@@ -1188,20 +1188,38 @@ export function Tabs<T extends string>({ value, onChange, options, size = "md" }
   );
 }
 
-/** Pill tabs for desktop filters; wraps rather than scrolling. */
-export function PillTabs<T extends string>({ value, onChange, options }: {
+/**
+ * Pill tabs for desktop filters; wraps rather than scrolling. `scroll` keeps
+ * them on one row that scrolls sideways (to the screen's edges on phones) —
+ * for a page's own sections when there are more than fit, so they don't stack
+ * into rows that look like the filters under them.
+ */
+export function PillTabs<T extends string>({ value, onChange, options, scroll = false }: {
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: string; activeClass?: string }[];
+  scroll?: boolean;
 }) {
+  const row = useRef<HTMLDivElement>(null);
+  // Keep the chosen tab in view when it changes (or opens from a link).
+  useEffect(() => {
+    if (!scroll) return;
+    const box = row.current, tab = box?.querySelector<HTMLElement>("[aria-pressed=true]");
+    if (!box || !tab) return;
+    const [left, right] = [tab.offsetLeft - box.offsetLeft, tab.offsetLeft - box.offsetLeft + tab.offsetWidth];
+    if (left < box.scrollLeft) box.scrollTo({ left: left - 16, behavior: "smooth" });
+    else if (right > box.scrollLeft + box.clientWidth) box.scrollTo({ left: right - box.clientWidth + 16, behavior: "smooth" });
+  }, [scroll, value]);
   return (
-    <div className="flex flex-wrap gap-2">
+    <div ref={row} className={scroll
+      ? "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
+      : "flex flex-wrap gap-2"}>
       {options.map((o) => {
         const active = o.value === value;
         return (
-          <button key={o.value} onClick={() => onChange(o.value)}
+          <button key={o.value} type="button" aria-pressed={active} onClick={() => onChange(o.value)}
             className={cn(
-              "h-10 rounded-control border px-4 text-sm font-semibold transition-colors",
+              "h-10 shrink-0 rounded-control border px-4 text-sm font-semibold transition-colors",
               active ? (o.activeClass ?? "lit-accent border-accent") : "border-border text-text-muted hover:border-text-subtle hover:text-text-base",
             )}>
             {o.label}

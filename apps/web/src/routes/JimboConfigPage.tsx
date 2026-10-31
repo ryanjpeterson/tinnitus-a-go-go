@@ -2,14 +2,15 @@
  * jimbo-ui config — /jimbo-ui
  *
  * The one place for every brand, theme and style guide option, the same in
- * every app: Theme, Brand, Style guide, About, and an optional App tab for the
- * app's own additions. Reached from the app's settings or admin area, never a
+ * every app: Looks, Colours, Type, Backdrop, Brand, Style guide, About, and an
+ * optional App tab for the app's own additions. Reached from the app's settings or admin area, never a
  * dock tab. The app passes `canConfigure`: its admin check when it has auth
  * (the server checks admin on every save too), or `true` when it has none.
  * Without it the section redirects home and its link doesn't render.
  *
- * All panels stay mounted so an unsaved look follows you from Theme into the
- * Style guide; the save bar floats over every tab.
+ * All panels stay mounted and share one draft, so an unsaved look follows you
+ * from Looks through Colours, Type and Backdrop into the Style guide; the save
+ * bar floats over every tab.
  *
  * Tinnitus's copy of jimbo.ui's reference. Its own part: the Brand tab shows
  * the TINNITUS / a-go-go logo and takes a logo upload as well as a favicon.
@@ -24,29 +25,39 @@ import { JIMBO_APP, JIMBO_UI } from "@/lib/jimbo";
 import { useBrand } from "@/lib/useBrand";
 import { Wordmark } from "@/components/Wordmark";
 import { Badge, LinkCard, PageHeader, PillTabs } from "@/components/ui/kit";
-import { ThemePanel } from "./config/ThemePanel";
+import { BackdropPanel, ColoursPanel, LooksPanel, ThemeSaveBar, TypePanel, useThemeDraft } from "./config/ThemePanel";
 import { StyleGuidePanel } from "./config/StyleGuidePanel";
 import { JimboUpdates, useJimboUpdates } from "./config/UpdatesPanel";
 
-type Tab = "theme" | "brand" | "style" | "about" | "app";
+type Tab = "theme" | "colours" | "type" | "backdrop" | "brand" | "style" | "about" | "app";
 
 export function JimboConfigPage({ canConfigure, app }: { canConfigure: boolean; app?: { label?: string; content: ReactNode } }) {
-  const [params, setParams] = useSearchParams();
   if (!canConfigure) return <Navigate to="/" replace />;
+  return <ConfigSection app={app} />;
+}
+
+function ConfigSection({ app }: { app?: { label?: string; content: ReactNode } }) {
+  const [params, setParams] = useSearchParams();
+  const draft = useThemeDraft();
   const tabs: { value: Tab; label: string }[] = [
-    { value: "theme", label: "Theme" }, { value: "brand", label: "Brand" }, { value: "style", label: "Style guide" }, { value: "about", label: "About" },
+    { value: "theme", label: "Looks" }, { value: "colours", label: "Colours" }, { value: "type", label: "Type" }, { value: "backdrop", label: "Backdrop" },
+    { value: "brand", label: "Brand" }, { value: "style", label: "Style guide" }, { value: "about", label: "About" },
     ...(app ? [{ value: "app" as const, label: app.label ?? "App" }] : []),
   ];
   const tab = (tabs.find((t) => t.value === params.get("tab"))?.value ?? "theme") as Tab;
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 pb-24">
       <PageHeader eyebrow="Settings" title="jimbo-ui config" />
-      <PillTabs value={tab} onChange={(v) => setParams({ tab: v }, { replace: true })} options={tabs} />
-      <div hidden={tab !== "theme"}><ThemePanel /></div>
+      <PillTabs scroll value={tab} onChange={(v) => setParams({ tab: v }, { replace: true })} options={tabs} />
+      <div hidden={tab !== "theme"}><LooksPanel d={draft} /></div>
+      <div hidden={tab !== "colours"}><ColoursPanel d={draft} /></div>
+      <div hidden={tab !== "type"}><TypePanel d={draft} /></div>
+      <div hidden={tab !== "backdrop"}><BackdropPanel d={draft} /></div>
       <div hidden={tab !== "brand"}><BrandPanel /></div>
       <div hidden={tab !== "style"}><StyleGuidePanel /></div>
       <div hidden={tab !== "about"}><AboutPanel /></div>
       {app && <div hidden={tab !== "app"}>{app.content}</div>}
+      <ThemeSaveBar d={draft} />
     </div>
   );
 }

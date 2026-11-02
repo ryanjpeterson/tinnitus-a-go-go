@@ -816,6 +816,16 @@ This is a friends project served from a personal Mac — no VPS. Tailscale handl
 6. Set `MINIO_PUBLIC_URL` to the externally-reachable MinIO address (used in media URLs)
 7. Optionally add `GOOGLE_MAPS_API_KEY` / `VITE_GOOGLE_MAPS_API_KEY`, `SETLISTFM_API_KEY`, `ANTHROPIC_API_KEY` in `.env`
 
+### Deploy
+
+Deploys follow the jimbo-deploy standard ([`deploy.json`](./deploy.json)): edit on the laptop, `git push` (it goes to GitHub and the Forgejo mirror at `http://macmini:4470`), then run this on the Mac mini, where the checkout lives on the shared drive. Save it as a Termius snippet named **deploy tinnitus-a-go-go**:
+
+```bash
+cd /Volumes/jimbos-sloppydrive/tinnitus-a-go-go && git pull --ff-only && docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d --build && docker compose -f docker-compose.yml -f docker-compose.tailscale.yml ps
+```
+
+When a release adds a migration, apply it after the pull and before the build (see [Migration workflow](#migration-workflow)). The app is at `http://macmini:4444`.
+
 ### Installed app: HTTPS and the production build
 
 The app on your phone's Home Screen only gets **offline mode** and **notifications** when two things are true — without them it still works, but only with a connection:

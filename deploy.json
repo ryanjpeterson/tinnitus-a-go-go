@@ -1,0 +1,10 @@
+{
+  "app": "tinnitus-a-go-go",
+  "local": "~/Development/tinnitus-a-go-go",
+  "server": "/Volumes/jimbos-sloppydrive/tinnitus-a-go-go",
+  "github": "ryanjpeterson/tinnitus-a-go-go",
+  "forgejo": "ryanjpeterson/tinnitus-a-go-go",
+  "compose": ["docker-compose.yml", "docker-compose.tailscale.yml"],
+  "port": 4444,
+  "service": "web"
+}

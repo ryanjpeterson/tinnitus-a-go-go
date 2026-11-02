@@ -1,7 +1,7 @@
 {
   "version": "0.10.0",
-  "commit": "b743d03",
-  "note": "jimbo.ui 0.10.0 (b743d03).",
+  "commit": "75bacac",
+  "note": "jimbo.ui 0.10.0 plus jimbo-ui main up to 75bacac (the registry change, listed under Unreleased there).",
   "webRoot": "apps/web",
   "auth": "admin",
   "reference": {

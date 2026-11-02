@@ -12,31 +12,14 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useParams, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { api, type FestivalSet, type FestivalDetail, type ArtistListItem } from "@/lib/api";
-import { plural } from "@/lib/format";
+import { api, type FestivalSet, type FestivalDetail } from "@/lib/api";
+import { fmtDate, plural } from "@/lib/format";
 import { billLine } from "@/lib/showTitle";
 import type { AttendanceStatus } from "@tagg/shared";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Chevron, DateBlock, EmptyState, EventRow, Hero, Loading, PillTabs, SelectField, ShareButton, Sheet, StatTile, StatusBadge } from "@/components/ui/kit";
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
-  });
-}
-
-function fmtDateShort(iso: string | null): string {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
-  });
-}
+import { ArtistAutocomplete } from "@/components/ArtistAutocomplete";
 
 const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
   { value: "attended",   label: "Attended",   active: "border-lime-700    bg-lime-950    text-accent-lime"  },
@@ -44,63 +27,6 @@ const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
   { value: "interested", label: "Interested", active: "border-purple-700  bg-purple-950  text-purple-400"  },
   { value: "missed",     label: "Missed",     active: "border-red-700     bg-red-950     text-red-400"      },
 ];
-
-function ArtistAutocomplete({
-  value,
-  onChange,
-  onSelect,
-}: {
-  value: string;
-  onChange: (val: string) => void;
-  onSelect: (name: string) => void;
-}) {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [results, setResults] = useState<ArtistListItem[]>([]);
-  const [showDrop, setShowDrop] = useState(false);
-
-  const handleChange = (val: string) => {
-    onChange(val);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (!val.trim() || val.length < 2) {
-      setResults([]);
-      setShowDrop(false);
-      return;
-    }
-    timerRef.current = setTimeout(() => {
-      api.listArtists({ q: val, limit: 6 }).then((r) => {
-        setResults(r.artists);
-        setShowDrop(r.artists.length > 0);
-      }).catch(() => {});
-    }, 280);
-  };
-
-  return (
-    <div className="relative flex-1">
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => handleChange(e.target.value)}
-        onFocus={() => results.length > 0 && setShowDrop(true)}
-        onBlur={() => setTimeout(() => setShowDrop(false), 150)}
-        placeholder="Artist name"
-        className="w-full field h-11"
-      />
-      {showDrop && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-40 mt-1 bg-surface border border-border rounded-lg shadow-xl py-1 max-h-40 overflow-y-auto">
-          {results.map((a) => (
-            <button
-              key={a.id}
-              onMouseDown={() => { onSelect(a.name); setShowDrop(false); }}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-surface-2 transition-colors"
-            >
-              {a.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function FestivalDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -380,7 +306,7 @@ export function FestivalDetailPage() {
     { value: "days", label: "All days" },
     ...dayEntries.map(([date, ds], i) => ({
       value: String(dayNumber(date, i)) as LineupView,
-      label: date === "unknown" ? `Date TBD · ${ds.length}` : `Day ${dayNumber(date, i)} · ${fmtDateShort(date)}`,
+      label: date === "unknown" ? `Date TBD · ${ds.length}` : `Day ${dayNumber(date, i)} · ${fmtDate(date)}`,
     })),
   ];
   // Whole-festival lineup: each artist once, in day then set order, tagged with their day.
@@ -392,7 +318,7 @@ export function FestivalDetailPage() {
     return [...seen.values()];
   })();
   const dateRange = (festival.startDate || festival.endDate)
-    ? `${fmtDate(festival.startDate)}${festival.endDate && festival.endDate !== festival.startDate ? ` – ${fmtDate(festival.endDate)}` : ""}`
+    ? `${festival.startDate ? fmtDate(festival.startDate) : ""}${festival.endDate && festival.endDate !== festival.startDate ? ` – ${fmtDate(festival.endDate)}` : ""}`
     : null;
 
   return (

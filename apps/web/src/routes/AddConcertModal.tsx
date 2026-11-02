@@ -9,7 +9,9 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { api, type ArtistListItem, type VenueListItem, type SetlistfmResult, type SetlistfmError, type ParsedEvent, type DupRecord } from "@/lib/api";
+import { api, type ArtistListItem, type SetlistfmResult, type SetlistfmError, type ParsedEvent, type DupRecord } from "@/lib/api";
+import { closestByName, searchStem } from "@/lib/fuzzy";
+import { VenueAutocomplete } from "@/components/VenueAutocomplete";
 import type { AttendanceStatus } from "@tagg/shared";
 import { Sheet } from "@/components/ui/kit";
 
@@ -69,99 +71,6 @@ const DEFAULT_FORM: FormState = {
   ticketCurrency: "CAD",
 };
 
-/** Levenshtein edit distance (case-insensitive inputs expected). */
-function levenshtein(a: string, b: string): number {
-  const m = a.length, n = b.length;
-  const row = Array.from({ length: n + 1 }, (_, j) => j);
-  for (let i = 1; i <= m; i++) {
-    let prev = row[0]!;
-    row[0] = i;
-    for (let j = 1; j <= n; j++) {
-      const tmp = row[j]!;
-      row[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, row[j - 1]!, row[j]!);
-      prev = tmp;
-    }
-  }
-  return row[n]!;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Venue autocomplete input
-// ─────────────────────────────────────────────────────────────────────────────
-
-function VenueAutocomplete({
-  value,
-  onChange,
-  onSelect,
-  placeholder = "Venue name",
-}: {
-  value: string;
-  onChange: (val: string) => void;
-  onSelect: (name: string, city: string, region: string) => void;
-  placeholder?: string;
-}) {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [results, setResults] = useState<VenueListItem[]>([]);
-  const [showDrop, setShowDrop] = useState(false);
-
-  const handleChange = (val: string) => {
-    onChange(val);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (!val.trim() || val.length < 2) {
-      setResults([]);
-      setShowDrop(false);
-      return;
-    }
-    timerRef.current = setTimeout(() => {
-      api.listVenues({ q: val, limit: 6 }).then((r) => {
-        if (r.venues.length > 0) {
-          setResults(r.venues);
-          setShowDrop(true);
-        } else {
-          setResults([]);
-          setShowDrop(false);
-        }
-      }).catch(() => {});
-    }, 280);
-  };
-
-  const handlePick = (v: VenueListItem) => {
-    onSelect(v.name, v.city ?? "", v.region ?? "");
-    setResults([]);
-    setShowDrop(false);
-  };
-
-  return (
-    <div className="relative w-full">
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => handleChange(e.target.value)}
-        onFocus={() => results.length > 0 && setShowDrop(true)}
-        onBlur={() => setTimeout(() => setShowDrop(false), 150)}
-        placeholder={placeholder}
-        className="w-full field h-11"
-      />
-      {showDrop && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-40 mt-1 bg-surface border border-border rounded-lg shadow-xl py-1 max-h-40 overflow-y-auto">
-          {results.map((v) => (
-            <button
-              key={v.id}
-              onMouseDown={() => handlePick(v)}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-surface-2 transition-colors flex items-center justify-between gap-2"
-            >
-              <span className="text-text-base truncate">{v.name}</span>
-              <span className="text-sm text-text-subtle shrink-0">
-                {[v.city, v.region].filter(Boolean).join(", ")}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Artist row with autocomplete + fuzzy suggestion
 // ─────────────────────────────────────────────────────────────────────────────
@@ -198,19 +107,10 @@ function ArtistInput({
           setResults(r.artists);
           // Fuzzy suggestion when no results
           if (r.artists.length === 0 && val.length >= 3) {
-            const stem = val.slice(0, Math.max(3, Math.floor(val.length * 0.7)));
             try {
-              const stemRes = await api.listArtists({ q: stem, limit: 12 });
-              if (stemRes.artists.length > 0) {
-                const valLower = val.toLowerCase();
-                let best = stemRes.artists[0]!;
-                let bestDist = levenshtein(valLower, best.name.toLowerCase());
-                for (const c of stemRes.artists.slice(1)) {
-                  const d = levenshtein(valLower, c.name.toLowerCase());
-                  if (d < bestDist) { bestDist = d; best = c; }
-                }
-                if (bestDist <= 2) setSuggested(best);
-              }
+              const stemRes = await api.listArtists({ q: searchStem(val), limit: 12 });
+              const best = closestByName(val, stemRes.artists);
+              if (best) setSuggested(best);
             } catch {
               // ignore
             }
@@ -602,7 +502,6 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
       }
 
       void qc.invalidateQueries({ queryKey: ["concerts"] });
-      void qc.invalidateQueries({ queryKey: ["concerts/stats"] });
       navigate(`/shows/${slug ?? concertId}`);
       onClose();
     } catch (err) {

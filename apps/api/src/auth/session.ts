@@ -1,4 +1,4 @@
-import { eq, lt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { env } from "../lib/env.js";
 import { generateToken, hashToken } from "./tokens.js";
@@ -96,18 +96,6 @@ export async function validateSession(token: string): Promise<
 export async function invalidateSession(token: string): Promise<void> {
   const id = hashToken(token);
   await db.delete(schema.sessions).where(eq(schema.sessions.id, id));
-}
-
-export async function invalidateAllSessionsForUser(userId: string): Promise<void> {
-  await db.delete(schema.sessions).where(eq(schema.sessions.userId, userId));
-}
-
-export async function cleanupExpiredSessions(): Promise<number> {
-  const result = await db
-    .delete(schema.sessions)
-    .where(lt(schema.sessions.expiresAt, new Date()))
-    .returning({ id: schema.sessions.id });
-  return result.length;
 }
 
 export const SESSION_COOKIE_OPTS = {

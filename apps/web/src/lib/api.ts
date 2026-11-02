@@ -103,7 +103,6 @@ export const api = {
     const query = qs.toString() ? `?${qs.toString()}` : "";
     return request<ConcertListResponse>(`/concerts${query}`);
   },
-  concertStats: () => request<ConcertStatsResponse>("/concerts/stats"),
   listFollowup: () => request<{ concerts: ConcertListItem[]; total: number }>("/concerts/followup"),
   getConcert: (id: string) => request<ConcertDetailResponse>(`/concerts/${id}`),
   patchConcert: (
@@ -127,52 +126,22 @@ export const api = {
       sourceUrl?: string | null;
     },
   ) => request<{ ok: true }>(`/concerts/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-  batchPatchConcerts: (
-    updates: Array<{
-      id: string;
-      // attendance
-      status?: AttendanceStatus;
-      personalNotes?: string | null;
-      ticketPricePaid?: number | null;
-      ticketPriceCurrency?: string | null;
-      // concert-level
-      date?: string;
-      type?: "concert" | "festival_day";
-      venueName?: string;
-      venueCity?: string | null;
-    }>,
-  ) => request<{ ok: true; updated: number }>("/concerts/batch", { method: "PATCH", body: JSON.stringify({ updates }) }),
 
-  // Public (no auth)
-  listPublicConcerts: () =>
-    request<PublicConcertListResponse>("/public/concerts"),
-  getPublicConcert: (id: string) =>
-    request<{ concert: PublicConcertDetail }>(`/public/concerts/${id}`),
   // Calendar feed (private subscribe link)
   getCalendarToken: () => request<{ token: string }>("/calendar/token"),
   resetCalendarToken: () => request<{ token: string }>("/calendar/token/reset", { method: "POST" }),
-  // Push notifications
-  getPushKey: () => request<{ publicKey: string }>("/push/key"),
-  subscribePush: (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
-    request<{ ok: true }>("/push/subscribe", { method: "POST", body: JSON.stringify(sub) }),
-  unsubscribePush: (endpoint: string) =>
-    request<{ ok: true }>("/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
-  testPush: () => request<{ ok: true; delivered: number }>("/push/test", { method: "POST" }),
-  getPushPrefs: () => request<{ prefs: PushPrefs }>("/push/prefs"),
-  setPushPrefs: (prefs: PushPrefs) => request<{ prefs: PushPrefs }>("/push/prefs", { method: "PUT", body: JSON.stringify(prefs) }),
   /** Mark a photo as a ticket stub (or back to a photo). */
   setPhotoKind: (photoId: string, kind: "photo" | "ticket") =>
     request<{ ok: true }>(`/photos/${photoId}`, { method: "PATCH", body: JSON.stringify({ kind }) }),
   /** Every ticket stub, oldest show first. */
   listTickets: () => request<{ tickets: TicketStub[] }>("/photos/tickets"),
-  /** Everything searchable, filtered on the device (kept offline by the service worker). */
+  /** Everything searchable, filtered on the device. */
   getSearchIndex: () => request<SearchIndex>("/search/index"),
   // Brand theme (colours, logo, favicon)
   getTheme: () => request<{ theme: SavedTheme; logoUrl: string | null; faviconUrl: string | null }>("/public/theme"),
   /** Highlight, support and fonts are optional: what's missing is inferred (colours) or the default (fonts). */
   setTheme: (theme: Theme) =>
     request<{ theme: typeof theme }>("/admin/theme", { method: "PUT", body: JSON.stringify(theme) }),
-  resetTheme: () => request<{ ok: true }>("/admin/theme", { method: "DELETE" }),
   uploadBrandAsset: (asset: "logo" | "favicon", file: File) => {
     const form = new FormData();
     form.append("file", file, file.name);
@@ -187,17 +156,8 @@ export const api = {
     request<{ years: YearCount[] }>("/concerts/year-review"),
   getYearReview: (year: number) =>
     request<YearReviewResponse>(`/concerts/year-review/${year}`),
-  getSiteCopy: () =>
-    request<{ copy: Record<string, string> }>("/public/copy"),
 
   // Admin: CMS copy editor
-  adminGetCopy: () =>
-    request<{ items: CopyItem[] }>("/admin/copy"),
-  adminPatchCopyKey: (key: string, value: string) =>
-    request<{ item: CopyItem }>(`/admin/copy/${encodeURIComponent(key)}`, {
-      method: "PATCH",
-      body: JSON.stringify({ value }),
-    }),
   createConcert: (body: {
     date: string;
     dateIsApproximate?: boolean;
@@ -357,20 +317,6 @@ export const api = {
       method: "POST",
       body: JSON.stringify(options ?? {}),
     }),
-  queueArtistEnrich: (slug: string) =>
-    request<{ ok: boolean; queued: boolean }>(`/artists/${slug}/enrich/queue`, {
-      method: "POST",
-    }),
-  bulkEnrichArtists: (options?: {
-    missingBio?: boolean;
-    missingImage?: boolean;
-    missingGenre?: boolean;
-    limit?: number;
-  }) =>
-    request<{ ok: boolean; queued: number; total: number }>("/artists/enrich/bulk", {
-      method: "POST",
-      body: JSON.stringify(options ?? {}),
-    }),
 
   // Venues
   listVenues: (params?: { q?: string; page?: number; limit?: number }) => {
@@ -420,11 +366,6 @@ export const api = {
     request<ParsedEvent>("/concerts/parse-url", { method: "POST", body: JSON.stringify({ url }) }),
 
   // Series (legacy - for backward compatibility with tour names)
-  patchSeries: (slug: string, body: { name?: string; year?: number | null }) =>
-    request<{ series: { id: string; name: string; slug: string; year: number | null } }>(
-      `/series/${slug}`,
-      { method: "PATCH", body: JSON.stringify(body) },
-    ),
 
   // Festivals (first-class entities)
   listFestivals: (params?: {
@@ -590,12 +531,6 @@ export const api = {
     const qs = new URLSearchParams({ artist: params.artist, date: params.date });
     return request<SetlistfmSearchResponse>(`/setlistfm/search?${qs.toString()}`);
   },
-  searchSetlistfmArtist: (mbidOrName: string, page?: number) => {
-    const qs = new URLSearchParams();
-    if (page && page > 1) qs.set("page", String(page));
-    const query = qs.toString() ? `?${qs.toString()}` : "";
-    return request<SetlistfmSearchResponse>(`/setlistfm/artist/${encodeURIComponent(mbidOrName)}${query}`);
-  },
   getSetlistfmById: (idOrUrl: string) => {
     // Parse ID from URL if it's a full setlist.fm URL
     let setlistId = idOrUrl;
@@ -608,10 +543,6 @@ export const api = {
       }
     }
     return request<SetlistfmByIdResponse>(`/setlistfm/setlist/${encodeURIComponent(setlistId)}`);
-  },
-  parseSetlistfmId: (url: string): string | null => {
-    const match = url.match(/([a-z0-9]+)\.html$/i);
-    return match ? match[1]! : null;
   },
   saveSetlistLink: (concertId: string, artistId: string, setlistfmId: string) =>
     request<{ ok: true; setlistId: string | null }>(`/concerts/${concertId}/setlists/${artistId}`, {
@@ -753,11 +684,6 @@ export interface ConcertListResponse {
   page: number;
   totalPages: number;
   limit: number;
-}
-
-export interface ConcertStatsResponse {
-  stats: Partial<Record<AttendanceStatus, number>>;
-  total: number;
 }
 
 // ─── Photo types ──────────────────────────────────────────────────────────────
@@ -1212,41 +1138,6 @@ export interface ArtistSetlistsResponse {
   total: number;
 }
 
-// ─── Public types (no auth) ───────────────────────────────────────────────────
-
-export interface PublicAttendance {
-  status: AttendanceStatus;
-  personalNotes: string | null;
-  ticketPricePaid: number | null;
-  ticketPriceCurrency: string | null;
-}
-
-export interface PublicConcertItem {
-  id: string;
-  date: string;
-  type: "concert" | "festival_day";
-  dateIsApproximate: boolean;
-  headlinerHint: string | null;
-  flyerUrl: string | null;
-  venue: { id: string; slug: string; name: string; city: string | null; region: string | null } | null;
-  artists: Array<{ id: string; name: string; slug: string; role: string; setOrder: number | null; appearanceNotes: string | null }>;
-  attendance: PublicAttendance | null;
-}
-
-export interface PublicConcertListResponse {
-  concerts: PublicConcertItem[];
-  total: number;
-}
-
-export interface PublicConcertDetail extends PublicConcertItem {
-  eventNotes: string | null;
-  sourceUrl: string | null;
-  eventSeries: { id: string; slug: string; name: string; year: number | null } | null;
-  venue: { id: string; slug: string; name: string; city: string | null; region: string | null; lat: number | null; lng: number | null } | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
 // ─── Year in review ──────────────────────────────────────────────────────────
 
 export interface YearCount {
@@ -1331,16 +1222,6 @@ export interface DeepStatsResponse {
   } | null;
 }
 
-// ─── CMS / Site copy ─────────────────────────────────────────────────────────
-
-export interface CopyItem {
-  key: string;
-  value: string;
-  description: string | null;
-  section: string;
-  updatedAt: string;
-}
-
 // ─── Search ───────────────────────────────────────────────────────────────────
 
 export interface SearchIndex {
@@ -1361,15 +1242,6 @@ export interface TicketStub {
 }
 
 /** Which push notifications you get. */
-export interface PushPrefs {
-  /** Day of a show you're attending. */
-  tonight: boolean;
-  /** The morning after, if it's still marked attending. */
-  howWasIt: boolean;
-  /** "N years ago today" for shows you attended. */
-  anniversaries: boolean;
-}
-
 /** Shows that look like a festival (Data cleanup). */
 export interface FestivalSuggestion {
   kind: "join" | "new";

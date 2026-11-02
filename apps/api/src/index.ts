@@ -11,7 +11,6 @@ import { inviteRoutes } from "./routes/invites.js";
 import { healthRoutes } from "./routes/health.js";
 import { adminImportRoutes } from "./routes/admin/imports.js";
 import { adminDataRoutes } from "./routes/admin/data.js";
-import { offlineRoutes, OFFLINE_INJECT_HEADER, OFFLINE_INJECT_SECRET } from "./routes/offline.js";
 import { concertRoutes } from "./routes/concerts.js";
 import { exportRoutes } from "./routes/export.js";
 import { photoRoutes } from "./routes/photos.js";
@@ -20,14 +19,10 @@ import { venueRoutes } from "./routes/venues.js";
 import { festivalRoutes } from "./routes/festivals.js";
 import { setlistfmRoutes } from "./routes/setlistfm.js";
 import { parseUrlRoutes } from "./routes/parseurl.js";
-import { publicRoutes } from "./routes/public.js";
-import { copyRoutes } from "./routes/copy.js";
 import { statsRoutes } from "./routes/stats.js";
 import { searchRoutes } from "./routes/search.js";
 import { calendarRoutes } from "./routes/calendar.js";
-import { pushRoutes } from "./routes/push.js";
 import { themeRoutes } from "./routes/theme.js";
-import { startPushReminders } from "./lib/push-reminders.js";
 import { startStorageOrphanSweep } from "./lib/storage-orphans.js";
 
 const app = Fastify({
@@ -69,9 +64,6 @@ async function start(): Promise<void> {
   await app.register(rateLimit, {
     max: env.RATE_LIMIT_MAX,
     timeWindow: env.RATE_LIMIT_WINDOW,
-    // The offline bundle runs routes in-process; those carry a per-process secret
-    // and shouldn't count against the caller (the bundle request itself does).
-    allowList: (req) => req.headers[OFFLINE_INJECT_HEADER] === OFFLINE_INJECT_SECRET,
   });
 
   // Before the routes: an error handler applies to routes registered after it.
@@ -94,7 +86,6 @@ async function start(): Promise<void> {
   await app.register(inviteRoutes);
   await app.register(adminImportRoutes);
   await app.register(adminDataRoutes);
-  await app.register(offlineRoutes);
   await app.register(concertRoutes);
   await app.register(exportRoutes);
   await app.register(photoRoutes);
@@ -103,12 +94,9 @@ async function start(): Promise<void> {
   await app.register(festivalRoutes);
   await app.register(setlistfmRoutes);
   await app.register(parseUrlRoutes);
-  await app.register(publicRoutes);
-  await app.register(copyRoutes);
   await app.register(statsRoutes);
   await app.register(searchRoutes);
   await app.register(calendarRoutes);
-  await app.register(pushRoutes);
   await app.register(themeRoutes);
 
   // 404 handler
@@ -117,7 +105,6 @@ async function start(): Promise<void> {
   });
 
   await app.listen({ port: env.PORT, host: env.HOST });
-  startPushReminders(app.log);
   startStorageOrphanSweep(app.log);
   app.log.info(`Tinnitus A Go Go API listening on http://${env.HOST}:${env.PORT}`);
 }

@@ -3,16 +3,12 @@
  */
 
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
-import { api, type PushPrefs } from "@/lib/api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ServicesPanel } from "@/components/ServicesPanel";
 import { LinkCard, PageHeader } from "@/components/ui/kit";
 import { JimboConfigLink } from "./JimboConfigPage";
-import { saveEverything } from "@/lib/offline";
-import { disablePush, enablePush, pushState, type PushState } from "@/lib/push";
 
 export function AccountPage() {
   const { user, signOut } = useAuth();
@@ -137,11 +133,7 @@ export function AccountPage() {
         </>
       )}
 
-      {/* Notifications and offline saving need a service worker, which browsers
-          only allow over HTTPS — on plain http they're hidden. */}
-      {window.isSecureContext && <NotificationsCard />}
       <CalendarCard />
-      {window.isSecureContext && "caches" in window && <OfflineCard />}
 
       {/* Sign out — the only sign-out control on mobile, where the header has no room for one */}
       <div className="space-y-3">
@@ -150,145 +142,6 @@ export function AccountPage() {
         </Button>
         <p className="text-center text-sm text-text-subtle">Tinnitus A Go Go · v{__APP_VERSION__}</p>
       </div>
-    </div>
-  );
-}
-
-/** Save every page and image to the device so the whole log works offline. */
-function OfflineCard() {
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [result, setResult] = useState<string | null>(null);
-  const running = progress !== null && result === null;
-
-  const run = async (): Promise<void> => {
-    setResult(null);
-    setProgress({ done: 0, total: 0 });
-    try {
-      const r = await saveEverything((done, total) => setProgress({ done, total }));
-      setResult(r.failed === 0 ? "Everything is saved on this device." : `Saved, except ${r.failed} item${r.failed === 1 ? "" : "s"} that didn't load.`);
-    } catch {
-      setResult("Couldn't finish — check your connection and try again.");
-    }
-  };
-
-  const pct = progress && progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
-  return (
-    <div className="card space-y-3 p-4 sm:p-5">
-      <div>
-        <h2 className="h-section">Offline</h2>
-        <p className="meta mt-1">
-          Pages you open are kept on this device for 60 days. Save everything to have every show, artist, venue and
-          festival — with flyers and photos — available without a connection.
-        </p>
-      </div>
-      {running && (
-        <div>
-          <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-            <div className="h-full rounded-full bg-accent-lime transition-all" style={{ width: `${pct}%` }} />
-          </div>
-          <p className="meta mt-1.5">{progress!.total > 0 ? `${progress!.done} / ${progress!.total}` : "Gathering the list…"}</p>
-        </div>
-      )}
-      {result && <p className="text-sm font-semibold text-accent-lime">{result}</p>}
-      <Button variant="secondary" disabled={running || !navigator.onLine} onClick={() => void run()} className="w-full sm:w-auto">
-        {running ? "Saving…" : "Save everything for offline"}
-      </Button>
-    </div>
-  );
-}
-
-/** Push notifications on this device: "Tonight: …" and "How was it?". */
-function NotificationsCard() {
-  const [state, setState] = useState<PushState | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
-  useEffect(() => { void pushState().then(setState).catch(() => setState("unsupported")); }, []);
-
-  const act = async (fn: () => Promise<unknown>) => {
-    setBusy(true);
-    setNote(null);
-    try { await fn(); } catch (err) { setNote(err instanceof Error ? err.message : "Something went wrong."); }
-    finally { setBusy(false); }
-  };
-
-  return (
-    <div className="card space-y-3 p-4 sm:p-5">
-      <div>
-        <h2 className="h-section">Notifications</h2>
-        <p className="meta mt-1">
-          Reminders about shows you're going to, and the anniversaries of ones you went to.
-        </p>
-      </div>
-      {state === "needs-install" && (
-        <p className="text-sm text-yellow-400">On iPhone, add this app to your Home Screen (Share → Add to Home Screen) and open it from there to turn on notifications.</p>
-      )}
-      {state === "unsupported" && (
-        <p className="text-sm text-text-muted">
-          {window.isSecureContext
-            ? "This browser can't receive notifications."
-            : "Notifications need the app to be opened over HTTPS — see “Turning on HTTPS” in the README."}
-        </p>
-      )}
-      {state === "denied" && <p className="text-sm text-text-muted">Notifications are blocked for this app in your device's settings.</p>}
-      {note && <p className="text-sm text-accent-pink">{note}</p>}
-      <div className="flex flex-wrap gap-2">
-        {state === "off" && (
-          <Button disabled={busy} onClick={() => void act(async () => setState(await enablePush()))}>
-            {busy ? "Turning on…" : "Turn on notifications"}
-          </Button>
-        )}
-        {state === "on" && (
-          <>
-            <NotificationKinds />
-            <Button variant="secondary" disabled={busy}
-              onClick={() => void act(async () => { const r = await api.testPush(); setNote(r.delivered > 0 ? "Test sent — it should arrive in a few seconds." : "Couldn't reach this device."); })}>
-              Send a test
-            </Button>
-            <Button variant="ghost" disabled={busy} onClick={() => void act(async () => setState(await disablePush()))}>
-              Turn off
-            </Button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-const KINDS: { key: keyof PushPrefs; label: string; detail: string }[] = [
-  { key: "tonight", label: "Tonight", detail: "On the day of a show you're attending" },
-  { key: "howWasIt", label: "How was it?", detail: "The morning after, to mark it attended" },
-  { key: "anniversaries", label: "Show anniversaries", detail: "“15 years ago today” for shows you went to" },
-];
-
-/** A switch for each kind of notification (saved to your account, so every device follows it). */
-function NotificationKinds() {
-  const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["push-prefs"], queryFn: api.getPushPrefs });
-  const prefs = q.data?.prefs;
-  const toggle = async (key: keyof PushPrefs) => {
-    if (!prefs) return;
-    const next = { ...prefs, [key]: !prefs[key] };
-    qc.setQueryData(["push-prefs"], { prefs: next });
-    try { await api.setPushPrefs(next); } catch { qc.setQueryData(["push-prefs"], { prefs }); }
-  };
-  return (
-    <div className="w-full divide-etched overflow-hidden rounded-2xl border border-border">
-      {KINDS.map((k) => {
-        const on = prefs?.[k.key] ?? true;
-        return (
-          <button key={k.key} type="button" role="switch" aria-checked={on} disabled={!prefs}
-            onClick={() => void toggle(k.key)}
-            className="flex min-h-[60px] w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-2/60 disabled:opacity-60">
-            <span className="min-w-0 flex-1">
-              <span className="block text-15 font-semibold">{k.label}</span>
-              <span className="block text-sm text-text-muted">{k.detail}</span>
-            </span>
-            <span className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${on ? "bg-accent-lime" : "bg-surface-2"}`}>
-              <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-[left] ${on ? "left-[22px]" : "left-0.5"}`} />
-            </span>
-          </button>
-        );
-      })}
     </div>
   );
 }

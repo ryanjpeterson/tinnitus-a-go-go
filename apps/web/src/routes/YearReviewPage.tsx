@@ -16,22 +16,20 @@ import {
 } from "@/components/ui/kit";
 import { MiniVBars } from "./StatsPage";
 import { dayLabel, showTitle } from "@/lib/showTitle";
+import { plural } from "@/lib/format";
 
 const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTH_LONG  = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DOW_LABELS  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const DOW_LONG    = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
-function fmtDate(iso: string): string {
+/** "Oct 14" — the year is the page's. */
+function fmtMonthDay(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return iso;
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
     month: "short", day: "numeric", timeZone: "UTC",
   });
-}
-
-function plural(n: number, word: string): string {
-  return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
 /** Index of the largest value; ties go to the earliest. */
@@ -139,7 +137,7 @@ function FlyerWall({ shows }: { shows: YearReviewResponse["shows"] }) {
           key={t.key}
           to={t.to}
           className="group relative aspect-[3/4] overflow-hidden rounded-lg border border-border bg-surface-2 transition-colors hover:border-accent-lime"
-          title={`${t.name} · ${fmtDate(t.date)}`}
+          title={`${t.name} · ${fmtMonthDay(t.date)}`}
         >
           {t.flyerUrl ? (
             <img src={t.flyerUrl} alt={t.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
@@ -150,7 +148,7 @@ function FlyerWall({ shows }: { shows: YearReviewResponse["shows"] }) {
           )}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-2 pb-1.5 pt-5">
             <p className="truncate text-11 font-semibold leading-tight text-white/90">
-              {fmtDate(t.date)}
+              {fmtMonthDay(t.date)}
               {t.festival && <span className="text-yellow-300"> · {t.days > 1 ? `${t.days} days` : "festival"}</span>}
             </p>
           </div>
@@ -294,14 +292,14 @@ export function YearReviewPage() {
         <LinkCard
           eyebrow="Opened the year"
           title={showTitle(first.info, first.headliner ?? first.series?.name)}
-          sub={[fmtDate(first.date), dayLabel(first.info), first.venue?.name].filter(Boolean).join(" · ")}
+          sub={[fmtMonthDay(first.date), dayLabel(first.info), first.venue?.name].filter(Boolean).join(" · ")}
           to={`/shows/${first.concertId}`}
         />
         {d.shows.length > 1 && (
           <LinkCard
             eyebrow={isCurrentYear ? "Latest show" : "Closed it out"}
             title={showTitle(last.info, last.headliner ?? last.series?.name)}
-            sub={[fmtDate(last.date), dayLabel(last.info), last.venue?.name].filter(Boolean).join(" · ")}
+            sub={[fmtMonthDay(last.date), dayLabel(last.info), last.venue?.name].filter(Boolean).join(" · ")}
             to={`/shows/${last.concertId}`}
           />
         )}
@@ -345,7 +343,7 @@ export function YearReviewPage() {
                 key={a.artistId}
                 to={`/artists/${a.slug}`}
                 className="rounded-control border border-border bg-surface-2 px-3.5 py-2 text-sm font-medium text-text-muted transition-colors hover:border-accent-lime/50 hover:text-accent-lime"
-                title={`First seen ${fmtDate(a.firstSeen)}`}
+                title={`First seen ${fmtMonthDay(a.firstSeen)}`}
               >
                 {a.name}
               </Link>
@@ -375,7 +373,7 @@ export function YearReviewPage() {
               >
                 <div className="min-w-0">
                   <p className="truncate text-15 font-semibold transition-colors group-hover:text-yellow-400">{f.name}</p>
-                  <p className="text-sm text-text-subtle">{fmtDate(f.startDate)}</p>
+                  <p className="text-sm text-text-subtle">{fmtMonthDay(f.startDate)}</p>
                 </div>
                 <span className="shrink-0 text-sm font-semibold text-yellow-400">{plural(f.days, "day")}</span>
               </Link>

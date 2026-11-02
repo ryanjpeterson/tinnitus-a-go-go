@@ -107,31 +107,13 @@
       },
       {
         "name": "VenueAutocomplete",
-        "path": "apps/web/src/routes/AddConcertModal.tsx",
-        "kind": "candidate",
-        "matches": "autocomplete"
-      },
-      {
-        "name": "VenueAutocomplete",
-        "path": "apps/web/src/routes/AddFestivalModal.tsx",
-        "kind": "candidate",
-        "matches": "autocomplete"
-      },
-      {
-        "name": "VenueAutocomplete",
-        "path": "apps/web/src/routes/ConcertDetailPage.tsx",
+        "path": "apps/web/src/components/VenueAutocomplete.tsx",
         "kind": "candidate",
         "matches": "autocomplete"
       },
       {
         "name": "ArtistAutocomplete",
-        "path": "apps/web/src/routes/AddFestivalModal.tsx",
-        "kind": "candidate",
-        "matches": "autocomplete"
-      },
-      {
-        "name": "ArtistAutocomplete",
-        "path": "apps/web/src/routes/FestivalDetailPage.tsx",
+        "path": "apps/web/src/components/ArtistAutocomplete.tsx",
         "kind": "candidate",
         "matches": "autocomplete"
       },
@@ -143,7 +125,7 @@
       },
       {
         "name": "Detail rows (dl)",
-        "path": "apps/web/src/routes/ConcertDetailPage.tsx",
+        "path": "apps/web/src/routes/concert/ConcertMetaEditor.tsx",
         "kind": "candidate",
         "matches": "key-value"
       },
@@ -158,18 +140,6 @@
         "path": "apps/web/src/routes/ImportsPage.tsx",
         "kind": "candidate",
         "matches": "stat-tile"
-      },
-      {
-        "name": "NotificationKinds switches",
-        "path": "apps/web/src/routes/AccountPage.tsx",
-        "kind": "candidate",
-        "matches": "switch-row"
-      },
-      {
-        "name": "OfflineCard progress bar",
-        "path": "apps/web/src/routes/AccountPage.tsx",
-        "kind": "candidate",
-        "matches": "progress-bar"
       },
       {
         "name": "UploadIndicator",
@@ -188,12 +158,6 @@
         "path": "apps/web/src/routes/StatsPage.tsx",
         "kind": "candidate",
         "matches": "bar-chart"
-      },
-      {
-        "name": "Heatmap",
-        "path": "apps/web/src/routes/StatsPage.tsx",
-        "kind": "candidate",
-        "matches": "heatmap"
       },
       {
         "name": "Milestones",
@@ -245,7 +209,7 @@
       },
       {
         "name": "Show editors (meta, attendance, lineup, setlist, flyer, photos)",
-        "path": "apps/web/src/routes/ConcertDetailPage.tsx",
+        "path": "apps/web/src/routes/concert/",
         "kind": "domain",
         "matches": null
       },

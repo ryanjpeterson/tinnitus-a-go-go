@@ -8,7 +8,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useListParams } from "@/lib/useListParams";
-import { plural } from "@/lib/format";
 import { EmptyState, EntityRow, List, Loading, PageHeader, Pager, SearchField } from "@/components/ui/kit";
 
 const PAGE_SIZE = 40;

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, eq, isNull, gt } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "../db/client.js";
 import { env } from "../lib/env.js";

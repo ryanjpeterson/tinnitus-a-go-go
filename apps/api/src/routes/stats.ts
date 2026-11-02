@@ -12,9 +12,8 @@
 
 import type { FastifyInstance } from "fastify";
 import { sql } from "drizzle-orm";
-import { db, schema } from "../db/client.js";
-import { bucket } from "../lib/s3.js";
-import { env } from "../lib/env.js";
+import { db } from "../db/client.js";
+import { mediaUrl } from "../lib/s3.js";
 import { loadShowInfo } from "../lib/show-info.js";
 
 export async function statsRoutes(app: FastifyInstance): Promise<void> {
@@ -635,12 +634,6 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 // SQL helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** Direct public URL for a MinIO object (bucket is set to anonymous download). */
-function mediaUrl(key: string): string {
-  const base = env.MINIO_PUBLIC_URL ?? `http://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`;
-  return `${base}/${bucket}/${key}`;
-}
 
 /** True when someone marked the concert as attended. `alias` is a fixed table alias. */
 function attendedSql(alias: string) {

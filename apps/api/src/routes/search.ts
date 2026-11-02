@@ -11,11 +11,7 @@ import type { FastifyInstance } from "fastify";
 import { sql } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { BILLING_ORDER_SQL } from "../lib/show-info.js";
-import { env } from "../lib/env.js";
-import { bucket } from "../lib/s3.js";
-
-const mediaUrl = (key: string | null): string | null =>
-  key ? `${env.MINIO_PUBLIC_URL ?? `http://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`}/${bucket}/${key}` : null;
+import { mediaUrl } from "../lib/s3.js";
 
 const rows = async <T>(q: ReturnType<typeof sql>) => [...(await db.execute<T & Record<string, unknown>>(q))];
 
@@ -53,7 +49,7 @@ export async function searchRoutes(app: FastifyInstance): Promise<void> {
 
     const showIndex = new Map(shows.map((s, i) => [s.slug, i]));
     return reply.send({
-      artists: artists.map((a) => ({ name: a.name, slug: a.slug, imageUrl: mediaUrl(a.image_key), shows: a.shows })),
+      artists: artists.map((a) => ({ name: a.name, slug: a.slug, imageUrl: a.image_key ? mediaUrl(a.image_key) : null, shows: a.shows })),
       venues: venues.map((v) => ({ name: v.name, slug: v.slug, city: v.city, shows: v.shows })),
       festivals: festivals.map((f) => ({ name: f.name, slug: f.slug, year: f.year, startDate: f.start_date })),
       shows: shows.map((s) => ({ slug: s.slug, date: s.date, festival: s.festival, venue: s.venue, city: s.city, lineup: s.lineup })),

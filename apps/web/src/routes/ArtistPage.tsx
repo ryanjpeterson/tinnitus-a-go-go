@@ -5,10 +5,10 @@
 import { useState, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type ArtistPhoto, type ArtistSetlist, type SetlistfmResult } from "@/lib/api";
+import { api, type ArtistPhoto } from "@/lib/api";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
 import { useAuth } from "@/lib/auth-context";
-import { fmtDate, plural } from "@/lib/format";
+import { fmtDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { EmptyState, EventRow, Hero, List, Loading, Section } from "@/components/ui/kit";
 

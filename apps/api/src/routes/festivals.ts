@@ -26,17 +26,10 @@ import { and, desc, asc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { PutObjectCommand, DeleteObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
 import { db, schema } from "../db/client.js";
-import { s3, bucket } from "../lib/s3.js";
-import { env } from "../lib/env.js";
+import { s3, bucket, mediaUrl } from "../lib/s3.js";
 import { requireAdmin } from "../auth/middleware.js";
 import { dateRange, ensureFestivalDay, festivalAttendance, festivalDayNumber, festivalLength, loadFestivalDays, loggedDates } from "../lib/festival-days.js";
 import { slugify } from "@tagg/shared";
-
-/** Direct public URL for a MinIO object */
-function mediaUrl(key: string): string {
-  const base = env.MINIO_PUBLIC_URL ?? `http://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`;
-  return `${base}/${bucket}/${key}`;
-}
 
 const attendanceStatuses = [
   "interested",

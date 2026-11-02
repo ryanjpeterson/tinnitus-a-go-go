@@ -17,8 +17,7 @@ import { z } from "zod";
 import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { db, schema } from "../db/client.js";
 import { requireAdmin } from "../auth/middleware.js";
-import { s3, bucket } from "../lib/s3.js";
-import { env } from "../lib/env.js";
+import { s3, bucket, mediaUrl } from "../lib/s3.js";
 
 const COLOR_KEYS = { accent: "theme.accent", highlight: "theme.highlight", background: "theme.background", support: "theme.support" } as const;
 /** Colours the theme used to have — cleared on save and reset. */
@@ -67,9 +66,6 @@ const ASSET_TYPES: Record<string, string> = {
   "image/webp": ".webp",
   "image/jpeg": ".jpg",
 };
-
-const mediaUrl = (key: string) =>
-  `${env.MINIO_PUBLIC_URL ?? `http://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`}/${bucket}/${key}`;
 
 async function setValue(key: string, value: string, description: string): Promise<void> {
   await db

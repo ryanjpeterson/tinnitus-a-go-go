@@ -15,19 +15,11 @@ import type { FastifyInstance } from "fastify";
 import { desc, eq, inArray, sql, ilike, and, ne } from "drizzle-orm";
 import { z } from "zod";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { createHash } from "node:crypto";
 import { db, schema } from "../db/client.js";
-import { s3, bucket } from "../lib/s3.js";
-import { env } from "../lib/env.js";
+import { s3, bucket, mediaUrl } from "../lib/s3.js";
 import { slugify } from "@tagg/shared";
-import { requireUser, requireAdmin } from "../auth/middleware.js";
+import { requireAdmin } from "../auth/middleware.js";
 import { loadShowInfo } from "../lib/show-info.js";
-
-/** Return a browser-accessible URL for a MinIO object key (no presign needed — bucket is public). */
-function mediaUrl(key: string): string {
-  const base = env.MINIO_PUBLIC_URL ?? `http://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`;
-  return `${base}/${bucket}/${key}`;
-}
 
 export async function venueRoutes(app: FastifyInstance): Promise<void> {
   // NOTE: Per-route auth now. GET endpoints are public, write endpoints require admin.

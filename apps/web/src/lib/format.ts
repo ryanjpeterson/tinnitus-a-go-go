@@ -50,12 +50,3 @@ export function monthLabel(iso: string): string {
 export function plural(n: number, word: string, pluralWord = `${word}s`): string {
   return `${n.toLocaleString()} ${n === 1 ? word : pluralWord}`;
 }
-
-export function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
-}

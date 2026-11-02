@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { warmCache } from "@/lib/offline";
 import { startOutbox } from "@/lib/outbox";
 import { startUploads } from "@/lib/uploads";
 import { useApplyBrand } from "@/lib/useBrand";
@@ -28,8 +27,6 @@ function BrandTheme(): null {
 }
 
 export default function App() {
-  // Fill the offline cache with the main lists once per session.
-  useEffect(() => { warmCache(); }, []);
   // Send attendance edits made while offline, once the connection is back.
   useEffect(() => { startOutbox(queryClient); }, []);
   // Background uploads refresh show galleries as files land.

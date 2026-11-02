@@ -27,9 +27,8 @@ import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "../db/client.js";
-import { s3, bucket } from "../lib/s3.js";
-import { env } from "../lib/env.js";
-import { requireUser, requireAdmin } from "../auth/middleware.js";
+import { s3, bucket, mediaUrl } from "../lib/s3.js";
+import { requireAdmin } from "../auth/middleware.js";
 import { mediaProcessQueue } from "../lib/queues.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,18 +74,6 @@ const MIME_TO_EXT: Record<string, string> = {
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Build a browser-accessible URL for a MinIO object.
- *
- * The bucket is set to anonymous download so no presigning is needed. We just
- * construct the public URL directly using MINIO_PUBLIC_URL (the externally-
- * reachable address) instead of the internal Docker hostname.
- */
-function mediaUrl(key: string): string {
-  const base = env.MINIO_PUBLIC_URL ?? `http://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`;
-  return `${base}/${bucket}/${key}`;
-}
 
 /** Resolve a variant map or fall back to the original key. */
 function resolveUrls(

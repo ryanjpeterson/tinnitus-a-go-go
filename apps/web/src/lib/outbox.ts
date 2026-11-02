@@ -2,7 +2,7 @@
  * Offline edits. Attendance changes (a show's status, notes, ticket price —
  * and the festival "every day" switch) made without a connection are kept on
  * the device and sent when it's back. The change shows straight away: the
- * saved copies of the affected show pages are updated to match.
+ * loaded copies of the affected show pages are updated to match.
  *
  * Other edits (lineups, uploads, new shows) still need a connection.
  */
@@ -38,22 +38,14 @@ export function queueable(path: string, method: string, body: unknown): boolean 
   try { data = JSON.parse(body) as Record<string, unknown>; } catch { return false; }
   if (/^\/concerts\/[0-9a-f-]{36}$/i.test(path)) return Object.keys(data).every((k) => ATTENDANCE_FIELDS.has(k));
   if (/^\/festivals\/[^/]+\/attendance$/.test(path)) return Object.keys(data).every((k) => k === "status");
-  if (path === "/concerts/batch") {
-    const updates = (data.updates as Record<string, unknown>[] | undefined) ?? [];
-    return updates.every((u) => Object.keys(u).every((k) => k === "id" || ATTENDANCE_FIELDS.has(k)));
-  }
   return false;
 }
 
-/** Put the change in the outbox and show it on the saved copies of the pages it affects. */
+/** Put the change in the outbox and show it on the pages it affects. */
 export async function enqueue(path: string, method: string, body: string): Promise<void> {
   write([...read(), { path, method, body, at: Date.now() }]);
   const data = JSON.parse(body) as Record<string, unknown>;
-  const edits: { id: string; fields: Record<string, unknown> }[] =
-    path === "/concerts/batch"
-      ? ((data.updates as Record<string, unknown>[]) ?? []).map(({ id, ...fields }) => ({ id: String(id), fields }))
-      : /^\/concerts\//.test(path) ? [{ id: path.split("/")[2]!, fields: data }] : [];
-  for (const e of edits) await applyLocally(e.id, e.fields);
+  if (/^\/concerts\//.test(path)) applyLocally(path.split("/")[2]!, data);
 }
 
 /** A show's detail response with the attendance edit applied. */
@@ -70,21 +62,11 @@ function patched(json: unknown, id: string, fields: Record<string, unknown>): un
   };
 }
 
-async function applyLocally(id: string, fields: Record<string, unknown>): Promise<void> {
-  // In-memory (React Query) copies.
+function applyLocally(id: string, fields: Record<string, unknown>): void {
   qc?.getQueryCache().findAll({ queryKey: ["concerts"] }).forEach((q) => {
     const next = patched(q.state.data, id, fields);
     if (next) qc!.setQueryData(q.queryKey, next);
   });
-  // Saved copies the service worker serves offline (by id and by slug).
-  if (!("caches" in window)) return;
-  const cache = await caches.open("api-cache");
-  for (const req of await cache.keys()) {
-    if (!/\/api\/concerts\/[^/?]+$/.test(new URL(req.url).pathname)) continue;
-    const res = await cache.match(req);
-    const next = res ? patched(await res.clone().json().catch(() => null), id, fields) : null;
-    if (next) await cache.put(req, new Response(JSON.stringify(next), { headers: { "Content-Type": "application/json" } }));
-  }
 }
 
 let flushing = false;

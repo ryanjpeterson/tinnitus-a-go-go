@@ -10,21 +10,12 @@ import { useQuery } from "@tanstack/react-query";
 import { api, type FestivalListItem } from "@/lib/api";
 import { useListParams } from "@/lib/useListParams";
 import { useAuth } from "@/lib/auth-context";
-import { plural } from "@/lib/format";
+import { fmtDate, plural } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Loading, MediaCard, PageHeader, Pager, StatusBadge } from "@/components/ui/kit";
 import { AddFestivalModal } from "./AddFestivalModal";
 
 const PAGE_SIZE = 60;
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
-  });
-}
 
 function fmtDateRange(start: string | null, end: string | null): string {
   if (!start && !end) return "";

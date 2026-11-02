@@ -19,7 +19,7 @@ import type { Job } from "bullmq";
 import { and, eq, sql } from "drizzle-orm";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { slugify, type CsvImportJobData, type CsvImportJobResult } from "@tagg/shared";
-import { parseShowsCsv, type ParsedShow } from "@tagg/shared/csv";
+import { parseShowsCsv, statusForDate, type ParsedShow } from "@tagg/shared/csv";
 import { db, schema } from "../db.js";
 import { s3, bucket } from "../s3.js";
 
@@ -38,12 +38,6 @@ async function streamToString(body: unknown): Promise<string> {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
   return Buffer.concat(chunks).toString("utf8");
-}
-
-function statusForDate(date: string): "attended" | "attending" {
-  // `date` is YYYY-MM-DD. Lexicographic compare against today's ISO date works fine.
-  const today = new Date().toISOString().slice(0, 10);
-  return date <= today ? "attended" : "attending";
 }
 
 async function downloadCsv(objectKey: string): Promise<string> {

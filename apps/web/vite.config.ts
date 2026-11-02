@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 
@@ -15,121 +14,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(new Date().toISOString().slice(0, 10).replace(/-/g, ".")),
     __JIMBO_APP__: JSON.stringify({ name: "tinnitus-a-go-go", ...jimboUiJson }),
   },
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "logo.svg"],
-      manifest: {
-        name: "Tinnitus A Go Go",
-        short_name: "Tinnitus",
-        description: "A multi-user concert log for people who still believe the next show is worth the ringing.",
-        theme_color: "#0B0B0C",
-        background_color: "#0B0B0C",
-        display: "standalone",
-        start_url: "/",
-        scope: "/",
-        icons: [
-          {
-            src: "/icons/icon-192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "/icons/icon-512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
-          {
-            src: "/icons/icon-512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
-          },
-        ],
-      },
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
-        // Push notification handlers (public/push-sw.js).
-        importScripts: ["push-sw.js"],
-        // Opening /api/... or media directly (e.g. the services panel's health
-        // link) must hit the server, not get the SPA shell from the precache.
-        navigateFallbackDenylist: [/^\/api\//, /^\/tagg-media\//],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "google-fonts-cache",
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "gstatic-fonts-cache",
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            // Offline: every API response is kept so pages you've seen (or saved
-            // with "Save for offline") open without a connection. Network first,
-            // so online you always get fresh data; a slow network falls back to
-            // the saved copy after 4 s. Auth, admin and the offline bundle itself
-            // (it fills this cache) are never kept —
-            // a stale /auth/me would show a signed-out user as signed in.
-            // Calendar feeds and push setup are never cached either.
-            urlPattern: /\/api\/(?!auth\/|admin\/|offline\/|calendar\/|push\/).*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "api-cache",
-              networkTimeoutSeconds: 4,
-              expiration: {
-                maxEntries: 3000,
-                maxAgeSeconds: 60 * 60 * 24 * 60, // 60 days
-                purgeOnQuotaError: true,
-              },
-              cacheableResponse: {
-                statuses: [200],
-              },
-            },
-          },
-          {
-            // Flyers, artist and venue photos: served from the device instantly
-            // (and offline), refreshed in the background — a replaced flyer keeps
-            // the same URL, so plain cache-first would show the old one for months.
-            // Videos are left out — too large to keep on a phone.
-            urlPattern: /\/tagg-media\/.*\.(?:jpe?g|png|webp|gif)(?:\?.*)?$/i,
-            handler: "StaleWhileRevalidate",
-            options: {
-              cacheName: "media-cache",
-              expiration: {
-                maxEntries: 3000,
-                maxAgeSeconds: 60 * 60 * 24 * 180, // 180 days
-                purgeOnQuotaError: true,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-        ],
-      },
-    }),
-  ],
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

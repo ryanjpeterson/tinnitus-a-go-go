@@ -612,8 +612,7 @@ export const importsRelations = relations(imports, ({ one }) => ({
 }));
 
 // ===== Site Copy =====
-// Key/value store for editable website copy.  Managed by admin CMS at /app/admin/copy.
-// Public read via GET /public/copy (no auth required).
+// Key/value settings. Section "theme" holds the brand theme (routes/theme.ts).
 
 export const siteCopy = pgTable("site_copy", {
   key:         text("key").primaryKey(),

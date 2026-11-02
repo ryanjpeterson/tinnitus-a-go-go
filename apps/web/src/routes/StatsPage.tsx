@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, type DeepStatsResponse } from "@/lib/api";
 import { showSubtitle, showTitle } from "@/lib/showTitle";
+import { fmtDate } from "@/lib/format";
 import {
   Chevron, EmptyState, EventRow, LinkCard, List, Loading, PageHeader, RankedList, Section, StatGrid, StatTile, type RankedItem,
 } from "@/components/ui/kit";
@@ -20,14 +21,6 @@ import {
 
 const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DOW_LABELS  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-
-function fmtDate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
-  });
-}
 
 function yearsAgo(iso: string): string {
   const y = new Date().getFullYear() - parseInt(iso.slice(0, 4), 10);
@@ -60,70 +53,6 @@ function YearBars({ byYear }: { byYear: DeepStatsResponse["byYear"] }) {
           <span className="w-8 shrink-0 text-right text-sm font-semibold">{r.count}</span>
         </Link>
       ))}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-function Heatmap({ heatmap, byYear }: {
-  heatmap: DeepStatsResponse["heatmap"];
-  byYear: DeepStatsResponse["byYear"];
-}) {
-  const years = byYear.map((r) => r.year).sort();
-
-  const lookup = new Map<string, number>();
-  let maxCount = 0;
-  for (const cell of heatmap) {
-    const key = `${cell.year}-${cell.month}`;
-    lookup.set(key, cell.count);
-    if (cell.count > maxCount) maxCount = cell.count;
-  }
-
-  function cellOpacity(year: string, month: number): number {
-    const count = lookup.get(`${year}-${month}`) ?? 0;
-    return count === 0 ? 0 : 0.12 + (count / maxCount) * 0.88;
-  }
-
-  function cellCount(year: string, month: number): number {
-    return lookup.get(`${year}-${month}`) ?? 0;
-  }
-
-  return (
-    <div>
-      <div>
-        {/* Month header */}
-        <div className="grid gap-0.5 mb-0.5" style={{ gridTemplateColumns: "34px repeat(12, minmax(0, 1fr))" }}>
-          <div />
-          {MONTH_SHORT.map((m) => (
-            <div key={m} className="text-sm text-text-subtle text-center">{m.slice(0, 1)}<span className="hidden sm:inline">{m.slice(1)}</span></div>
-          ))}
-        </div>
-        {/* Year rows — compact cells */}
-        {years.map((year) => (
-          <div key={year} className="grid gap-0.5 mb-0.5" style={{ gridTemplateColumns: "34px repeat(12, minmax(0, 1fr))" }}>
-            <div className="text-sm text-text-muted text-right pr-1.5 flex items-center justify-end">{year}</div>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
-              const count = cellCount(year, m);
-              const opacity = cellOpacity(year, m);
-              return (
-                <div
-                  key={m}
-                  title={count > 0 ? `${MONTH_SHORT[m - 1]} ${year}: ${count} show${count !== 1 ? "s" : ""}` : undefined}
-                  className="rounded-sm"
-                  style={{
-                    height: "14px",
-                    backgroundColor: count === 0
-                      ? "rgba(48,48,52,0.5)"
-                      : `rgba(168, 255, 62, ${opacity})`,
-                  }}
-                />
-              );
-            })}
-          </div>
-        ))}
-        <p className="text-sm text-text-subtle mt-1.5">brighter = more shows</p>
-      </div>
     </div>
   );
 }

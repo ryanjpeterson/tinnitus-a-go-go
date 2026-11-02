@@ -14,6 +14,7 @@ import { clsx } from "clsx";
 import { api, type ConcertListItem } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
 import { Sheet } from "@/components/ui/kit";
+import { fmtDate } from "@/lib/format";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -21,14 +22,6 @@ import { Sheet } from "@/components/ui/kit";
 
 const STORAGE_KEY = "tagg.followup.dismissed";
 const today = new Date().toISOString().slice(0, 10);
-
-function fmtDate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
-  });
-}
 
 function concertLabel(c: ConcertListItem): string {
   const headliner = c.artists.find((a) => a.role === "headliner") ?? c.artists[c.artists.length - 1];
@@ -142,7 +135,6 @@ export function FollowUpPrompt() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["concerts/followup"] });
       void qc.invalidateQueries({ queryKey: ["concerts"] });
-      void qc.invalidateQueries({ queryKey: ["concerts/stats"] });
     },
   });
 

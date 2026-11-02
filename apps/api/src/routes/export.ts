@@ -21,7 +21,7 @@
  */
 
 import type { FastifyInstance } from "fastify";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { requireUser } from "../auth/middleware.js";
 import { ensureCached, loadCachedSets } from "../lib/setlist-cache.js";

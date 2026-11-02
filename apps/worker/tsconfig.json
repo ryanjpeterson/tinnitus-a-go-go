@@ -8,6 +8,7 @@
     // No `rootDir`: the worker imports the Drizzle schema directly from ../api/src/db,
     // which lives outside src/. Build output paths will mirror the relative tree.
     "strict": true,
+    "noUnusedLocals": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -22,6 +23,7 @@
     // Pure helpers shared with the API (no env/db imports)
     "../api/src/lib/setlistfm-core.ts",
     "../api/src/lib/names.ts",
-    "../api/src/lib/artist-photo.ts"
+    "../api/src/lib/artist-photo.ts",
+    "../api/src/lib/lastfm-core.ts"
   ]
 }

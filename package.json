@@ -15,16 +15,17 @@
     "down": "docker compose down",
     "logs": "docker compose logs -f",
     "build": "pnpm -r build",
-    "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
+    "test": "vitest run --exclude \"tests/smoke/**\"",
     "db:generate": "pnpm --filter @tagg/api db:generate",
-    "db:migrate": "pnpm --filter @tagg/api db:migrate",
     "db:studio": "pnpm --filter @tagg/api db:studio",
     "bootstrap-invite": "pnpm --filter @tagg/api bootstrap-invite",
-    "import-csv": "pnpm --filter @tagg/api import-csv"
+    "import-csv": "pnpm --filter @tagg/api import-csv",
+    "test:smoke": "vitest run tests/smoke"
   },
   "devDependencies": {
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^3",
+    "postgres": "^3.4.5"
   }
 }

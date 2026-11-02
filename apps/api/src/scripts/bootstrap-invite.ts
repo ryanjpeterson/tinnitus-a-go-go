@@ -6,7 +6,6 @@
  *   pnpm bootstrap-invite --days 1     # custom expiry
  *   pnpm bootstrap-invite --note "Ryan, first admin"
  */
-import { eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { env } from "../lib/env.js";
 import { generateToken, hashToken } from "../auth/tokens.js";

@@ -104,14 +104,14 @@ async function main() {
     invitesRemaining: 10,
   }).returning();
 
-  const [user] = await db.insert(s.users).values({
+  await db.insert(s.users).values({
     username:        "dev",
     email:           "dev@example.com",
     passwordHash:    userHash,
     displayName:     "Dev User",
     emailVerifiedAt: new Date(),
     invitesRemaining: 3,
-  }).returning();
+  });
 
   console.log("✓ Users — admin@example.com / dev@example.com (password: password123456)");
 

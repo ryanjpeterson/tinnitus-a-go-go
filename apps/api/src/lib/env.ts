@@ -20,8 +20,6 @@ const envSchema = z.object({
   SMTP_HOST: z.string(),
   SMTP_PORT: z.coerce.number().int().positive(),
   SMTP_FROM: z.string(),
-  // Time zone for push reminders ("Tonight: …" at 10am local, "How was it?" the morning after).
-  PUSH_TIMEZONE: z.string().default("America/Toronto"),
 
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be at least 32 chars"),
   SESSION_COOKIE_NAME: z.string().default("tagg_session"),
@@ -29,11 +27,6 @@ const envSchema = z.object({
 
   // Optional: setlist.fm API key for concert prefill. Get one at https://api.setlist.fm/docs/1.0/
   SETLISTFM_API_KEY: z.string().optional(),
-
-  // Optional: Anthropic API key for LLM-assisted URL parsing.
-  // When set, the /concerts/parse-url endpoint can fall back to Claude extraction
-  // if no JSON-LD structured data is found on the target page.
-  ANTHROPIC_API_KEY: z.string().optional(),
 
   // Optional: Last.fm API key for artist data enrichment (bio, images, tags).
   // Get a free key at https://www.last.fm/api/account/create

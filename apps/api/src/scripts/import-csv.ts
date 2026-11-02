@@ -14,8 +14,8 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { and, eq, inArray, sql } from "drizzle-orm";
-import { parseShowsCsv } from "@tagg/shared/csv";
+import { and, eq, sql } from "drizzle-orm";
+import { parseShowsCsv, statusForDate } from "@tagg/shared/csv";
 import { slugify } from "@tagg/shared";
 import { db, schema } from "../db/client.js";
 
@@ -50,11 +50,6 @@ function parseArgs(argv: string[]): { username: string; file: string } {
 // ─────────────────────────────────────────────────────────────────────────────
 // Upsert helpers (mirrors worker/src/jobs/csv-import.ts logic, using api db)
 // ─────────────────────────────────────────────────────────────────────────────
-
-function statusForDate(date: string): "attended" | "attending" {
-  const today = new Date().toISOString().slice(0, 10);
-  return date <= today ? "attended" : "attending";
-}
 
 type ParsedShow = Awaited<ReturnType<typeof parseShowsCsv>>["shows"][number];
 

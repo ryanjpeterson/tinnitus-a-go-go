@@ -3,8 +3,8 @@
  * colours, type, backdrop. Each is its own tab; they share one draft
  * (`useThemeDraft`) and one save bar (`ThemeSaveBar`).
  *
- * Looks: pick a look from the categories — Everyday (dark, mid, light), Holidays, Countries, Provinces
- * and Sports (league and city tabs) — or search them all (each card is
+ * Looks: pick a look from the categories — Everyday (dark, mid, light), Holidays, Countries, Provinces,
+ * Games (series and console tabs) and Sports (league and city tabs) — or search them all (each card is
  * a miniature of the app in that theme, with its colours as circles), then fine-tune the
  * colours with the inline picker (Colours). Accent and background are always set; highlight and
  * support can be left to the engine, which infers them from the others. Backdrop: a pattern behind
@@ -23,7 +23,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { applyTheme, BACKDROP_BASES, BACKDROP_GROUPS, BACKDROP_MOTIONS, BACKDROPS, MOTIFS, motifMask, backdropCss, brandConfigLine, contrast, exportTheme, FONT_GROUPS, FONTS, fullTheme, importTheme, loadFonts, ownColours, PAGE_TONES, themeHex, toneOf, tokensCss, type PageTone, type Theme, THEME_KEYS } from "@/lib/theme";
-import { ALL_FAMILIES, FAMILY_SETS, familyAt, familyLook, sameTheme, type Template, type TemplateFamily } from "@/lib/themes";
+import { ALL_FAMILIES, FAMILY_SETS, familyAt, familyLook, sameTheme, type Template, type TemplateFamily, type TemplateStyle } from "@/lib/themes";
 import { useBrand } from "@/lib/useBrand";
 import { setUrlParams, useUrlState } from "@/lib/useUrlState";
 import { Button } from "@/components/ui/button";
@@ -43,16 +43,22 @@ const dot = (c: Record<string, string>, k: string, inferred = false): React.CSSP
   ({ background: c[k], opacity: inferred ? 0.55 : 1 });
 
 /** A miniature of the app in a theme: top bar with the app's name, a label, a card, buttons, a date, an avatar. */
-function ThemeCard({ name, vibe, theme: input, selected, onPick }: { name: string; vibe: string; theme: Theme; selected: boolean; onPick: () => void }) {
+function ThemeCard({ name, vibe, theme: input, style, selected, onPick }: { name: string; vibe: string; theme: Theme; style?: TemplateStyle; selected: boolean; onPick: () => void }) {
   const theme = fullTheme(input);
   const c = themeHex(theme);
+  // A look with its own style shows its backdrop behind the miniature and its heading font in the logo.
+  const heading = style?.fonts?.headings;
+  useEffect(() => { if (heading) loadFonts([heading]); }, [heading]);
+  const bd = style?.backdrop ? backdropCss({ ...input, backdrop: style.backdrop }) : null;
   return (
     <button type="button" onClick={onPick} aria-pressed={selected}
       className={`group block w-full overflow-hidden rounded-2xl text-left transition-transform active:scale-[0.97] focus:outline-hidden focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-text-base ${selected ? "ring-[3px] ring-offset-2 ring-offset-bg" : "ring-1 ring-border hover:ring-text-subtle"}`}
       style={selected ? { ["--tw-ring-color" as string]: theme.accent } : undefined}>
-      <div className="space-y-2.5 p-3" style={{ background: theme.background, color: c.text }}>
+      <div className="space-y-2.5 p-3" style={{ backgroundColor: theme.background, color: c.text,
+        ...(bd ? { backgroundImage: bd.image, backgroundSize: bd.size, backgroundPosition: bd.position, backgroundRepeat: bd.repeat } : {}) }}>
         <div className="flex items-center justify-between">
-          <span className="font-display text-15 leading-none" style={{ color: theme.accent }}>
+          <span className="font-display text-15 leading-none"
+            style={{ color: theme.accent, ...(heading && FONTS[heading] ? { fontFamily: FONTS[heading]!.css, fontWeight: style!.fonts!.headingsWeight } : {}) }}>
             TINNITUS<span className="block text-10" style={{ color: theme.highlight }}>a-go-go</span>
           </span>
           <span className="flex h-5 w-5 items-center justify-center rounded-full text-8 font-bold" style={{ ...dot(c, "support"), color: c["on-support"] }}>A</span>
@@ -106,7 +112,7 @@ function TemplateGrid({ label, families, tone, draft, pick }: { label?: string; 
             const look = familyLook(f, tone);
             // A look that can't be made in this tone shows its nearest, and says so.
             const vibe = look.tone === tone ? f.vibe : `${TONE_LABEL[look.tone]} only · ${f.vibe}`;
-            return <ThemeCard key={f.key} name={f.name} vibe={vibe} theme={look.template.theme} selected={same(draft, look.template.theme)} onPick={() => pick(look.template)} />;
+            return <ThemeCard key={f.key} name={f.name} vibe={vibe} theme={look.template.theme} style={look.template.style} selected={same(draft, look.template.theme)} onPick={() => pick(look.template)} />;
           })}
         </div>
       ) : (
@@ -203,8 +209,10 @@ export function LooksPanel({ d }: { d: ThemeDraft }) {
 
   const current = FAMILY_SETS.find((s) => s.label === set)!;
   const group = current.groups.find((g) => g.label === subTab) ?? current.groups[0];
-  // A template sets the colours; the type, backdrop and motif you've chosen stay.
-  const pick = (tpl: Template) => setDraft(ownColours({ ...tpl.theme, fonts: draft.fonts, backdrop: draft.backdrop, motif: draft.motif }));
+  // A template sets the colours; the type, backdrop and motif you've chosen stay — unless
+  // the look comes with its own (a console's menu font, backdrop and motif), which it brings.
+  const pick = (tpl: Template) => setDraft(ownColours({ ...tpl.theme,
+    fonts: tpl.style?.fonts ?? draft.fonts, backdrop: tpl.style?.backdrop ?? draft.backdrop, motif: tpl.style?.motif ?? draft.motif }));
   // Lower-case and without accents, so "quebec" finds Québec.
   const plain = (v: string) => v.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
   const words = plain(query.trim()).split(/\s+/).filter(Boolean);

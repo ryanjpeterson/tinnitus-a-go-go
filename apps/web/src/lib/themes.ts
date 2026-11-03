@@ -2,7 +2,8 @@
  * Theme templates for the config section's Theme tab, in categories:
  * Everyday, Holidays, Countries (by region), Provinces, Sports (NHL, NBA,
  * MLB, NFL, and city tabs for Toronto, Ottawa and Chicago) and Games (Zelda,
- * Mario, Donkey Kong, more Nintendo, Sly Cooper, Tony Hawk's Underground). Each
+ * Mario, Donkey Kong, more Nintendo, Sly Cooper, Tony Hawk's Underground,
+ * Consoles). Each
  * look comes once, as a family with a light, a mid and a dark page
  * (`FAMILY_SETS`, `familyLook`): the tones it was written in, and the rest
  * made from its own colours by `atTone`. Every one passes
@@ -16,23 +17,42 @@
  * and province themes are made from real colours with
  * scripts/template-from-colours.mjs.
  *
+ * A template can also carry a `style` — a font, backdrop and motif that go
+ * with it (a console's menu) — which the Looks tab applies with the colours.
+ *
  * Part of jimbo-ui (foundation — don't edit here; change jimbo-ui and update).
  */
 
 import { BRAND } from "./brand.config";
 import { atTone, fullTheme, PAGE_TONES, THEME_KEYS, toneOf, type PageTone, type Theme } from "./theme";
 
-/** `kit`: a sports theme's Home (team colour), Away (white; baseball road grey) or Retro look. */
-export type Template = { name: string; vibe: string; theme: Theme; kit?: "home" | "away" | "retro" };
+/** The type, backdrop and motif a look comes with (optional; most looks are colours only). */
+export type TemplateStyle = Pick<Theme, "fonts" | "backdrop" | "motif">;
+/** `kit`: a sports theme's Home (team colour), Away (white; baseball road grey) or Retro look. `style`: its own type, backdrop and motif. */
+export type Template = { name: string; vibe: string; theme: Theme; kit?: "home" | "away" | "retro"; style?: TemplateStyle };
 export type TemplateGroup = { label: string; templates: Template[] };
 /** A category. `tabs`: show its groups as sub-tabs (one at a time) instead of stacked. */
 export type TemplateSet = { label: string; groups: TemplateGroup[]; tabs?: boolean };
 
 /** name, vibe, then accent, highlight (null = inferred), background, support (optional or null = inferred), and options. */
 const t = (name: string, vibe: string, accent: string, highlight: string | null, background: string, support?: string | null,
-  opts: { kit?: Template["kit"]; infer?: Theme["infer"] } = {}): Template =>
-  ({ name, vibe, kit: opts.kit, theme: { accent, background, ...(highlight ? { highlight } : {}), ...(support ? { support } : {}), ...(opts.infer ? { infer: opts.infer } : {}) } });
+  opts: { kit?: Template["kit"]; infer?: Theme["infer"]; style?: TemplateStyle } = {}): Template =>
+  ({ name, vibe, kit: opts.kit, ...(opts.style ? { style: opts.style } : {}), theme: { accent, background, ...(highlight ? { highlight } : {}), ...(support ? { support } : {}), ...(opts.infer ? { infer: opts.infer } : {}) } });
 
+/** Each console look's menu feel: a heading font, a backdrop and a motif (kept generic: options anyone can pick). */
+const CONSOLE: Record<string, TemplateStyle> = {
+  ps1:       { fonts: { headings: "space-grotesk", headingsWeight: 700 }, backdrop: { pattern: "grid", base: "gradient" }, motif: "dots" },
+  n64:       { fonts: { headings: "archivo", headingsWeight: 900 }, backdrop: { pattern: "geometry", base: "glow", motion: "pulse" }, motif: "triangles" },
+  dreamcast: { fonts: { headings: "geist", headingsWeight: 700 }, backdrop: { pattern: "swirl", base: "glow", motion: "alive" }, motif: "dots" },
+  ps2:       { fonts: { headings: "manrope", headingsWeight: 500, headingsTracking: 0.02 }, backdrop: { pattern: "speckle", base: "glow", motion: "alive", intensity: 0.65 }, motif: "squares" },
+  xbox:      { fonts: { headings: "unbounded", headingsWeight: 700 }, backdrop: { pattern: "blobs", base: "glow", motion: "breathe" }, motif: "dots" },
+  gamecube:  { fonts: { headings: "figtree", headingsWeight: 800 }, backdrop: { pattern: "cubes", base: "glow", motion: "drift" }, motif: "squares" },
+  gba:       { fonts: { headings: "space-mono", headingsWeight: 700 }, backdrop: { pattern: "checks", base: "solid" }, motif: "squares" },
+  psp:       { fonts: { headings: "dm-sans", headingsWeight: 500 }, backdrop: { pattern: "waves", base: "gradient", motion: "alive" }, motif: "dots" },
+  x360:      { fonts: { headings: "plus-jakarta", headingsWeight: 700 }, backdrop: { pattern: "panels", base: "glow", motion: "alive" }, motif: "dots" },
+  wii:       { fonts: { headings: "avenir", headingsWeight: 700 }, backdrop: { pattern: "dots", base: "solid" }, motif: "squares" },
+  ps3:       { fonts: { headings: "manrope", headingsWeight: 400, headingsTracking: 0.01 }, backdrop: { pattern: "flow", base: "gradient", motion: "alive" }, motif: "dots" },
+};
 
 // Sports: team colours, not team artwork — each theme uses only a team's own colours
 // and lighter or darker versions of them. Every team has a Home look (its colour) and
@@ -498,6 +518,25 @@ const SETS: TemplateSet[] = [
       t("Chilled", "Interface · ice teal, lilac and frost", "#6FD3E8", "#B8A6F2", "#0E1E2A", "#E8F4F8"),
       t("Skullz 'N Stuff", "Interface · bone, blood red and black", "#E8E0CC", "#D3202A", "#0B0B0B", "#A89F8A"),
     ] },
+    // Game consoles: their hardware and menu colours, each with a font, backdrop and motif
+    // that call up its menu (pattern and type only — no logos or system artwork).
+    { label: "Consoles", templates: [
+      t("PlayStation", "1994 · console grey, button green, red, blue and pink", "#3DB66F", "#E0393E", "#232327", "#8FB5E0", { style: CONSOLE.ps1 }),
+      t("PlayStation", "1994 · console grey, button green, red, blue and pink", "#28784B", "#C8282D", "#D2D2D0", "#17462C", { style: CONSOLE.ps1 }),
+      t("Nintendo 64", "1996 · charcoal, logo red, green, blue and yellow", "#FDB913", "#E4000F", "#1E1E21", "#3DBE64", { style: CONSOLE.n64 }),
+      t("Dreamcast", "1998 · white shell, swirl orange, VMU blue", "#1E5BAA", "#D55516", "#FCF8F5", "#993D0F", { style: CONSOLE.dreamcast }),
+      t("Dreamcast", "1998 · white shell, swirl orange, VMU blue", "#F58F4C", "#F2711C", "#101318", "#5B95E0", { style: CONSOLE.dreamcast }),
+      t("PlayStation 2", "2000 · black, deep blue glow, silver", "#3360F5", "#C9D2E8", "#05070F", "#9DB2FF", { style: CONSOLE.ps2 }),
+      t("Xbox", "2001 · black shell, jewel green, lime glow", "#8CC43F", "#00A651", "#070D07", "#D5E8B8", { style: CONSOLE.xbox }),
+      t("GameCube", "2001 · indigo, spice orange, platinum", "#F28C28", "#9F8FE8", "#1A1433", "#F5A658", { style: CONSOLE.gamecube }),
+      t("GameCube", "2001 · indigo, spice orange, platinum", "#4B3B8F", "#C25E0C", "#E6E6EA", "#382C6B", { style: CONSOLE.gamecube }),
+      t("Game Boy Advance", "2001 · indigo shell, button grey, screen green", "#B8A8F0", "#9BBC0F", "#17113A", "#CABEF4", { style: CONSOLE.gba }),
+      t("PSP", "2004 · piano black, chrome, wave white", "#6AA6EA", "#E8E8EC", "#060608", "#B9CEE9", { style: CONSOLE.psp }),
+      t("Xbox 360", "2005 · blade green, white shell, chrome", "#107C10", "#5C6670", "#F6F9F5", "#0D650D", { style: CONSOLE.x360 }),
+      t("Xbox 360", "2005 · blade green, white shell, chrome", "#92C83E", "#F2F2F2", "#0D1A0D", "#A8D366", { style: CONSOLE.x360 }),
+      t("Wii", "2006 · white, channel blue, menu grey", "#0A75A6", "#5E6266", "#F6F9FA", "#085273", { style: CONSOLE.wii }),
+      t("PlayStation 3", "2006 · piano black, XMB blue, wave silver", "#71ADF2", "#D8DCE4", "#05070C", "#AED0F8", { style: CONSOLE.ps3 }),
+    ] },
   ] },
   { label: "Brands", groups: [
     // Companies' own palettes — colours only, no logos. Only the colours on a brand's own
@@ -547,7 +586,7 @@ export const ALL_TEMPLATES: Template[] = [...new Map(TEMPLATE_GROUPS.flatMap((g)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** One look (a palette, a team, a flag) with the templates written for it, by page tone. */
-export type TemplateFamily = { key: string; name: string; vibe: string; authored: Partial<Record<PageTone, Template>>; colours: string[] };
+export type TemplateFamily = { key: string; name: string; vibe: string; authored: Partial<Record<PageTone, Template>>; colours: string[]; style?: TemplateStyle };
 export type FamilyGroup = { label: string; families: TemplateFamily[] };
 export type FamilySet = { label: string; groups: FamilyGroup[]; tabs?: boolean };
 
@@ -565,6 +604,7 @@ function toFamilies(templates: Template[]): TemplateFamily[] {
     }
     const tone = toneOf(x.theme);
     if (!f.authored[tone]) f.authored[tone] = x;
+    if (x.style && !f.style) f.style = x.style;
     for (const h of [x.theme.accent, x.theme.highlight, x.theme.support]) if (h && !f.colours.includes(h.toUpperCase())) f.colours.push(h.toUpperCase());
     if (!out.includes(f)) out.push(f);
   }
@@ -594,7 +634,7 @@ export function familyAt(f: TemplateFamily, tone: PageTone): Template | null {
   if (!made.has(id)) {
     const src = f.authored.dark ?? f.authored.mid ?? f.authored.light!;
     const theme = atTone(src.theme, tone, f.colours);
-    made.set(id, theme ? { name: f.name, vibe: f.vibe, theme } : null);
+    made.set(id, theme ? { name: f.name, vibe: f.vibe, theme, ...(f.style ? { style: f.style } : {}) } : null);
   }
   return made.get(id)!;
 }

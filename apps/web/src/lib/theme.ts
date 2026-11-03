@@ -223,7 +223,7 @@ export function motifMask(theme: Theme): string {
 }
 export type BackdropPattern =
   | "none" | "ripples" | "waves" | "contours" | "shapes" | "blobs" | "flow" | "confetti" | "burst"
-  | "swirl" | "ribbons" | "scribble" | "rain"
+  | "swirl" | "ribbons" | "scribble" | "rain" | "panels"
   | "geometry" | "hexagons" | "diamonds" | "grid" | "arrows"
   | "squares" | "zigzag" | "rings" | "crosses" | "scales" | "cubes" | "checks"
   | "halftone" | "stripes" | "sunburst" | "deco"
@@ -245,6 +245,7 @@ export const BACKDROPS: { key: BackdropPattern; label: string; hint: string; gro
   { key: "ribbons", label: "Ribbons", hint: "Three broad bands across the page", group: "Abstract" },
   { key: "scribble", label: "Scribble", hint: "Loose looping lines", group: "Abstract" },
   { key: "rain", label: "Rain", hint: "Short slanted strokes", group: "Abstract" },
+  { key: "panels", label: "Panels", hint: "Tall slanted panels side by side", group: "Abstract" },
   { key: "geometry", label: "Triangles", hint: "A triangle lattice", group: "Geo" },
   { key: "hexagons", label: "Hexagons", hint: "A honeycomb", group: "Geo" },
   { key: "diamonds", label: "Diamonds", hint: "A harlequin of diamonds", group: "Geo" },
@@ -649,8 +650,8 @@ function animatePattern(body: string, pattern: BackdropPattern, mode: BackdropMo
   }
   const shapes = body.match(/<(circle|ellipse|rect|path|line|polygon|polyline)\b[^>]*\/>/g)?.length ?? 0;
   const every = Math.max(1, Math.ceil(shapes / MAX_MOVING));
-  // Waves draw a fill and its line as a pair: they move together.
-  const pair = pattern === "waves" ? 2 : 1;
+  // Waves and panels draw a fill and its line as a pair: they move together.
+  const pair = pattern === "waves" || pattern === "panels" ? 2 : 1;
   let i = -1;
   return body.replace(/<(circle|ellipse|rect|path|line|polygon|polyline)\b([^>]*)\/>/g, (all, tag: string, attrs: string) => {
     i++;
@@ -896,6 +897,18 @@ export function backdropCss(input: Theme): BackdropLayers {
         return `<path d='M-100 ${y + 180} C 400 ${y - 120}, 1100 ${y + 260}, 1700 ${y - 60}' fill='none' stroke='${col}' stroke-width='${n(w)}' stroke-linecap='round' stroke-opacity='${(0.08 * k).toFixed(3)}'/>`;
       }).join("");
       add(svg(body, 1600, 900), "cover", "center");
+      break;
+    }
+    case "panels": {
+      // Tall slanted panels fanned along the right, each a soft fill with a bright leading edge.
+      const cols = [c.accent!, c.support!, c.highlight!];
+      let body = "";
+      for (let i = 0; i < 5; i++) {
+        const x = 700 + i * 170 * sc, w = 120 * sc, lean = 160, col = cols[i % 3]!;
+        body += `<path d='M${n(x)} -20 L${n(x + w)} -20 L${n(x + w - lean)} 920 L${n(x - lean)} 920 Z' fill='${col}' fill-opacity='${(0.06 * k).toFixed(3)}'/>`;
+        body += `<path d='M${n(x)} -20 L${n(x - lean)} 920' stroke='${col}' stroke-width='2' stroke-opacity='${(0.2 * k).toFixed(3)}'/>`;
+      }
+      add(svg(body, 1600, 900, "xMaxYMid slice"), "cover", "right center");
       break;
     }
     case "scribble": {

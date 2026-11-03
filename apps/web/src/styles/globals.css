@@ -264,14 +264,16 @@
     -webkit-overflow-scrolling: touch;
   }
   ::selection { background: rgb(var(--c-accent)); color: rgb(var(--c-on-accent)); }
+}
 
-  /* Headings: Archivo at a heavy weight with slightly tight tracking.
-     Utilities like font-bold still override this where needed. */
-  .font-display {
-    --fs: var(--font-display-size);
-    font-weight: var(--font-display-weight);
-    letter-spacing: var(--font-display-tracking);
-  }
+/* Headings: Archivo at a heavy weight with slightly tight tracking, on top of
+   the font family Tailwind's own `font-display` sets. A utility (not a base
+   rule) so `@apply font-display` in .h-page and .h-section brings the weight,
+   tracking and size too. Utilities like font-bold still override it. */
+@utility font-display {
+  --fs: var(--font-display-size);
+  font-weight: var(--font-display-weight);
+  letter-spacing: var(--font-display-tracking);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

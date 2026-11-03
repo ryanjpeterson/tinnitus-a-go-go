@@ -7,6 +7,10 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Changed
+
+- **Updated to jimbo.ui 0.14.1: console looks and heavier headings again** — page and section titles are back to the theme's heading weight, tracking and size (since the Tailwind 4 move they had fallen to a regular weight). The Looks tab has a **Consoles** sub-tab under Games with eleven retro console looks (PlayStation 1–3, Nintendo 64, Dreamcast, Xbox, GameCube, Game Boy Advance, PSP, Xbox 360, Wii); picking one also brings its menu font, backdrop and motif, and its tile shows them.
+
 ### Fixed
 
 - **Dependency changes now reach the web container on deploy** — `apps/web` is bind-mounted, so the container used whatever `node_modules` was installed last and skipped installing while `vite` existed (a Tailwind 4 deploy would have kept Tailwind 3). The entrypoint now runs `pnpm install` on every start; it takes a second or two when nothing changed.

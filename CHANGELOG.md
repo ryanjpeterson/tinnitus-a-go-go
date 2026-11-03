@@ -7,6 +7,8 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+## [2026.11.0] — 2026-11-03
+
 ### Added
 
 - **`deploy.json`** — the jimbo-deploy record for this app: laptop and Mac mini paths (the mini's checkout is on `jimbos-sloppydrive`), GitHub and Forgejo repos, both compose files, port 4444. The README's new **Deploy** section has the one-line deploy command for the mini.

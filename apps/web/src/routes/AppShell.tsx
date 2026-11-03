@@ -30,6 +30,7 @@ import { YearReviewIndex, YearReviewPage } from "./YearReviewPage";
 import { SearchSheet } from "./SearchSheet";
 import { TicketsPage } from "./TicketsPage";
 import { JimboConfigPage } from "./JimboConfigPage";
+import { NotificationsPage } from "./NotificationsPage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AppShell — main layout for public content with optional auth
@@ -251,6 +252,7 @@ export function AppShell() {
           <Route path="/stats" element={<Navigate to="/" replace />} />
           {/* Waits for the session check, so opening /account directly doesn't bounce to sign-in */}
           <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
+          <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
           <Route path="/admin/imports" element={<RequireAdmin><ImportsPage /></RequireAdmin>} />
           <Route path="/admin/data" element={<RequireAdmin><DataCleanupPage /></RequireAdmin>} />
           {/* jimbo-ui config: theme, brand and style guide, admins only (the API checks admin on every save) */}

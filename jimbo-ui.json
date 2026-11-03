@@ -249,8 +249,8 @@
         "matches": null
       },
       {
-        "name": "NotificationsCard",
-        "path": "apps/web/src/routes/NotificationsCard.tsx",
+        "name": "NotificationsPage, NotificationsLink (jimbo-notify)",
+        "path": "apps/web/src/routes/NotificationsPage.tsx",
         "kind": "domain",
         "matches": null
       },

@@ -323,7 +323,8 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   ├── SearchSheet.tsx       search across shows, artists, festivals, venues, songs
 │   │       │   ├── TicketsPage.tsx       ticket stub wall
 │   │       │   ├── FollowUpPrompt.tsx    daily prompt to resolve past shows still marked attending/interested
-│   │       │   ├── AccountPage.tsx       profile, password, notifications (NotificationsCard), calendar feed, admin links
+│   │       │   ├── AccountPage.tsx       profile, password, calendar feed, admin links (Notifications, jimbo-ui config)
+│   │       │   ├── NotificationsPage.tsx /notifications: channels, reminders, weekly recap, send time, tests
 │   │       │   ├── ImportsPage.tsx       admin: CSV import + CSV / JSON / Markdown export
 │   │       │   ├── DataCleanupPage.tsx   admin: duplicates, festival suggestions, merges + undo, data health, setlist finder
 │   │       │   ├── JimboConfigPage.tsx   admin: jimbo-ui config (/jimbo-ui) — Looks, Colours, Type, Backdrop,
@@ -824,7 +825,7 @@ Reminders and the weekly recap are sent by the worker. Each channel is off until
 
 1. In `.env`: `NTFY_TOPIC=tinnitus-<openssl rand -hex 12>` (the topic is the password — anyone on the tailnet who knows it can read it) and `NTFY_PUBLIC_URL=http://100.123.243.36:8090`.
 2. In the ntfy app on the iPhone (on Tailscale): **Settings → Default server** → `http://100.123.243.36:8090` exactly as in `NTFY_PUBLIC_URL` (instant iOS pushes go through ntfy.sh, which only gets a message id, and it matches on that URL). Then **+** → the topic name → **Subscribe**. Allow notifications when asked.
-3. Account → Notifications shows the link to subscribe to; **Send a test reminder** should buzz the phone.
+3. The Notifications page (`/notifications`) shows the link to subscribe to; **Send a test reminder** should buzz the phone.
 
 **Gmail** (sending to yourself through your own account):
 
@@ -837,7 +838,7 @@ Reminders and the weekly recap are sent by the worker. Each channel is off until
    SMTP_PASS=the16lettercode
    SMTP_FROM="Tinnitus A Go Go <you@gmail.com>"
    ```
-3. Emails go to the account's email unless Account → Notifications says otherwise. **Send a test recap** to check; Gmail's free limit (500 a day) is far beyond what this sends.
+3. Emails go to the account's email unless the Notifications page says otherwise. **Send a test recap** to check; Gmail's free limit (500 a day) is far beyond what this sends.
 
 Stop the old Mailpit container once: `docker compose stop mailpit && docker compose rm -f mailpit`.
 
@@ -973,7 +974,7 @@ An installable web app (add it to your phone's Home Screen). Phone-first layout:
 - Service health links.
 
 ### Notifications
-- **Show reminders** before each show you're attending (7, 3 and 1 days out by default; interested shows optional) and a **weekly recap** on the day you pick: anniversaries of shows you attended that week in past years, what's coming up in the next 60 days and a few numbers. By **ntfy** push, **email**, or both, at the hour you pick (Account → Notifications, with *Send a test*). The worker checks every 15 minutes, sends each once, and catches up later the same day if it was down.
+- **Show reminders** before each show you're attending (7, 3 and 1 days out by default; interested shows optional) and a **weekly recap** on the day you pick: anniversaries of shows you attended that week in past years, what's coming up in the next 60 days and a few numbers. By **ntfy** push, **email**, or both, at the hour you pick (**/notifications**, linked from Account next to jimbo-ui config, with *Send a test*). Built to the [jimbo-notify](https://github.com/ryanjpeterson/jimbo-notify) standard — `jimbo-notify.json` records how. The worker checks every 15 minutes, sends each once, and catches up later the same day if it was down.
 - Emails are branded from the current theme's colours (TINNITUS / a Go Go wordmark, calendar-ticket dates, countdown pills), with a plain-text version; no images, since Gmail can't load anything from a Tailscale address. `pnpm --filter @tagg/worker preview-emails <dir>` renders every email from sample data.
 
 ### Offline edits

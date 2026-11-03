@@ -1,0 +1,15 @@
+{
+  "version": "0.1.0",
+  "route": "/notifications",
+  "link": "apps/web/src/routes/AccountPage.tsx (Admin group, before jimbo-ui config)",
+  "items": "shows the user is attending (and, with remindInterested, interested in)",
+  "recap": "anniversaries of shows attended that week in past years, shows in the next 60 days, shows so far this year",
+  "extraPrefs": ["remindInterested"],
+  "ntfy": { "service": "ntfy", "port": 8090 },
+  "files": {
+    "engine": "inline",
+    "app": "apps/worker/src/notify/run.ts (+ data.ts, templates.ts)",
+    "page": "apps/web/src/routes/NotificationsPage.tsx"
+  },
+  "note": "Built before jimbo-notify existed: run.ts is the same loop as engine.ts and templates.ts the same emails as email.ts, written for this app. channels.ts, theme.ts and time.ts match the reference."
+}

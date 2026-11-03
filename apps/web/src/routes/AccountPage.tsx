@@ -1,5 +1,5 @@
 /**
- * Account settings — password change, notifications, calendar, admin tools, and sign out.
+ * Account settings — password change, calendar, admin tools (with links to Notifications and jimbo-ui config), and sign out.
  */
 
 import { useEffect, useState } from "react";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ServicesPanel } from "@/components/ServicesPanel";
 import { LinkCard, PageHeader } from "@/components/ui/kit";
 import { JimboConfigLink } from "./JimboConfigPage";
-import { NotificationsCard } from "./NotificationsCard";
+import { NotificationsLink } from "./NotificationsPage";
 
 export function AccountPage() {
   const { user, signOut } = useAuth();
@@ -127,14 +127,13 @@ export function AccountPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <LinkCard to="/admin/imports" eyebrow="Data" title="Import & export" sub="CSV import · CSV, JSON or Markdown export" />
               <LinkCard to="/admin/data" eyebrow="Data" title="Data cleanup" sub="Merge duplicates, fix gaps" />
+              <NotificationsLink />
               <JimboConfigLink canConfigure={user.isAdmin} />
             </div>
           </div>
           <ServicesPanel />
         </>
       )}
-
-      <NotificationsCard />
 
       <CalendarCard />
 

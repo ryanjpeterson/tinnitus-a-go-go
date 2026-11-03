@@ -125,7 +125,7 @@ interface LayoutOptions {
 }
 
 function layout(t: EmailTheme, o: LayoutOptions): string {
-  const settings = `${o.appUrl.replace(/\/$/, "")}/account#notifications`;
+  const settings = `${o.appUrl.replace(/\/$/, "")}/notifications`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -166,7 +166,7 @@ function layout(t: EmailTheme, o: LayoutOptions): string {
         </table>
       </td></tr>
       <tr><td class="edge" style="padding:20px 6px 0;font-family:${BODY};font-size:12px;line-height:18px;color:${t.muted};">
-        Sent by your own Tinnitus A Go Go. Change what you get in <a href="${esc(settings)}" style="color:${t.muted};text-decoration:underline;">Account &rarr; Notifications</a>.
+        Sent by your own Tinnitus A Go Go. Change what you get in <a href="${esc(settings)}" style="color:${t.muted};text-decoration:underline;">Notifications</a>.
       </td></tr>
     </table>
   </td></tr>

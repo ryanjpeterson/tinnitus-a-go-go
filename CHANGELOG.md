@@ -7,6 +7,10 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Dependency changes now reach the web container on deploy** — `apps/web` is bind-mounted, so the container used whatever `node_modules` was installed last and skipped installing while `vite` existed (a Tailwind 4 deploy would have kept Tailwind 3). The entrypoint now runs `pnpm install` on every start; it takes a second or two when nothing changed.
+
 ## [2026.11.0] — 2026-11-03
 
 ### Added

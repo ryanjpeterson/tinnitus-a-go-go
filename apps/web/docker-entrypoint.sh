@@ -1,10 +1,11 @@
 #!/bin/sh
 set -e
 
-# If node_modules is empty or missing vite, run pnpm install
-if [ ! -d "node_modules/.bin" ] || [ ! -f "node_modules/.bin/vite" ]; then
-  echo "[entrypoint] Installing dependencies..."
-  cd /app && pnpm install --frozen-lockfile || pnpm install
-fi
+# apps/web is bind-mounted, so its node_modules links come from whatever was
+# installed last, not from this image. Install every start (a no-op when the
+# lockfile hasn't changed) so a dependency change in a deploy is picked up.
+echo "[entrypoint] Installing dependencies..."
+cd /app && (pnpm install --frozen-lockfile || pnpm install)
+cd /app/apps/web
 
 exec "$@"

@@ -1,7 +1,7 @@
 {
-  "version": "0.14.1",
-  "commit": "dbb1f57",
-  "note": "jimbo.ui 0.14.1 (dbb1f57).",
+  "version": "0.14.2",
+  "commit": "224bd3e",
+  "note": "jimbo.ui 0.14.2 (224bd3e).",
   "webRoot": "apps/web",
   "auth": "admin",
   "reference": {

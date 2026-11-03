@@ -198,7 +198,8 @@ export function backdropAnimation(theme: Theme): string {
  * mask (black = shape); circles need none. Flat fills only, no outlines or
  * gloss, at fixed sizes like the circles they replace.
  */
-export type MotifKey = "dots" | "triforce" | "sparkles" | "stars" | "hearts" | "diamonds" | "triangles" | "squares" | "crosses" | "bolts" | "flowers" | "moons" | "squiggles";
+export type MotifKey = "dots" | "triforce" | "sparkles" | "stars" | "hearts" | "diamonds" | "triangles" | "squares" | "crosses" | "bolts" | "flowers" | "moons" | "squiggles"
+  | "skulls" | "trefoils" | "flames" | "hazards";
 export const MOTIFS: { key: MotifKey; label: string; path: string | null }[] = [
   { key: "dots", label: "Circles", path: null },
   { key: "triforce", label: "Triforce", path: "<path d='M12 1.5 18 11.9H6zM6 12.1 12 22.5H0zM18 12.1 24 22.5H12z'/>" },
@@ -213,6 +214,10 @@ export const MOTIFS: { key: MotifKey; label: string; path: string | null }[] = [
   { key: "flowers", label: "Flowers", path: "<circle cx='12' cy='6' r='5.5'/><circle cx='18' cy='12' r='5.5'/><circle cx='12' cy='18' r='5.5'/><circle cx='6' cy='12' r='5.5'/>" },
   { key: "moons", label: "Moons", path: "<path d='M15.5 1A11 11 0 1 0 23 17.6 9 9 0 0 1 15.5 1z'/>" },
   { key: "squiggles", label: "Squiggles", path: "<path d='M1 15c3-8 6-8 7.5 0s5 8 7.5 0 5-8 7 0' fill='none' stroke='black' stroke-width='4' stroke-linecap='round'/>" },
+  { key: "skulls", label: "Skulls", path: "<path fill-rule='evenodd' d='M12 1C6.5 1 2.5 5 2.5 10.2c0 3 1.4 5.3 3.5 6.6V21a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 18 21v-4.2c2.1-1.3 3.5-3.6 3.5-6.6C21.5 5 17.5 1 12 1zM8.2 8.6a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm7.6 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM12 14.4l-1.4 2.8h2.8z'/>" },
+  { key: "trefoils", label: "Trefoils", path: "<path d='M14.1 15.64 17.75 21.96A11.5 11.5 0 0 1 6.25 21.96L9.9 15.64A4.2 4.2 0 0 0 14.1 15.64zM7.8 12H.5A11.5 11.5 0 0 1 6.25 2.04L9.9 8.36A4.2 4.2 0 0 0 7.8 12zM14.1 8.36 17.75 2.04A11.5 11.5 0 0 1 23.5 12H16.2A4.2 4.2 0 0 0 14.1 8.36zM12 9.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 1 0 0-4.8z'/>" },
+  { key: "flames", label: "Flames", path: "<path d='M12 .5c1.5 5 7.5 7.5 7.5 14.5a7.5 7.5 0 0 1-15 0c0-3.6 1.8-6 3.8-7.8-.2 3 1 5 2.7 5.6C10.4 9 10.6 4.6 12 .5z'/>" },
+  { key: "hazards", label: "Hazards", path: "<path fill-rule='evenodd' d='M12 1.5 23.5 21.5H.5zM10.8 8h2.4l-.4 7.2h-1.6zM12 16.6a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z'/>" },
 ];
 
 /** The motif's mask (a CSS url) or "none" for circles. */
@@ -229,8 +234,9 @@ export type BackdropPattern =
   | "halftone" | "stripes" | "sunburst" | "deco"
   | "pinstripe" | "gingham" | "polka" | "plaid" | "argyle" | "racing" | "trellis" | "bauhaus"
   | "dots" | "grain" | "paper" | "linen"
-  | "concrete" | "brushed" | "sand" | "speckle" | "crosshatch" | "twill" | "carbon" | "ribbed";
-export const BACKDROP_GROUPS = ["Abstract", "Geo", "Vintage", "Texture"] as const;
+  | "concrete" | "brushed" | "sand" | "speckle" | "crosshatch" | "twill" | "carbon" | "ribbed"
+  | "embers" | "ash" | "cracks" | "hazard" | "skyline" | "fallout" | "smog" | "barbed" | "static" | "shockwave";
+export const BACKDROP_GROUPS = ["Abstract", "Geo", "Vintage", "Texture", "Ruin"] as const;
 export const BACKDROPS: { key: BackdropPattern; label: string; hint: string; group: (typeof BACKDROP_GROUPS)[number] | null }[] = [
   { key: "none", label: "None", hint: "Just the base", group: null },
   { key: "ripples", label: "Ripples", hint: "Rings spreading from two corners", group: "Abstract" },
@@ -282,6 +288,16 @@ export const BACKDROPS: { key: BackdropPattern; label: string; hint: string; gro
   { key: "twill", label: "Twill", hint: "Diagonal weave, like denim", group: "Texture" },
   { key: "carbon", label: "Carbon", hint: "A tiny woven check", group: "Texture" },
   { key: "ribbed", label: "Ribbed", hint: "Fine horizontal ribs", group: "Texture" },
+  { key: "embers", label: "Embers", hint: "Sparks rising from below", group: "Ruin" },
+  { key: "ash", label: "Ash", hint: "Grey flakes drifting down", group: "Ruin" },
+  { key: "cracks", label: "Cracks", hint: "Fractures spreading from a few points", group: "Ruin" },
+  { key: "hazard", label: "Hazard", hint: "A band of caution stripes along the bottom", group: "Ruin" },
+  { key: "skyline", label: "Skyline", hint: "A broken city along the bottom", group: "Ruin" },
+  { key: "fallout", label: "Fallout", hint: "Scattered trefoil signs", group: "Ruin" },
+  { key: "smog", label: "Smog", hint: "Banks of smoke across the page", group: "Ruin" },
+  { key: "barbed", label: "Barbed", hint: "Rows of barbed wire", group: "Ruin" },
+  { key: "static", label: "Static", hint: "Scan lines over noise, like a dead channel", group: "Ruin" },
+  { key: "shockwave", label: "Shockwave", hint: "Broken rings from a blast below", group: "Ruin" },
 ];
 export const BACKDROP_BASES = ["solid", "gradient", "glow"] as const;
 
@@ -618,6 +634,7 @@ export function mapStyles(theme: Theme): MapStyle[] {
 // Tiled patterns that travel (seamlessly, a tile at a time) when alive: the direction and a cycle's share of the motion's seconds.
 const TRAVEL: Partial<Record<BackdropPattern, [number, number, number]>> = {
   rain: [0, 1, 0.14], confetti: [0, 1, 1.2], arrows: [0, -1, 0.7], zigzag: [1, 0, 1], pinstripe: [1, 0, 1.6], twill: [1, 0, 1.4], speckle: [1, 1, 3],
+  embers: [0, -1, 1.1], ash: [0, 1, 1.8], barbed: [1, 0, 2.2], static: [0, 1, 0.3],
 };
 // A repeatable "random" number in 0–1 for element i, so a pattern looks the same on every load.
 const jitter = (i: number, salt: number) => { const x = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453; return x - Math.floor(x); };
@@ -664,7 +681,7 @@ function animatePattern(body: string, pattern: BackdropPattern, mode: BackdropMo
     if (mode === "pulse" || tiled) {
       const low = mode === "pulse" ? 0.25 : 0.45;
       anim = `<animate attributeName='opacity' values='1;${low};1' ${timing} calcMode='spline' keyTimes='0;0.5;1' keySplines='0.4 0 0.6 1;0.4 0 0.6 1'/>`;
-    } else if (pattern === "ripples" && tag === "circle") {
+    } else if ((pattern === "ripples" || pattern === "shockwave") && tag === "circle") {
       // Each ring grows by one step and gives way to the next, so the rings keep spreading.
       const rad = Number(/\br='([\d.]+)'/.exec(attrs)?.[1] ?? 0);
       anim = `<animate attributeName='r' from='${rad}' to='${(rad + 44 * sc).toFixed(1)}' dur='${(seconds * 0.6).toFixed(2)}s' repeatCount='indefinite'/>`;
@@ -1061,6 +1078,128 @@ export function backdropCss(input: Theme): BackdropLayers {
     case "ribbed": {
       const gap = n(6 * sc);
       add(`repeating-linear-gradient(0deg, ${rgba(c.text!, 0.07 * k)} 0 1px, transparent 1px ${n(gap / 2)}px, ${rgba(c.bg!, 0.15 * k)} ${n(gap / 2)}px ${gap}px)`, "100% 100%");
+      break;
+    }
+    // ── Ruin ─────────────────────────────────────────────────────────────
+    case "embers": {
+      let body = "";
+      for (let i = 0; i < 18; i++) {
+        const col = [c.highlight!, c.accent!, c.support!][i % 3]!;
+        body += `<circle cx='${n(jitter(i, 11) * 160)}' cy='${n(jitter(i, 12) * 200)}' r='${n(0.8 + jitter(i, 13) * 1.8)}' fill='${col}' fill-opacity='${((0.16 + jitter(i, 14) * 0.2) * k).toFixed(3)}'/>`;
+      }
+      add(svg(body, 160, 200, "none"), `${n(160 * sc)}px ${n(200 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "ash": {
+      let body = "";
+      for (let i = 0; i < 14; i++) {
+        const x = n(jitter(i, 21) * 180), y = n(jitter(i, 22) * 180), r = n(1.2 + jitter(i, 23) * 2.2);
+        body += `<ellipse cx='${x}' cy='${y}' rx='${r}' ry='${n(r * 0.55)}' transform='rotate(${Math.round(jitter(i, 24) * 180)} ${x} ${y})' fill='${i % 4 ? c.text! : c.support!}' fill-opacity='${(0.12 * k).toFixed(3)}'/>`;
+      }
+      add(svg(body, 180, 180, "none"), `${n(180 * sc)}px ${n(180 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "cracks": {
+      // Jagged fractures branching out from three points of impact.
+      let body = "";
+      const crack = (x: number, y: number, ang: number, len: number, depth: number, col: string, salt: number) => {
+        let d = `M${n(x)} ${n(y)}`;
+        const steps = 6;
+        for (let s2 = 1; s2 <= steps; s2++) {
+          ang += (jitter(salt + s2, 31) - 0.5) * 0.9;
+          x += Math.cos(ang) * (len / steps); y += Math.sin(ang) * (len / steps);
+          d += ` L${n(x)} ${n(y)}`;
+          if (depth > 0 && jitter(salt + s2, 32) > 0.72) crack(x, y, ang + (jitter(salt + s2, 33) > 0.5 ? 0.8 : -0.8), len * 0.5, depth - 1, col, salt * 7 + s2);
+        }
+        body += `<path d='${d}' fill='none' stroke='${col}' stroke-width='${depth + 0.8}' stroke-linejoin='bevel' stroke-opacity='${((0.1 + depth * 0.05) * k).toFixed(3)}'/>`;
+      };
+      ([[1250, 160, c.accent!], [220, 760, c.support!], [900, 980, c.highlight!]] as const).forEach(([cx, cy, col], j) => {
+        for (let a = 0; a < 7; a++) crack(cx, cy, (a / 7) * Math.PI * 2 + j, 380 * sc, 2, col, j * 100 + a * 10 + 1);
+      });
+      add(svg(body, 1600, 900), "cover", "center");
+      break;
+    }
+    case "hazard": {
+      // A band of caution stripes along the bottom, two colours turn about.
+      const band = 70 * sc, top = 900 - band - 40 * sc, w = 40 * sc;
+      let body = `<rect x='0' y='${n(top)}' width='1600' height='${n(band)}' fill='${c.highlight!}' fill-opacity='${(0.08 * k).toFixed(3)}'/>`;
+      for (let x = -band; x < 1600 + band; x += w * 2) body += `<path d='M${n(x)} ${n(top + band)} L${n(x + band)} ${n(top)} L${n(x + band + w)} ${n(top)} L${n(x + w)} ${n(top + band)} Z' fill='${c.accent!}' fill-opacity='${(0.14 * k).toFixed(3)}'/>`;
+      add(svg(body, 1600, 900, "xMidYMax slice"), "cover", "bottom");
+      break;
+    }
+    case "skyline": {
+      // Two rows of towers along the bottom, their tops broken off at an angle.
+      let body = "";
+      ([[c.support!, 0.07, 1.25, 5], [c.accent!, 0.1, 0.8, 9]] as const).forEach(([col, o, tall, salt]) => {
+        let d = "M0 900", x = 0, i = 0;
+        while (x < 1600) {
+          const bw = (50 + jitter(i, salt) * 90) * sc, bh = (90 + jitter(i, salt + 1) * 260) * sc * tall, y = 900 - bh;
+          const drop = jitter(i, salt + 2) * 60 * sc, broken = jitter(i, salt + 3) > 0.45;
+          d += ` L${n(x)} ${n(y + (broken ? drop : 0))}`;
+          if (broken) d += ` L${n(x + bw * 0.35)} ${n(y + drop * 0.3)} L${n(x + bw * 0.5)} ${n(y + drop)} L${n(x + bw * 0.7)} ${n(y)}`;
+          d += ` L${n(x + bw)} ${n(y + (broken ? drop * 0.6 : 0))}`;
+          x += bw + (jitter(i, salt + 4) > 0.7 ? 14 * sc : 0); i++;
+        }
+        body += `<path d='${d} L1600 900 Z' fill='${col}' fill-opacity='${(o * k).toFixed(3)}'/>`;
+      });
+      add(svg(body, 1600, 900, "xMidYMax slice"), "cover", "bottom");
+      break;
+    }
+    case "fallout": {
+      // Small trefoil signs, set like a half-drop repeat.
+      const tre = (x: number, y: number, r: number, col: string) => {
+        let d = "";
+        for (const a0 of [90, 210, 330]) {
+          const p = (a: number, rr: number) => `${n(x + rr * Math.cos((a * Math.PI) / 180))} ${n(y + rr * Math.sin((a * Math.PI) / 180))}`;
+          d += `M${p(a0 - 30, r * 0.36)} L${p(a0 - 30, r)} A${r} ${r} 0 0 1 ${p(a0 + 30, r)} L${p(a0 + 30, r * 0.36)} A${n(r * 0.36)} ${n(r * 0.36)} 0 0 0 ${p(a0 - 30, r * 0.36)}Z`;
+        }
+        return `<path d='${d}' fill='${col}' fill-opacity='${(0.1 * k).toFixed(3)}'/><circle cx='${x}' cy='${y}' r='${n(r * 0.2)}' fill='${col}' fill-opacity='${(0.1 * k).toFixed(3)}'/>`;
+      };
+      const body = tre(40, 40, 18, c.accent!) + tre(120, 120, 18, c.highlight!);
+      add(svg(body, 160, 160, "none"), `${n(160 * sc)}px ${n(160 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "smog": {
+      // Banks of overlapping puffs, thickest along the top and bottom.
+      let body = "";
+      for (let i = 0; i < 26; i++) {
+        const low = i % 2, col = [c.text!, c.support!, c.highlight!][i % 3]!;
+        const cx = jitter(i, 41) * 1700 - 50, cy = low ? 820 + jitter(i, 42) * 120 : 40 + jitter(i, 42) * 140;
+        const rx = (180 + jitter(i, 43) * 220) * sc;
+        body += `<ellipse cx='${n(cx)}' cy='${n(cy)}' rx='${n(rx)}' ry='${n(rx * 0.38)}' fill='${col}' fill-opacity='${(0.035 * k).toFixed(3)}'/>`;
+      }
+      add(svg(body, 1600, 900), "cover", "center");
+      break;
+    }
+    case "barbed": {
+      // Two twisted strands with a four-point barb every so often.
+      const so = (0.2 * k).toFixed(3);
+      let body = "";
+      for (const [y, col] of [[40, c.accent!], [120, c.support!]] as const) {
+        body += `<path d='M0 ${y} q15 -5 30 0 t30 0 t30 0 t30 0' fill='none' stroke='${col}' stroke-width='1.4' stroke-opacity='${so}'/>`
+          + `<path d='M0 ${y} q15 5 30 0 t30 0 t30 0 t30 0' fill='none' stroke='${col}' stroke-width='1.4' stroke-opacity='${so}'/>`
+          + `<path d='M54 ${y - 7} l12 14 M66 ${y - 7} l-12 14' stroke='${col}' stroke-width='1.6' stroke-linecap='round' stroke-opacity='${so}'/>`;
+      }
+      add(svg(body, 120, 160, "none"), `${n(120 * sc)}px ${n(160 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "static": {
+      const [r, g, bl] = hexToRgb(c.text!).map((v) => (v / 255).toFixed(3));
+      let body = `<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/>`
+        + `<feColorMatrix values='0 0 0 0 ${r} 0 0 0 0 ${g} 0 0 0 0 ${bl} 0 0 0 ${(0.22 * k).toFixed(3)} 0'/></filter><rect width='100%' height='100%' filter='url(#n)'/>`;
+      for (let y = 0; y < 160; y += 4) body += `<path d='M0 ${y}H160' stroke='${c.bg!}' stroke-width='1.2' stroke-opacity='${(0.35 * k).toFixed(3)}'/>`;
+      add(svg(body, 160, 160, "none"), `${n(160 * sc)}px ${n(160 * sc)}px`, "0 0", "repeat");
+      break;
+    }
+    case "shockwave": {
+      // Rings from a blast below the page, broken into uneven arcs.
+      let body = "";
+      const step = 52 * sc;
+      for (let i = 1; i * step < 1500; i++) {
+        const dash = `${n(60 + jitter(i, 51) * 180)} ${n(10 + jitter(i, 52) * 50)} ${n(20 + jitter(i, 53) * 80)} ${n(8 + jitter(i, 54) * 30)}`;
+        body += `<circle cx='800' cy='1000' r='${n(i * step)}' fill='none' stroke='${[c.accent!, c.highlight!, c.support!][i % 3]}' stroke-width='${i % 3 ? 1.4 : 2.4}' stroke-dasharray='${dash}' stroke-opacity='${(0.18 * k * Math.max(0.2, 1 - (i * step) / 1500)).toFixed(3)}'/>`;
+      }
+      add(svg(body, 1600, 900, "xMidYMax slice"), "cover", "bottom");
       break;
     }
   }

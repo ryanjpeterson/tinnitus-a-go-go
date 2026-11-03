@@ -3,7 +3,7 @@
  * Everyday, Holidays, Countries (by region), Provinces, Sports (NHL, NBA,
  * MLB, NFL, and city tabs for Toronto, Ottawa and Chicago) and Games (Zelda,
  * Mario, Donkey Kong, more Nintendo, Sly Cooper, Tony Hawk's Underground,
- * Consoles). Each
+ * Consoles), Apocalypse (Nuclear, Undead, Wasteland, Cosmic, Collapse). Each
  * look comes once, as a family with a light, a mid and a dark page
  * (`FAMILY_SETS`, `familyLook`): the tones it was written in, and the rest
  * made from its own colours by `atTone`. Every one passes
@@ -52,6 +52,25 @@ const CONSOLE: Record<string, TemplateStyle> = {
   x360:      { fonts: { headings: "plus-jakarta", headingsWeight: 700 }, backdrop: { pattern: "panels", base: "glow", motion: "alive" }, motif: "dots" },
   wii:       { fonts: { headings: "avenir", headingsWeight: 700 }, backdrop: { pattern: "dots", base: "solid" }, motif: "squares" },
   ps3:       { fonts: { headings: "manrope", headingsWeight: 400, headingsTracking: 0.01 }, backdrop: { pattern: "flow", base: "gradient", motion: "alive" }, motif: "dots" },
+};
+
+/** Each apocalypse look's mood: a heading font, a Ruin backdrop and a motif. */
+const END: Record<string, TemplateStyle> = {
+  shelter:  { fonts: { headings: "typewriter" }, backdrop: { pattern: "hazard", base: "solid" }, motif: "hazards" },
+  halflife: { fonts: { headings: "space-mono", headingsWeight: 700 }, backdrop: { pattern: "fallout", base: "glow", motion: "pulse" }, motif: "trefoils" },
+  winter:   { fonts: { headings: "inconsolata", headingsWeight: 700 }, backdrop: { pattern: "ash", base: "gradient", motion: "alive" }, motif: "trefoils" },
+  outbreak: { fonts: { headings: "bebas" }, backdrop: { pattern: "barbed", base: "glow", motion: "alive" }, motif: "skulls" },
+  night:    { fonts: { headings: "gothic", headingsWeight: 700 }, backdrop: { pattern: "smog", base: "glow", motion: "alive" }, motif: "skulls" },
+  quarantine: { fonts: { headings: "dm-mono", headingsWeight: 500 }, backdrop: { pattern: "hazard", base: "solid" }, motif: "hazards" },
+  dust:     { fonts: { headings: "typewriter" }, backdrop: { pattern: "cracks", base: "gradient" }, motif: "triangles" },
+  scorched: { fonts: { headings: "bebas" }, backdrop: { pattern: "embers", base: "glow", motion: "alive" }, motif: "flames" },
+  rust:     { fonts: { headings: "archivo", headingsWeight: 900 }, backdrop: { pattern: "skyline", base: "glow" }, motif: "squares" },
+  lastlight:{ fonts: { headings: "syne", headingsWeight: 700 }, backdrop: { pattern: "shockwave", base: "glow", motion: "pulse" }, motif: "dots" },
+  impact:   { fonts: { headings: "unbounded", headingsWeight: 700 }, backdrop: { pattern: "shockwave", base: "glow", motion: "alive" }, motif: "stars" },
+  judgement:{ fonts: { headings: "old-print" }, backdrop: { pattern: "sunburst", base: "gradient" }, motif: "crosses" },
+  drowned:  { fonts: { headings: "dm-sans", headingsWeight: 600 }, backdrop: { pattern: "waves", base: "gradient", motion: "alive" }, motif: "dots" },
+  wildfire: { fonts: { headings: "archivo", headingsWeight: 800 }, backdrop: { pattern: "smog", base: "glow", motion: "alive" }, motif: "flames" },
+  signal:   { fonts: { headings: "space-mono", headingsWeight: 700 }, backdrop: { pattern: "static", base: "solid", motion: "alive" }, motif: "squares" },
 };
 
 // Sports: team colours, not team artwork — each theme uses only a team's own colours
@@ -536,6 +555,35 @@ const SETS: TemplateSet[] = [
       t("Xbox 360", "2005 · blade green, white shell, chrome", "#92C83E", "#F2F2F2", "#0D1A0D", "#A8D366", { style: CONSOLE.x360 }),
       t("Wii", "2006 · white, channel blue, menu grey", "#0A75A6", "#5E6266", "#F6F9FA", "#085273", { style: CONSOLE.wii }),
       t("PlayStation 3", "2006 · piano black, XMB blue, wave silver", "#71ADF2", "#D8DCE4", "#05070C", "#AED0F8", { style: CONSOLE.ps3 }),
+    ] },
+  ] },
+  // Ends of the world: invented palettes (not from any film or game), each with a Ruin
+  // backdrop, a motif and a heading font that set the mood.
+  { label: "Apocalypse", tabs: true, groups: [
+    { label: "Nuclear", templates: [
+      t("Fallout shelter", "Civil defence yellow, shelter black, rust", "#F2C318", "#E0572B", "#16140F", "#A7B37A", { style: END.shelter }),
+      t("Half-life", "Isotope green on lead grey, warning amber", "#7CFF4F", "#F5D547", "#121512", "#5FD4C4", { style: END.halflife }),
+      t("Nuclear winter", "Ash white, cold steel blue, a last ember", "#2F5D8A", "#B8481F", "#E7E6E3", "#3F4C59", { style: END.winter }),
+    ] },
+    { label: "Undead", templates: [
+      t("Outbreak", "Quarantine green, blood red, bandage", "#9BD13A", "#E0393E", "#0F1210", "#C9C3A8", { style: END.outbreak }),
+      t("Dead of night", "Bone, blood and moonlight", "#E8DFC8", "#C4202B", "#0B0A0C", "#9AA1B8", { style: END.night }),
+      t("Quarantine", "Clinic white, warning red, hazmat green", "#C21F1F", "#8A6500", "#F3F1EC", "#2E5B4E", { style: END.quarantine }),
+    ] },
+    { label: "Wasteland", templates: [
+      t("Dust bowl", "Bleached sand, rust, a faded sky", "#7A2F12", "#1F4F6B", "#CDB892", "#3A2C16", { style: END.dust }),
+      t("Scorched earth", "Char, ember orange, flame yellow", "#FF7A1A", "#FFC53D", "#140D0A", "#F0A08A", { style: END.scorched }),
+      t("Rust belt", "Oxidised iron, verdigris, old brass", "#B5501C", "#5FB3A1", "#1A1513", "#D9B38C", { style: END.rust }),
+    ] },
+    { label: "Cosmic", templates: [
+      t("Last light", "A dying red sun, amber dusk, violet sky", "#D93A1E", "#FFB347", "#12070A", "#C9A0DC", { style: END.lastlight }),
+      t("Impact", "Meteor orange, blue-white trail, dust", "#FF9E2C", "#8FB8FF", "#0A0C14", "#E6E1D6", { style: END.impact }),
+      t("Judgement day", "Vellum, gilt, blood red, storm", "#8A5A00", "#A3161C", "#F4EEDF", "#3C3550", { style: END.judgement }),
+    ] },
+    { label: "Collapse", templates: [
+      t("Drowned world", "Flood teal, algae, a warning flare", "#3FC1C9", "#F2B134", "#07161A", "#9ED8A0", { style: END.drowned }),
+      t("Wildfire smoke", "Orange haze, ash cream, ember", "#FFB347", "#F2E3C6", "#4A2414", "#FF8C5A", { style: END.wildfire }),
+      t("Signal lost", "Phosphor green, alarm pink, dead-channel blue", "#38F28A", "#F23859", "#0C0F0D", "#9AA7F0", { style: END.signal }),
     ] },
   ] },
   { label: "Brands", groups: [

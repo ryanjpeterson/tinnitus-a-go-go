@@ -82,7 +82,7 @@ export function FestivalPicker({ concertIds, suggestedName, onClose, onDone }: {
                   {f.flyerUrl && <img src={f.flyerUrl} alt="" loading="lazy" className="h-full w-full object-cover" />}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-15 font-semibold group-hover:text-accent-lime">{f.name}</p>
+                  <p className="truncate text-15 font-semibold group-hover:text-accent">{f.name}</p>
                   <p className="truncate text-sm text-text-muted">{[f.venue?.name, f.startDate?.slice(0, 4)].filter(Boolean).join(" · ")}</p>
                 </div>
                 <Chevron className="text-text-subtle" />
@@ -93,7 +93,7 @@ export function FestivalPicker({ concertIds, suggestedName, onClose, onDone }: {
             )}
           </div>
         </section>
-        {error && <p className="text-sm text-accent-pink">{error}</p>}
+        {error && <p className="text-sm text-highlight">{error}</p>}
       </div>
     </Sheet>
   );

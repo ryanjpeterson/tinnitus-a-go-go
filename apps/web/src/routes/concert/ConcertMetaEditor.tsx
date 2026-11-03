@@ -111,7 +111,7 @@ export function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
           </button>
         ) : (
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            {saveError && <span className="text-sm text-accent-pink">{saveError}</span>}
+            {saveError && <span className="text-sm text-highlight">{saveError}</span>}
             <button
               onClick={() => setEditing(false)}
               className="text-xs text-text-subtle hover:text-text-base transition-colors"
@@ -202,7 +202,7 @@ export function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
                 type="date"
                 value={form.date}
                 onChange={(e) => setField("date", e.target.value)}
-                className="w-full [color-scheme:dark] field h-11"
+                className="w-full scheme-dark field h-11"
               />
             </div>
             <label className="flex items-center gap-2 mb-1.5 cursor-pointer">
@@ -210,7 +210,7 @@ export function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
                 type="checkbox"
                 checked={form.dateIsApproximate}
                 onChange={(e) => setField("dateIsApproximate", e.target.checked)}
-                className="accent-accent-lime"
+                className="accent-accent"
               />
               <span className="text-sm text-text-muted">Approximate</span>
             </label>
@@ -228,7 +228,7 @@ export function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
                   className={clsx(
                     "px-3 py-1.5 text-xs  transition-colors",
                     form.type === t
-                      ? "bg-accent-lime text-on-accent font-bold"
+                      ? "bg-accent text-on-accent font-bold"
                       : "bg-surface-2 text-text-muted hover:text-text-base",
                   )}
                 >
@@ -240,7 +240,7 @@ export function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
 
           {/* Venue with autocomplete */}
           <div className="flex gap-2">
-            <div className="flex-[2]">
+            <div className="flex-2">
               <label className="block mb-1 label">Venue name</label>
               <VenueAutocomplete
                 value={form.venueName}
@@ -279,7 +279,7 @@ export function ConcertMetaEditor({ concert }: { concert: ConcertDetail }) {
           {form.type === "concert" ? null : (
             <div>
               <label className="block mb-1 label">
-                Festival name <span className="text-accent-pink">*</span>
+                Festival name <span className="text-highlight">*</span>
               </label>
               <input
                 type="text"

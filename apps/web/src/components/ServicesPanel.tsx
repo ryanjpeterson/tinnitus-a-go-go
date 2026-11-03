@@ -82,8 +82,8 @@ export function ServicesPanel() {
         <div className="eyebrow">
           {isDev ? "Dev services" : "Services"}
         </div>
-        <div className={`ml-auto flex items-center gap-1.5 text-xs  ${apiUp ? "text-emerald-400" : apiChecking ? "text-text-subtle" : "text-accent-pink"}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${apiUp ? "bg-emerald-400" : apiChecking ? "bg-text-subtle animate-pulse" : "bg-accent-pink"}`} />
+        <div className={`ml-auto flex items-center gap-1.5 text-xs  ${apiUp ? "text-emerald-400" : apiChecking ? "text-text-subtle" : "text-highlight"}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${apiUp ? "bg-emerald-400" : apiChecking ? "bg-text-subtle animate-pulse" : "bg-highlight"}`} />
           {apiUp ? "API up" : apiChecking ? "checking…" : "API down"}
         </div>
       </div>
@@ -96,7 +96,7 @@ export function ServicesPanel() {
                 href={svc.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group h-full flex items-start gap-3 rounded border border-border bg-surface-2 px-3 py-2.5 hover:border-accent-lime transition-colors"
+                className="group h-full flex items-start gap-3 rounded border border-border bg-surface-2 px-3 py-2.5 hover:border-accent transition-colors"
               >
                 <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${svc.dot} opacity-70 group-hover:opacity-100`} />
                 <div className="min-w-0">

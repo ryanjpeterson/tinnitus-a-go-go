@@ -48,7 +48,7 @@ export function UploadIndicator() {
   if (jobs.length === 0) return null;
 
   return (
-    <div className="fixed right-4 z-[45] flex flex-col items-end gap-2 bottom-[var(--above-dock)] sm:right-6">
+    <div className="fixed right-4 z-45 flex flex-col items-end gap-2 bottom-(--above-dock) sm:right-6">
       {open && (
         <div className="w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-surface/95 shadow-2xl shadow-black/60 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
@@ -66,15 +66,15 @@ export function UploadIndicator() {
               <li key={j.id} className="flex items-center gap-3 px-4 py-2">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{j.file.name}</p>
-                  <Link to={`/shows/${j.concertId}`} onClick={() => setOpen(false)} className="block truncate text-xs text-text-subtle hover:text-accent-lime">{j.label}</Link>
+                  <Link to={`/shows/${j.concertId}`} onClick={() => setOpen(false)} className="block truncate text-xs text-text-subtle hover:text-accent">{j.label}</Link>
                   {j.status === "uploading" && (
                     <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface-2">
-                      <div className="h-full rounded-full bg-accent-lime transition-all" style={{ width: `${j.progress}%` }} />
+                      <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${j.progress}%` }} />
                     </div>
                   )}
                 </div>
                 <span className={clsx("shrink-0 text-xs font-semibold",
-                  j.status === "failed" ? "text-accent-pink" : j.status === "done" ? "text-accent-lime" : "text-text-muted")}>
+                  j.status === "failed" ? "text-highlight" : j.status === "done" ? "text-accent" : "text-text-muted")}>
                   {statusText(j, paused)}
                 </span>
               </li>
@@ -103,14 +103,14 @@ export function UploadIndicator() {
           <circle cx="28" cy="28" r={R} fill="none" stroke="currentColor" strokeWidth="4" className="text-white/10" />
           {/* Overall progress */}
           <circle cx="28" cy="28" r={R} fill="none" strokeWidth="4" strokeLinecap="round"
-            className={failed.length > 0 && active.length === 0 ? "stroke-accent-pink" : "stroke-accent-lime"}
+            className={failed.length > 0 && active.length === 0 ? "stroke-highlight" : "stroke-accent"}
             strokeDasharray={C} strokeDashoffset={C * (1 - overall)} style={{ transition: "stroke-dashoffset 300ms ease" }} />
         </svg>
         {/* The swirl while working */}
         {working && (
           <svg width="56" height="56" viewBox="0 0 56 56" className="absolute inset-0 animate-spin [animation-duration:1.2s]">
             <circle cx="28" cy="28" r={R - 7} fill="none" strokeWidth="2.5" strokeLinecap="round"
-              className="stroke-accent-lime/70" strokeDasharray={`${(R - 7) * 2.2} ${(R - 7) * 6}`} />
+              className="stroke-accent/70" strokeDasharray={`${(R - 7) * 2.2} ${(R - 7) * 6}`} />
           </svg>
         )}
         <span className="relative text-13 font-bold tabular-nums">
@@ -119,8 +119,8 @@ export function UploadIndicator() {
               ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
               : active.length)
             : failed.length > 0
-              ? <span className="text-accent-pink">!</span>
-              : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-accent-lime" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>}
+              ? <span className="text-highlight">!</span>
+              : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-accent" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>}
         </span>
       </button>
     </div>

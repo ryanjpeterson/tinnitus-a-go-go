@@ -75,7 +75,7 @@ function YearPicker({ years, current }: { years: YearReviewResponse["years"]; cu
           return (
             <Link key={y.year} to={`/year/${y.year}`} title={`${y.count} show${y.count === 1 ? "" : "s"}`}
               className={`h-9 rounded-full border px-3.5 text-sm font-semibold leading-9 transition-colors ${
-                active ? "border-accent-lime bg-accent-lime text-on-accent" : "border-border text-text-muted hover:border-text-subtle hover:text-text-base"
+                active ? "border-accent bg-accent text-on-accent" : "border-border text-text-muted hover:border-text-subtle hover:text-text-base"
               }`}>
               {y.year}
             </Link>
@@ -136,17 +136,17 @@ function FlyerWall({ shows }: { shows: YearReviewResponse["shows"] }) {
         <Link
           key={t.key}
           to={t.to}
-          className="group relative aspect-[3/4] overflow-hidden rounded-lg border border-border bg-surface-2 transition-colors hover:border-accent-lime"
+          className="group relative aspect-3/4 overflow-hidden rounded-lg border border-border bg-surface-2 transition-colors hover:border-accent"
           title={`${t.name} · ${fmtMonthDay(t.date)}`}
         >
           {t.flyerUrl ? (
             <img src={t.flyerUrl} alt={t.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
           ) : (
-            <div className={`absolute inset-0 flex items-center justify-center p-2 pb-6 text-center ${t.festival ? "bg-yellow-950/60" : "bg-lime-950/40"}`}>
-              <span className="line-clamp-4 break-words font-display text-sm leading-tight text-text-muted">{t.name}</span>
+            <div className={`absolute inset-0 flex items-center justify-center p-2 pb-6 text-center ${t.festival ? "bg-yellow-950/60" : "bg-accent-950/40"}`}>
+              <span className="line-clamp-4 wrap-break-word font-display text-sm leading-tight text-text-muted">{t.name}</span>
             </div>
           )}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-2 pb-1.5 pt-5">
+          <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/85 to-transparent px-2 pb-1.5 pt-5">
             <p className="truncate text-11 font-semibold leading-tight text-white/90">
               {fmtMonthDay(t.date)}
               {t.festival && <span className="text-yellow-300"> · {t.days > 1 ? `${t.days} days` : "festival"}</span>}
@@ -213,7 +213,7 @@ export function YearReviewPage() {
       <div className="space-y-4 pb-6 pt-6 sm:pb-8 sm:pt-10">
         <div>
           <p className="eyebrow mb-1 text-text-muted">Year in review{isCurrentYear ? " · so far" : ""}</p>
-          <h1 className="font-display text-7xl leading-[0.9] text-accent-lime sm:text-9xl">{year}</h1>
+          <h1 className="font-display text-7xl leading-[0.9] text-accent sm:text-9xl">{year}</h1>
         </div>
         {d.years.length > 1 && <YearPicker years={d.years} current={year} />}
         {d.totalShows > 0 && (
@@ -342,7 +342,7 @@ export function YearReviewPage() {
               <Link
                 key={a.artistId}
                 to={`/artists/${a.slug}`}
-                className="rounded-control border border-border bg-surface-2 px-3.5 py-2 text-sm font-medium text-text-muted transition-colors hover:border-accent-lime/50 hover:text-accent-lime"
+                className="rounded-control border border-border bg-surface-2 px-3.5 py-2 text-sm font-medium text-text-muted transition-colors hover:border-accent/50 hover:text-accent"
                 title={`First seen ${fmtMonthDay(a.firstSeen)}`}
               >
                 {a.name}
@@ -396,12 +396,12 @@ export function YearReviewPage() {
                       <span className="text-text-subtle">
                         {" · "}
                         {s.artistSlug ? (
-                          <Link to={`/artists/${s.artistSlug}`} className="hover:text-accent-lime transition-colors">{s.artistName}</Link>
+                          <Link to={`/artists/${s.artistSlug}`} className="hover:text-accent transition-colors">{s.artistName}</Link>
                         ) : s.artistName}
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 text-sm text-accent-lime">{s.count}×</span>
+                  <span className="shrink-0 text-sm text-accent">{s.count}×</span>
                 </li>
               ))}
             </ol>
@@ -430,7 +430,7 @@ function YearArrow({ to, dir }: { to: number | undefined; dir: "left" | "right" 
   if (to == null) return <span className={`${cls} border-border text-text-subtle opacity-30`}><Chevron dir={dir} /></span>;
   return (
     <Link to={`/year/${to}`} aria-label={String(to)} title={String(to)}
-      className={`${cls} border-border text-text-muted hover:border-accent-lime hover:text-accent-lime`}>
+      className={`${cls} border-border text-text-muted hover:border-accent hover:text-accent`}>
       <Chevron dir={dir} />
     </Link>
   );

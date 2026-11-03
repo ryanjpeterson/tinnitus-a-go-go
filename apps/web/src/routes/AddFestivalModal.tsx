@@ -15,7 +15,7 @@ import { VenueAutocomplete } from "@/components/VenueAutocomplete";
 const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
   { value: "attending",  label: "Attending",  active: "border-yellow-600  bg-yellow-950  text-yellow-400"  },
   { value: "interested", label: "Interested", active: "border-purple-700  bg-purple-950  text-purple-400"  },
-  { value: "attended",   label: "Attended",   active: "border-lime-700    bg-lime-950    text-accent-lime"  },
+  { value: "attended",   label: "Attended",   active: "border-accent-700    bg-accent-950    text-accent"  },
   { value: "missed",     label: "Missed",     active: "border-red-700     bg-red-950     text-red-400"      },
 ];
 
@@ -223,7 +223,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                 required
                 value={form.startDate}
                 onChange={(e) => setField("startDate", e.target.value)}
-                className="w-full [color-scheme:dark] field h-11"
+                className="w-full scheme-dark field h-11"
               />
             </div>
             <div className="flex-1">
@@ -233,7 +233,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                 value={form.endDate}
                 min={form.startDate || undefined}
                 onChange={(e) => setField("endDate", e.target.value)}
-                className="w-full [color-scheme:dark] field h-11"
+                className="w-full scheme-dark field h-11"
               />
             </div>
           </div>
@@ -242,7 +242,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
           <div>
             <label className="block mb-1 label">Venue</label>
             <div className="flex gap-2">
-              <div className="flex-[2]">
+              <div className="flex-2">
                 <VenueAutocomplete
                   value={form.venueName}
                   onChange={(v) => setField("venueName", v)}
@@ -287,7 +287,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                     "min-w-[72px] px-3 py-1 rounded border text-xs  transition-colors text-center",
                     form.status === s.value
                       ? s.active
-                      : "border-border text-text-muted hover:border-accent-lime",
+                      : "border-border text-text-muted hover:border-accent",
                   )}
                 >
                   {s.label}
@@ -319,7 +319,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                     type="date"
                     value={a.performanceDate}
                     onChange={(e) => updateArtist(i, { performanceDate: e.target.value })}
-                    className="w-32 [color-scheme:dark] field h-11"
+                    className="w-32 scheme-dark field h-11"
                   />
                   <input
                     type="text"
@@ -331,7 +331,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                   <button
                     type="button"
                     onClick={() => removeArtist(i)}
-                    className="w-6 h-6 flex items-center justify-center text-text-subtle hover:text-accent-pink transition-colors shrink-0"
+                    className="w-6 h-6 flex items-center justify-center text-text-subtle hover:text-highlight transition-colors shrink-0"
                   >×</button>
                 </div>
               ))}
@@ -363,7 +363,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                   <div className="flex items-center gap-2">
                     <label className={clsx(
                       "text-xs  px-3 py-1.5 rounded border cursor-pointer transition-colors shrink-0",
-                      "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
+                      "border-border text-text-muted hover:border-accent hover:text-accent",
                       flyerUrl && "opacity-50 cursor-not-allowed",
                     )}>
                       {flyerFile ? "Change" : "Choose image"}
@@ -387,8 +387,8 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                       className={clsx(
                         "text-xs  px-3 py-1.5 rounded border transition-colors shrink-0",
                         showFlyerUrlInput
-                          ? "border-accent-lime text-accent-lime"
-                          : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
+                          ? "border-accent text-accent"
+                          : "border-border text-text-muted hover:border-accent hover:text-accent",
                         flyerFile && "opacity-50 cursor-not-allowed",
                       )}
                     >
@@ -407,7 +407,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
                             setShowFlyerUrlInput(false);
                             if (flyerFileRef.current) flyerFileRef.current.value = "";
                           }}
-                          className="shrink-0 link-action hover:text-accent-pink"
+                          className="shrink-0 link-action hover:text-highlight"
                         >×</button>
                       </div>
                     )}
@@ -480,7 +480,7 @@ export function AddFestivalModal({ onClose }: { onClose: () => void }) {
           )}
 
           {/* Error */}
-          {error && <p className="text-sm text-accent-pink">{error}</p>}
+          {error && <p className="text-sm text-highlight">{error}</p>}
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-1">

@@ -22,7 +22,7 @@ import { Chevron, DateBlock, EmptyState, EventRow, Hero, Loading, PillTabs, Sele
 import { ArtistAutocomplete } from "@/components/ArtistAutocomplete";
 
 const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
-  { value: "attended",   label: "Attended",   active: "border-lime-700    bg-lime-950    text-accent-lime"  },
+  { value: "attended",   label: "Attended",   active: "border-accent-700    bg-accent-950    text-accent"  },
   { value: "attending",  label: "Attending",  active: "border-yellow-600  bg-yellow-950  text-yellow-400"  },
   { value: "interested", label: "Interested", active: "border-purple-700  bg-purple-950  text-purple-400"  },
   { value: "missed",     label: "Missed",     active: "border-red-700     bg-red-950     text-red-400"      },
@@ -342,7 +342,7 @@ export function FestivalDetailPage() {
             )}
             {isAdmin && <Button variant="ghost" disabled={flyerBusy} onClick={() => setShowFlyerUrlInput((v) => !v)}>Flyer URL</Button>}
             {isAdmin && festival.flyerUrl && (
-              <Button variant="ghost" className="text-text-muted hover:text-accent-pink" disabled={flyerBusy} onClick={handleDeleteFlyer}>Remove flyer</Button>
+              <Button variant="ghost" className="text-text-muted hover:text-highlight" disabled={flyerBusy} onClick={handleDeleteFlyer}>Remove flyer</Button>
             )}
             {festival.sourceUrl && (
               <a href={festival.sourceUrl} target="_blank" rel="noopener noreferrer">
@@ -369,7 +369,7 @@ export function FestivalDetailPage() {
         {dateRange && <p className="font-semibold text-text-base">{dateRange}</p>}
         {festival.venue && (
           <p>
-            <Link to={`/venues/${festival.venue.slug}`} className="hover:text-accent-lime">{festival.venue.name}</Link>
+            <Link to={`/venues/${festival.venue.slug}`} className="hover:text-accent">{festival.venue.name}</Link>
             {festival.venue.city && <span className="text-text-subtle"> · {festival.venue.city}{festival.venue.region && `, ${festival.venue.region}`}</span>}
           </p>
         )}
@@ -388,7 +388,7 @@ export function FestivalDetailPage() {
               </Button>
             </div>
           )}
-          {flyerError && <p className="text-sm text-accent-pink">{flyerError}</p>}
+          {flyerError && <p className="text-sm text-highlight">{flyerError}</p>}
         </div>
       )}
 
@@ -410,15 +410,15 @@ export function FestivalDetailPage() {
             <label className="block">
               <span className="mb-1.5 block text-sm font-semibold text-text-muted">Start date</span>
               <input type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)}
-                className="field h-12 w-full [color-scheme:dark] sm:h-11" />
+                className="field h-12 w-full scheme-dark sm:h-11" />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-semibold text-text-muted">End date</span>
               <input type="date" value={editEndDate} min={editStartDate || undefined} onChange={(e) => setEditEndDate(e.target.value)}
-                className="field h-12 w-full [color-scheme:dark] sm:h-11" />
+                className="field h-12 w-full scheme-dark sm:h-11" />
             </label>
           </div>
-          {saveError && <p className="text-sm text-accent-pink">{saveError}</p>}
+          {saveError && <p className="text-sm text-highlight">{saveError}</p>}
           <div className="flex gap-2">
             <Button onClick={() => void saveEdit()} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
             <Button variant="secondary" onClick={cancelEdit} disabled={saving}>Cancel</Button>
@@ -457,7 +457,7 @@ export function FestivalDetailPage() {
                   onClick={() => void setEveryDay(st.value)}
                   className={clsx(
                     "h-10 min-w-[96px] rounded-control border px-4 text-sm font-semibold transition-colors disabled:opacity-60",
-                    all ? st.active : "border-border text-text-muted hover:border-accent-lime",
+                    all ? st.active : "border-border text-text-muted hover:border-accent",
                   )}
                 >
                   {savingAttendance === st.value ? "Saving…" : st.label}
@@ -507,7 +507,7 @@ export function FestivalDetailPage() {
                   type="date"
                   value={set.performanceDate}
                   onChange={(e) => updateLineupSet(i, { performanceDate: e.target.value })}
-                  className="w-36 [color-scheme:dark] field h-11"
+                  className="w-36 scheme-dark field h-11"
                 />
                 <input
                   type="text"
@@ -518,7 +518,7 @@ export function FestivalDetailPage() {
                 />
                 <button
                   onClick={() => removeLineupSet(i)}
-                  className="w-6 h-6 flex items-center justify-center text-text-subtle hover:text-accent-pink transition-colors shrink-0"
+                  className="w-6 h-6 flex items-center justify-center text-text-subtle hover:text-highlight transition-colors shrink-0"
                 >×</button>
               </div>
             ))}
@@ -567,8 +567,8 @@ export function FestivalDetailPage() {
                       className={clsx(
                         "inline-flex items-center gap-2 rounded-control border px-3.5 py-2 text-sm font-medium transition-all scroll-mt-24",
                         highlightedSet === `set-${set.artist.slug}`
-                          ? "border-accent-lime bg-lime-950 text-accent-lime ring-2 ring-accent-lime/50"
-                          : "border-border bg-surface-2 text-text-muted hover:border-accent-lime hover:text-accent-lime",
+                          ? "border-accent bg-accent-950 text-accent ring-2 ring-accent/50"
+                          : "border-border bg-surface-2 text-text-muted hover:border-accent hover:text-accent",
                       )}
                     >
                       {set.artist.name}
@@ -597,8 +597,8 @@ export function FestivalDetailPage() {
                         className={clsx(
                           "rounded-control border px-3.5 py-2 text-sm font-medium transition-all scroll-mt-24",
                           highlightedSet === `set-${set.artist.slug}`
-                            ? "border-accent-lime bg-lime-950 text-accent-lime ring-2 ring-accent-lime/50"
-                            : "border-border bg-surface-2 text-text-muted hover:border-accent-lime hover:text-accent-lime",
+                            ? "border-accent bg-accent-950 text-accent ring-2 ring-accent/50"
+                            : "border-border bg-surface-2 text-text-muted hover:border-accent hover:text-accent",
                         )}
                       >
                         {set.artist.name}
@@ -612,7 +612,7 @@ export function FestivalDetailPage() {
               };
               const removeButton = (show: (typeof shows)[number]) => isAdmin && (
                 <button onClick={() => void removeShow(show.id)}
-                  className="shrink-0 rounded-control px-2.5 py-1 text-xs font-semibold text-text-subtle hover:bg-surface-2 hover:text-accent-pink">
+                  className="shrink-0 rounded-control px-2.5 py-1 text-xs font-semibold text-text-subtle hover:bg-surface-2 hover:text-highlight">
                   Remove
                 </button>
               );
@@ -634,9 +634,9 @@ export function FestivalDetailPage() {
                           <div key={show.id}>
                             <div className="flex items-center gap-2 pl-4 pr-2 pt-3">
                               <Link to={`/shows/${show.slug}`} className="group flex min-w-0 flex-1 items-center gap-2">
-                                <span className="truncate text-sm font-semibold group-hover:text-accent-lime">{show.artists[0] ?? "Set"}</span>
+                                <span className="truncate text-sm font-semibold group-hover:text-accent">{show.artists[0] ?? "Set"}</span>
                                 {show.status && <StatusBadge status={show.status} />}
-                                <Chevron className="text-text-subtle group-hover:text-accent-lime" />
+                                <Chevron className="text-text-subtle group-hover:text-accent" />
                               </Link>
                               {removeButton(show)}
                             </div>
@@ -651,14 +651,14 @@ export function FestivalDetailPage() {
                       <div className="border-b border-border">
                         <Link to={`/shows/${shows[0]!.slug}`} className="group flex min-h-[64px] items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2/70">
                           <DateBlock date={date} />
-                          <span className="flex-1 text-15 font-semibold group-hover:text-accent-lime">
+                          <span className="flex-1 text-15 font-semibold group-hover:text-accent">
                             Day {dayNumber(date, dayIdx)}
                             <span className="block text-sm font-normal text-text-subtle">Open this day</span>
                           </span>
                           {shows[0]!.status
                             ? <StatusBadge status={shows[0]!.status} />
                             : <span className="text-sm text-text-subtle">{plural(shows[0]!.artists.length, "artist")}</span>}
-                          <Chevron className="text-text-subtle group-hover:text-accent-lime" />
+                          <Chevron className="text-text-subtle group-hover:text-accent" />
                         </Link>
                       </div>
                       {chips(shows[0]!.id, removeButton(shows[0]!))}
@@ -687,12 +687,12 @@ export function FestivalDetailPage() {
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
             {otherYears.map((o) => (
               <Link key={o.slug} to={`/festivals/${o.slug}`} className="group">
-                <div className="aspect-[3/4] overflow-hidden rounded-xl border border-border bg-surface-2 transition-colors group-hover:border-accent-lime">
+                <div className="aspect-3/4 overflow-hidden rounded-xl border border-border bg-surface-2 transition-colors group-hover:border-accent">
                   {o.flyerUrl
                     ? <img src={o.flyerUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
                     : <div className="flex h-full items-center justify-center font-display text-2xl text-text-subtle">{o.year ?? "?"}</div>}
                 </div>
-                <p className="mt-1.5 truncate text-sm font-semibold group-hover:text-accent-lime">{o.year ?? o.name}</p>
+                <p className="mt-1.5 truncate text-sm font-semibold group-hover:text-accent">{o.year ?? o.name}</p>
               </Link>
             ))}
           </div>
@@ -704,7 +704,7 @@ export function FestivalDetailPage() {
         <div className="border-t border-border pt-6 mt-8">
           <button
             onClick={() => void handleDeleteFestival()}
-            className="text-sm font-semibold text-text-subtle hover:text-accent-pink transition-colors"
+            className="text-sm font-semibold text-text-subtle hover:text-highlight transition-colors"
           >
             Ungroup festival
           </button>
@@ -779,7 +779,7 @@ function AddShowsSheet({ festival, onClose }: { festival: FestivalDetail; onClos
             ))}
           </div>
         )}
-        {error && <p className="text-sm text-accent-pink">{error}</p>}
+        {error && <p className="text-sm text-highlight">{error}</p>}
         <Button className="w-full" disabled={busy || picked.size === 0} onClick={() => void add()}>
           {busy ? "Adding…" : picked.size === 0 ? "Tick shows to add" : `Add ${picked.size} show${picked.size === 1 ? "" : "s"}`}
         </Button>

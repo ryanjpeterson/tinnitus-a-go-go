@@ -1,7 +1,7 @@
 {
-  "version": "0.13.0",
-  "commit": "d8f8660",
-  "note": "jimbo.ui 0.13.0 (d8f8660).",
+  "version": "0.14.0",
+  "commit": "0b0efd7",
+  "note": "jimbo.ui 0.14.0 (0b0efd7).",
   "webRoot": "apps/web",
   "auth": "admin",
   "reference": {
@@ -14,7 +14,11 @@
     "web/src/routes/config/StyleGuidePanel.tsx": "apps/web/src/routes/config/StyleGuidePanel.tsx",
     "web/src/components/MapView.tsx": "apps/web/src/components/MapView.tsx (exact copy)",
     "web/src/routes/config/UpdatesPanel.tsx": "apps/web/src/routes/config/UpdatesPanel.tsx (exact copy)",
-    "web/src/lib/useUrlState.ts": "apps/web/src/lib/useUrlState.ts (exact copy)"
+    "web/src/lib/useUrlState.ts": "apps/web/src/lib/useUrlState.ts (exact copy)",
+    "web/src/components/ui/forms.tsx": "apps/web/src/components/ui/forms.tsx (exact copy)",
+    "web/src/components/ui/overlays.tsx": "apps/web/src/components/ui/overlays.tsx (exact copy)",
+    "web/src/components/ui/feedback.tsx": "apps/web/src/components/ui/feedback.tsx (exact copy)",
+    "web/src/components/ui/data.tsx": "apps/web/src/components/ui/data.tsx (exact copy)"
   },
   "registry": {
     "registered": "2026-10-30",
@@ -68,7 +72,8 @@
       "select-mode",
       "map-view",
       "jimbo-config",
-      "url-state"
+      "url-state",
+      "toast"
     ],
     "local": [
       {

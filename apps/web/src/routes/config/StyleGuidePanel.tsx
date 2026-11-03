@@ -14,9 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/Wordmark";
 import { ColorPicker } from "@/components/ColorPicker";
 import {
-  Autocomplete, FloatingBar, LinkChips, ToggleGrid, Badge, BarChart, DateBlock, KeyValue, LayoutSwitch, SwitchRow, EmptyState, EntityRow, EventRow, LinkCard, List, ListGroupLabel, Loading, MediaCard, Pager,
-  PillTabs, RankedList, SearchField, Section, SelectField, Sheet, Sparkline, StatGrid, StatTile, StatusBadge, Tabs, ThemeDots, TrendChart, useListLayout, VenueViewSwitch,
+  Autocomplete, Chevron, FloatingBar, LinkChips, ToggleGrid, Badge, BarChart, DateBlock, KeyValue, LayoutSwitch, SwitchRow, EmptyState, EntityRow, EventRow, LinkCard, List, ListGroupLabel, Loading, MediaCard, Pager,
+  PillTabs, RankedList, SearchField, Section, SelectField, Sheet, Sparkline, StatGrid, StatTile, StatusBadge, Tabs, ThemeDots, TrendChart, useListLayout, VenueViewSwitch, type Tone,
 } from "@/components/ui/kit";
+import { DateField, FileDrop, TextArea, TextField } from "@/components/ui/forms";
+import { Menu, Popover, Tooltip } from "@/components/ui/overlays";
+import { OfflineBanner, ProgressBar, Stepper, toast, UpdateBanner, useConfirm } from "@/components/ui/feedback";
+import { Accordion, DataTable, type Column, type TableSort } from "@/components/ui/data";
 import { FONTS, MOTIFS, THEME_KEYS, themeHex } from "@/lib/theme";
 import { useBrand } from "@/lib/useBrand";
 import { useUrlState } from "@/lib/useUrlState";
@@ -38,7 +42,7 @@ const TOKENS: { name: string; use: string }[] = [
   { name: "accent-dark", use: "Darker shade (depth, shadows)" },
   { name: "on-accent", use: "Text on accent fills" },
   { name: "accent-950", use: "Accent wash (done chip)" },
-  { name: "accent-700", use: "Accent outline" },
+  { name: "accent-700", use: "Accent outline-solid" },
   { name: "highlight", use: "Dates, badges, alerts" },
   { name: "on-highlight", use: "Text on highlight fills" },
   { name: "highlight-dark", use: "Darker highlight" },
@@ -56,6 +60,10 @@ const STATUSES = ["attended", "attending", "interested", "missed", "cancelled"] 
 const SECTIONS = [
   { value: "brand", label: "Brand and type" },
   { value: "controls", label: "Controls" },
+  { value: "forms", label: "Forms" },
+  { value: "overlays", label: "Menus and overlays" },
+  { value: "feedback", label: "Feedback" },
+  { value: "data", label: "Tables and steps" },
   { value: "numbers", label: "Numbers and charts" },
   { value: "lists", label: "Lists" },
   { value: "states", label: "States" },
@@ -347,6 +355,11 @@ export function StyleGuidePanel({ more = [] }: { more?: { value: string; label: 
         <Pager page={page} totalPages={5} total={120} pageSize={24} onPage={setPage} />
       </Block>
 
+      <FormBlocks />
+      <OverlayBlocks />
+      <FeedbackBlocks />
+      <DataBlocks />
+
       {extra && <section className="space-y-3">{extra.content}</section>}
 
       {sheet && (
@@ -361,3 +374,200 @@ export function StyleGuidePanel({ more = [] }: { more?: { value: string; label: 
     </Showing.Provider>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Forms, overlays, feedback and data (components/ui/forms, overlays, feedback, data)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FormBlocks() {
+  const [name, setName] = useState("Studio B");
+  const [email, setEmail] = useState("someone@");
+  const [amount, setAmount] = useState("24");
+  const [notes, setNotes] = useState("");
+  const [date, setDate] = useState("2026-11-14");
+  const [time, setTime] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const emailError = email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? "Add the part after the @, like example.com" : undefined;
+  return (
+    <>
+      <Block section="forms" title="Text fields" note="A label above, a hint or an error under. Errors are inline in the highlight colour, say what to do, and keep what was typed.">
+        <div className="card grid gap-4 p-5 sm:grid-cols-2">
+          <TextField label="TextField" value={name} onChange={setName} hint="A hint under the field" />
+          <TextField label="With an error" type="email" value={email} onChange={setEmail} error={emailError} autoComplete="off" />
+          <TextField label="Prefix and suffix" value={amount} onChange={setAmount} inputMode="decimal" prefix="$" optional
+            suffix={<span className="pr-3 text-sm text-text-subtle">per month</span>} />
+          <TextArea label="TextArea" value={notes} onChange={setNotes} maxLength={120} placeholder="Grows as you type; counts down near the limit" className="sm:row-span-2" />
+        </div>
+      </Block>
+      <Block section="forms" title="Dates and times" note="DateField uses the platform's own picker, in the page's light or dark scheme.">
+        <div className="card grid gap-4 p-5 sm:grid-cols-2">
+          <DateField label="DateField" value={date} onChange={setDate} />
+          <DateField label="Time" type="time" value={time} onChange={setTime} optional />
+        </div>
+      </Block>
+      <Block section="forms" title="FileDrop" note="Tap to pick, or drop files on it. Wrong types and files over the limit are turned away with a reason.">
+        <div className="card p-5">
+          <FileDrop label="Attachments" files={files} onChange={setFiles} multiple accept="image/*,.pdf,.csv" maxSize={5 * 1024 * 1024} hint="Images, PDF or CSV, up to 5 MB each" />
+        </div>
+      </Block>
+    </>
+  );
+}
+
+const Icon = ({ d }: { d: string }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>
+);
+
+function OverlayBlocks() {
+  const [confirm, confirmSheet] = useConfirm();
+  const [sizes, setSizes] = useState<string[]>(["M"]);
+  const remove = async () => {
+    if (await confirm({ title: "Delete this list?", body: "Its items stay in your library; only the list goes.", confirmLabel: "Delete list", danger: true })) {
+      toast({ title: "List deleted", action: { label: "Undo", onClick: () => toast("List restored") } });
+    }
+  };
+  return (
+    <>
+      <Block section="overlays" title="Menu" note="Actions on one thing, from the ⋯ button or any trigger. Arrow keys, Home / End and a letter move; destructive ones go last, in the highlight colour, and confirm.">
+        <div className="card divide-etched overflow-hidden">
+          <div className="flex min-h-[64px] items-center gap-3 py-2 pl-4 pr-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-15 font-semibold">A row with a Menu</p>
+              <p className="text-sm text-text-muted">The ⋯ MoreButton opens it</p>
+            </div>
+            <Menu label="List actions" items={[
+              { label: "Rename", icon: <Icon d="M4 20h4L19 9l-4-4L4 16v4z" />, onSelect: () => toast("Rename picked") },
+              { label: "Duplicate", icon: <Icon d="M8 8h11v11H8zM5 16V5h11" />, hint: "⌘D", onSelect: () => toast("Duplicated") },
+              { label: "Archive", icon: <Icon d="M4 7h16M5 7v12h14V7M10 11h4" />, disabled: true, onSelect: () => {} },
+              "divider",
+              { label: "Delete", icon: <Icon d="M5 7h14M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />, danger: true, onSelect: () => void remove() },
+            ]} />
+          </div>
+          <div className="flex min-h-[64px] items-center gap-3 px-4 py-2">
+            <p className="min-w-0 flex-1 text-15 font-semibold">With its own trigger</p>
+            <Menu label="Sort" align="end" trigger={(p) => <button type="button" {...p} className="btn btn-secondary btn-sm">Sort <Chevron dir="down" /></button>}
+              items={[{ label: "Newest first", onSelect: () => toast("Newest first") }, { label: "Oldest first", onSelect: () => toast("Oldest first") }, { label: "A to Z", onSelect: () => toast("A to Z") }]} />
+          </div>
+        </div>
+      </Block>
+      <Block section="overlays" title="Popover and Tooltip" note="Popover: a few controls by their button, open while you use them. Tooltip: a label for an icon button on hover or keyboard focus — never the only place something's said.">
+        <div className="card flex flex-wrap items-center gap-3 p-5">
+          <Popover label="Sizes" trigger={(p) => <button type="button" {...p} className="btn btn-secondary">Sizes · {sizes.length || "any"}</button>}>
+            {(close) => (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-text-muted">Show sizes</p>
+                <ToggleGrid columns={4} options={["S", "M", "L", "XL"].map((v) => ({ value: v, label: v }))} selected={sizes}
+                  onToggle={(v) => setSizes((xs) => (xs.includes(v) ? xs.filter((x) => x !== v) : [...xs, v]))} />
+                <Button size="sm" className="w-full" onClick={close}>Done</Button>
+              </div>
+            )}
+          </Popover>
+          {[["Share", "M4 12v7h16v-7M12 3v13M7.5 7.5 12 3l4.5 4.5"], ["Download", "M4 15v4h16v-4M12 3v12M7.5 10.5 12 15l4.5-4.5"], ["Pin", "M9 4h6l-1 6 4 4H6l4-4zM12 14v6"]].map(([label, d]) => (
+            <Tooltip key={label} text={label!}>
+              <button type="button" aria-label={label} onClick={() => toast(`${label} picked`)}
+                className="glass flex h-11 w-11 items-center justify-center rounded-full text-text-muted transition-colors hover:text-text-base"><Icon d={d!} /></button>
+            </Tooltip>
+          ))}
+          <p className="meta">Hover or tab to the icons.</p>
+        </div>
+      </Block>
+      <Block section="overlays" title="CommandPalette" note="⌘K or Ctrl+K anywhere in the showcase: go to a page or run an action by typing. A top-bar button opens it on phones.">
+        <div className="card flex flex-wrap items-center gap-3 p-5">
+          <Button variant="secondary" onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}>Open the palette</Button>
+          <kbd className="rounded-md border border-border px-1.5 py-0.5 font-mono text-xs text-text-subtle">⌘K</kbd>
+        </div>
+      </Block>
+      {confirmSheet}
+    </>
+  );
+}
+
+function FeedbackBlocks() {
+  const [confirm, confirmSheet] = useConfirm();
+  const [step, setStep] = useState(1);
+  const [progress, setProgress] = useState(64);
+  return (
+    <>
+      <Block section="feedback" title="Toasts" note="A short note after an action, above the dock. Done and info go after a few seconds (longer with an action); errors stay until closed. Three at most.">
+        <div className="card flex flex-wrap gap-2 p-5">
+          <Button variant="secondary" onClick={() => toast("Saved")}>Done</Button>
+          <Button variant="secondary" onClick={() => toast({ title: "3 items moved", body: "To the archive.", action: { label: "Undo", onClick: () => toast("Moved back") } })}>With Undo</Button>
+          <Button variant="secondary" onClick={() => toast({ title: "Syncing in the background", tone: "info" })}>Info</Button>
+          <Button variant="secondary" onClick={() => toast({ title: "Couldn't save", body: "The server didn't answer. Your changes are kept here.", tone: "error", action: { label: "Retry", onClick: () => toast("Saved") } })}>Error</Button>
+        </div>
+      </Block>
+      <Block section="feedback" title="ConfirmSheet" note="Before something destructive or surprising: the question, what survives, and the action in its own words. useConfirm() makes it one await.">
+        <div className="card flex flex-wrap gap-2 p-5">
+          <Button variant="secondary" onClick={async () => { if (await confirm({ title: "Remove 3 members?", body: "They lose access now. Their past entries stay.", confirmLabel: "Remove members", danger: true })) toast("Members removed"); }}>Destructive</Button>
+          <Button variant="secondary" onClick={async () => { if (await confirm({ title: "Publish the schedule?", body: "Everyone in the group gets a notification.", confirmLabel: "Publish" })) toast("Published"); }}>Surprising</Button>
+        </div>
+      </Block>
+      <Block section="feedback" title="ProgressBar" note="How far along a job of known length is; leave out the value while the length is unknown.">
+        <div className="card space-y-5 p-5">
+          <ProgressBar label="Uploading 12 photos" value={progress} />
+          <ProgressBar label="Storage" value={3.2} max={5} tone="support" format={(v, m) => `${v} of ${m} GB`} />
+          <ProgressBar label="Importing" />
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setProgress((p) => Math.max(0, p - 16))}>−</Button>
+            <Button size="sm" variant="secondary" onClick={() => setProgress((p) => Math.min(100, p + 16))}>+</Button>
+          </div>
+        </div>
+      </Block>
+      <Block section="feedback" title="Banners" note="Slim bars that stick under the top bar, first thing on the page: offline (fixed yellow, with changes waiting) or a new version ready.">
+        <div className="card space-y-3 overflow-hidden p-5 [&_[role=status]]:static [&_[role=status]]:m-0 [&_[role=status]]:rounded-xl">
+          <OfflineBanner forceOffline pending={2} />
+          <UpdateBanner onReload={() => toast("Reloading…")} onDismiss={() => toast("Asks again next launch")} />
+        </div>
+      </Block>
+      <Block section="data" title="Stepper" note="Where you are in two to five steps. Done steps can be revisited; phones show the current step's name under the circles.">
+        <div className="card space-y-5 p-5">
+          <Stepper steps={["Account", "Details", "Invite", "Review"]} current={step} onStep={setStep} />
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" disabled={step === 0} onClick={() => setStep((s) => s - 1)}>Back</Button>
+            <Button size="sm" disabled={step === 3} onClick={() => setStep((s) => s + 1)}>Next</Button>
+          </div>
+        </div>
+      </Block>
+      {confirmSheet}
+    </>
+  );
+}
+
+type Run = { id: string; name: string; status: Tone; label: string; when: string; minutes: number; items: number };
+const RUNS: Run[] = [
+  { id: "1", name: "Nightly import", status: "accent", label: "Done", when: "2026-11-02", minutes: 14, items: 1284 },
+  { id: "2", name: "Thumbnails", status: "yellow", label: "Running", when: "2026-11-03", minutes: 6, items: 312 },
+  { id: "3", name: "Weekly report", status: "accent", label: "Done", when: "2026-10-30", minutes: 3, items: 48 },
+  { id: "4", name: "Cleanup", status: "red", label: "Failed", when: "2026-11-01", minutes: 1, items: 0 },
+  { id: "5", name: "Backfill", status: "muted", label: "Cancelled", when: "2026-10-28", minutes: 22, items: 5110 },
+];
+const RUN_COLUMNS: Column<Run>[] = [
+  { key: "name", label: "Job", primary: true, cell: (r) => r.name, sortValue: (r) => r.name },
+  { key: "status", label: "Status", cell: (r) => <Badge tone={r.status} dot live={r.label === "Running"}>{r.label}</Badge>, sortValue: (r) => r.label },
+  { key: "when", label: "Started", cell: (r) => new Date(`${r.when}T00:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" }), sortValue: (r) => r.when },
+  { key: "minutes", label: "Took", numeric: true, cell: (r) => `${r.minutes} min`, sortValue: (r) => r.minutes, hideOnPhone: true },
+  { key: "items", label: "Items", numeric: true, cell: (r) => r.items.toLocaleString(), sortValue: (r) => r.items },
+];
+
+function DataBlocks() {
+  // The sort is in the URL (?sort=items-desc), like any view state.
+  const [rawSort, setRawSort] = useUrlState("sort", "when-desc");
+  const [key, dir] = rawSort.split("-") as [string, "asc" | "desc"];
+  const sort: TableSort = { key, dir: dir === "asc" ? "asc" : "desc" };
+  return (
+    <>
+      <Block section="data" title="DataTable" note="A sortable table on desktop; a row per record on phones, the primary column as its title. The sort lives in the URL.">
+        <DataTable caption="Recent jobs" columns={RUN_COLUMNS} rows={RUNS} rowKey={(r) => r.id} rowTo={() => "/jimbo-ui?tab=style&section=data"}
+          sort={sort} onSort={(s) => setRawSort(`${s.key}-${s.dir}`)} />
+      </Block>
+      <Block section="data" title="Accordion" note="Sections that fold — FAQs, advanced settings. One open at a time unless multiple. Native details, so the keyboard and find-in-page just work.">
+        <Accordion defaultOpen="a" items={[
+          { id: "a", title: "What does it keep?", sub: "One open at a time", content: "Only what you add. Nothing leaves this device unless you turn on sync." },
+          { id: "b", title: "Can I move my data?", content: "Export everything as a file from Settings, and import it in another copy of the app." },
+          { id: "c", title: "Advanced", sub: "Most people won't need these", content: "Debug logging, the cache size and the server address." },
+        ]} />
+      </Block>
+    </>
+  );
+}
+

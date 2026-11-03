@@ -24,7 +24,7 @@ export function TicketsPage() {
         <EmptyState title="No ticket stubs yet."
           body="On a show's photos, tap 🎟 on a picture of your ticket to add it here." />
       ) : (
-        <div className="columns-2 gap-3 sm:columns-3 lg:columns-4 [&>*]:mb-3">
+        <div className="columns-2 gap-3 sm:columns-3 lg:columns-4 *:mb-3">
           {tickets.map((t) => (
             <figure key={t.id} className="card break-inside-avoid overflow-hidden">
               <button onClick={() => setOpen(t.id)} className="block w-full" aria-label="View full size">
@@ -33,7 +33,7 @@ export function TicketsPage() {
                   style={t.width && t.height ? { aspectRatio: `${t.width} / ${t.height}` } : undefined} />
               </button>
               <figcaption className="p-3">
-                <Link to={`/shows/${t.show.slug}`} className="line-clamp-2 text-sm font-semibold hover:text-accent-lime">
+                <Link to={`/shows/${t.show.slug}`} className="line-clamp-2 text-sm font-semibold hover:text-accent">
                   {t.show.title ?? "Show"}
                 </Link>
                 <p className="mt-0.5 truncate text-xs text-text-subtle">{[fmtDate(t.show.date), t.show.venue].filter(Boolean).join(" · ")}</p>

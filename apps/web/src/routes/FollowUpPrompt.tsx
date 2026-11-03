@@ -64,7 +64,7 @@ function ConcertRow({
         </div>
         <Link
           to={`/shows/${concert.id}`}
-          className="block mt-0.5 text-sm font-display tracking-wide text-text-base hover:text-accent-lime transition-colors truncate"
+          className="block mt-0.5 text-sm font-display tracking-wide text-text-base hover:text-accent transition-colors truncate"
         >
           {label}
         </Link>

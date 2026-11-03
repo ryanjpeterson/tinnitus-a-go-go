@@ -6,7 +6,7 @@ import { api, type ConcertDetail } from "@/lib/api";
 import type { AttendanceStatus } from "@tagg/shared";
 
 const STATUS_CHIP: Record<AttendanceStatus, { label: string; classes: string }> = {
-  attended:  { label: "Attended",  classes: "bg-lime-950 text-accent-lime border-lime-700"    },
+  attended:  { label: "Attended",  classes: "bg-accent-950 text-accent border-accent-700"    },
   attending: { label: "Attending", classes: "bg-yellow-950 text-yellow-400 border-yellow-700" },
   interested:{ label: "Interested",classes: "bg-purple-950 text-purple-400 border-purple-800" },
   missed:    { label: "Missed",    classes: "bg-red-950 text-red-400 border-red-800"          },
@@ -84,7 +84,7 @@ export function AttendanceEditor({ concertId, attendance }: { concertId: string;
         )}
 
         {patch.isError && (
-          <p className="text-sm text-accent-pink">
+          <p className="text-sm text-highlight">
             {patch.error instanceof Error ? patch.error.message : "Failed to save."}
           </p>
         )}
@@ -95,7 +95,7 @@ export function AttendanceEditor({ concertId, attendance }: { concertId: string;
           className={clsx(
             "text-xs  px-4 py-1.5 rounded font-bold transition-opacity disabled:opacity-50",
             hasChanges
-              ? "bg-accent-lime text-on-accent hover:opacity-90"
+              ? "bg-accent text-on-accent hover:opacity-90"
               : "bg-surface-2 text-text-muted"
           )}
         >

@@ -58,8 +58,8 @@ function VenueEditForm({ venue, onCancel, onSaved }: VenueEditFormProps) {
   });
 
   return (
-    <div className="rounded-lg border border-accent-lime/30 bg-surface p-5 mb-6">
-      <h2 className="font-display text-sm text-accent-lime tracking-widest mb-4">Edit Venue</h2>
+    <div className="rounded-lg border border-accent/30 bg-surface p-5 mb-6">
+      <h2 className="font-display text-sm text-accent tracking-widest mb-4">Edit Venue</h2>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
@@ -109,7 +109,7 @@ function VenueEditForm({ venue, onCancel, onSaved }: VenueEditFormProps) {
       </div>
 
       <div className="flex items-center gap-2 mt-4">
-        {saveError && <span className="text-sm text-accent-pink">{saveError}</span>}
+        {saveError && <span className="text-sm text-highlight">{saveError}</span>}
         <div className="ml-auto flex gap-2">
           <button type="button" onClick={onCancel} disabled={patchMutation.isPending}
             className="btn btn-sm btn-secondary">
@@ -209,7 +209,7 @@ function AliasesSection({
               {isAdmin && (deletingId === a.id ? (
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => deleteMutation.mutate(a.id)} disabled={deleteMutation.isPending}
-                    className="text-xs px-2 py-0.5 rounded bg-accent-pink text-white hover:opacity-90 disabled:opacity-50">
+                    className="text-xs px-2 py-0.5 rounded bg-highlight text-white hover:opacity-90 disabled:opacity-50">
                     {deleteMutation.isPending ? "…" : "Remove"}
                   </button>
                   <button onClick={() => setDeletingId(null)}
@@ -219,7 +219,7 @@ function AliasesSection({
                 </div>
               ) : (
                 <button onClick={() => setDeletingId(a.id)}
-                  className="shrink-0 link-action hover:text-accent-pink">
+                  className="shrink-0 link-action hover:text-highlight">
                   ✕
                 </button>
               ))}
@@ -256,7 +256,7 @@ function AliasesSection({
               placeholder="e.g. former name before 2018 renovation"
               className="w-full field h-11" />
           </div>
-          {addError && <p className="text-sm text-accent-pink">{addError}</p>}
+          {addError && <p className="text-sm text-highlight">{addError}</p>}
           <div className="flex gap-2 justify-end pt-1">
             <button onClick={() => { setAdding(false); setAddError(null); }}
               className="btn btn-sm btn-secondary">
@@ -380,7 +380,7 @@ export function VenuePage() {
               </label>
               <Button variant="ghost" disabled={busy} onClick={() => setShowPhotoUrlInput((v) => !v)}>Photo URL</Button>
               {venue.imageUrl && (
-                <Button variant="ghost" className="text-text-muted hover:text-accent-pink" disabled={busy} onClick={() => void handleDeletePhoto()}>
+                <Button variant="ghost" className="text-text-muted hover:text-highlight" disabled={busy} onClick={() => void handleDeletePhoto()}>
                   Remove photo
                 </Button>
               )}
@@ -409,7 +409,7 @@ export function VenuePage() {
               </Button>
             </div>
           )}
-          {photoError && <p className="text-sm text-accent-pink">{photoError}</p>}
+          {photoError && <p className="text-sm text-highlight">{photoError}</p>}
         </div>
       )}
 
@@ -467,7 +467,7 @@ export function VenuePage() {
           <div className="flex items-end justify-between gap-3 px-0.5">
             <h2 className="h-section">Location</h2>
             <a href={`https://www.openstreetmap.org/?mlat=${venue.lat}&mlon=${venue.lng}#map=16/${venue.lat}/${venue.lng}`}
-              target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-text-muted hover:text-accent-lime">
+              target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-text-muted hover:text-accent">
               Open map ↗
             </a>
           </div>

@@ -157,7 +157,7 @@ export function ConcertDetailPage() {
         </p>
         {concert.venue && (
           <p>
-            <Link to={`/venues/${concert.venue.slug}`} className="hover:text-accent-lime">{concert.venue.name}</Link>
+            <Link to={`/venues/${concert.venue.slug}`} className="hover:text-accent">{concert.venue.name}</Link>
             {concert.venue.city && <span className="text-text-subtle"> · {concert.venue.city}</span>}
           </p>
         )}
@@ -177,7 +177,7 @@ export function ConcertDetailPage() {
             <section className="space-y-3">
               <div className="flex items-end justify-between gap-3 px-0.5">
                 <h2 className="h-section">Festival days</h2>
-                <Link to={`/festivals/${concert.eventSeries!.slug}`} className="text-sm font-semibold text-text-muted hover:text-accent-lime">
+                <Link to={`/festivals/${concert.eventSeries!.slug}`} className="text-sm font-semibold text-text-muted hover:text-accent">
                   Full lineup ›
                 </Link>
               </div>
@@ -187,7 +187,7 @@ export function ConcertDetailPage() {
                   const shared = festivalDays.filter((x) => x.date === d.date).length > 1;
                   const label = `Day ${d.number}${shared && d.lineup[0] ? ` · ${d.lineup[0]}` : ""}`;
                   return (
-                  <div key={d.concertId} className={d.concertId === concert.id ? "bg-lime-950/30" : undefined}>
+                  <div key={d.concertId} className={d.concertId === concert.id ? "bg-accent-950/30" : undefined}>
                     <EventRow
                       to={`/shows/${d.slug ?? d.concertId}`}
                       date={d.date}
@@ -218,7 +218,7 @@ export function ConcertDetailPage() {
             <section className="space-y-3">
               <div className="flex items-end justify-between gap-3 px-0.5">
                 <h2 className="h-section">Location</h2>
-                <Link to={`/venues/${concert.venue.slug}`} className="truncate text-sm font-semibold text-text-muted hover:text-accent-lime">
+                <Link to={`/venues/${concert.venue.slug}`} className="truncate text-sm font-semibold text-text-muted hover:text-accent">
                   {concert.venue.name} ›
                 </Link>
               </div>
@@ -245,7 +245,7 @@ export function ConcertDetailPage() {
             </>
           ) : isAdmin ? (
             <p className="card p-4 text-sm text-text-muted sm:p-5">
-              Setlists and media open up once this show is marked <span className="font-semibold text-accent-lime">Attended</span>.
+              Setlists and media open up once this show is marked <span className="font-semibold text-accent">Attended</span>.
             </p>
           ) : null}
 
@@ -264,7 +264,7 @@ export function ConcertDetailPage() {
                     setDeleting(false);
                   }
                 }}
-                className="text-sm font-semibold text-text-subtle hover:text-accent-pink transition-colors disabled:opacity-50"
+                className="text-sm font-semibold text-text-subtle hover:text-highlight transition-colors disabled:opacity-50"
               >
                 {deleting ? "Deleting…" : "Delete show"}
               </button>

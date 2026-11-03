@@ -30,7 +30,7 @@ const ROLES: { value: ArtistRole; label: string }[] = [
 const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
   { value: "attending",  label: "Attending",  active: "border-yellow-600  bg-yellow-950  text-yellow-400"  },
   { value: "interested", label: "Interested", active: "border-purple-700  bg-purple-950  text-purple-400"  },
-  { value: "attended",   label: "Attended",   active: "border-lime-700    bg-lime-950    text-accent-lime"  },
+  { value: "attended",   label: "Attended",   active: "border-accent-700    bg-accent-950    text-accent"  },
   { value: "missed",     label: "Missed",     active: "border-red-700     bg-red-950     text-red-400"      },
 ];
 
@@ -176,7 +176,7 @@ function ArtistInput({
           type="button"
           onClick={() => onRemove(index)}
           disabled={!canRemove}
-          className="w-7 h-7 flex items-center justify-center text-text-subtle hover:text-accent-pink disabled:opacity-20 transition-colors shrink-0"
+          className="w-7 h-7 flex items-center justify-center text-text-subtle hover:text-highlight disabled:opacity-20 transition-colors shrink-0"
           title="Remove"
         >×</button>
       </div>
@@ -187,7 +187,7 @@ function ArtistInput({
           Did you mean{" "}
           <button
             type="button"
-            className="text-accent-lime hover:underline"
+            className="text-accent hover:underline"
             onMouseDown={() => {
               handlePick(suggested);
             }}
@@ -535,10 +535,10 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
             </button>
           </div>
           {urlParseError && (
-            <p className="mt-1 text-sm text-accent-pink">{urlParseError}</p>
+            <p className="mt-1 text-sm text-highlight">{urlParseError}</p>
           )}
           {urlParseApplied && !urlParseError && (
-            <p className="mt-1 text-sm text-accent-lime">
+            <p className="mt-1 text-sm text-accent">
               ✓ Form pre-filled from URL —{" "}
               <button type="button" className="underline text-text-subtle hover:text-text-base"
                 onClick={() => { setForm(DEFAULT_FORM); setUrlParseApplied(false); setUrlInput(""); }}>
@@ -562,7 +562,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                 min={dateMin}
                 max={dateMax}
                 onChange={(e) => setField("date", e.target.value)}
-                className="w-full [color-scheme:dark] field h-11"
+                className="w-full scheme-dark field h-11"
               />
               {(dateMin || dateMax) && (
                 <p className="mt-0.5 text-sm text-text-subtle">
@@ -575,7 +575,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
           {/* Venue row: name (autocomplete) + city + state/province */}
           <div>
             <div className="flex gap-2 mb-2">
-              <div className="flex-[2]">
+              <div className="flex-2">
                 <label className="block mb-1 label">Venue *</label>
                 <VenueAutocomplete
                   value={form.venueName}
@@ -653,7 +653,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
           {setlistAvailable && !setlistApplied && (setlistSearching || setlistResults.length > 0 || setlistError) && (
             <div className={clsx(
               "rounded border bg-surface-2 px-3 py-2.5",
-              setlistError ? "border-rose-800" : "border-border",
+              setlistError ? "border-highlight-800" : "border-border",
             )}>
               {/* Header row */}
               <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -679,7 +679,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
 
               {/* Error state */}
               {setlistError && (
-                <p className="text-sm text-accent-pink">
+                <p className="text-sm text-highlight">
                   {SETLIST_ERROR_MESSAGES[setlistError]}
                 </p>
               )}
@@ -715,7 +715,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
 
           {/* Venue applied confirmation */}
           {setlistApplied && (
-            <p className="text-sm text-accent-lime">
+            <p className="text-sm text-accent">
               ✓ Venue prefilled from setlist.fm —{" "}
               <button
                 type="button"
@@ -740,7 +740,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                     "min-w-[72px] px-3 py-1 rounded border text-xs  transition-colors text-center",
                     form.status === s.value
                       ? s.active
-                      : "border-border text-text-muted hover:border-accent-lime",
+                      : "border-border text-text-muted hover:border-accent",
                   )}
                 >
                   {s.label}
@@ -767,7 +767,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                   <div className="flex items-center gap-2">
                     <label className={clsx(
                       "text-xs  px-3 py-1.5 rounded border cursor-pointer transition-colors shrink-0",
-                      "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
+                      "border-border text-text-muted hover:border-accent hover:text-accent",
                       flyerUrl && "opacity-50 cursor-not-allowed",
                     )}>
                       {flyerFile ? "Change" : "Choose image"}
@@ -791,8 +791,8 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                       className={clsx(
                         "text-xs  px-3 py-1.5 rounded border transition-colors shrink-0",
                         showFlyerUrlInput
-                          ? "border-accent-lime text-accent-lime"
-                          : "border-border text-text-muted hover:border-accent-lime hover:text-accent-lime",
+                          ? "border-accent text-accent"
+                          : "border-border text-text-muted hover:border-accent hover:text-accent",
                         flyerFile && "opacity-50 cursor-not-allowed",
                       )}
                     >
@@ -811,7 +811,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
                             setShowFlyerUrlInput(false);
                             if (flyerFileRef.current) flyerFileRef.current.value = "";
                           }}
-                          className="shrink-0 link-action hover:text-accent-pink"
+                          className="shrink-0 link-action hover:text-highlight"
                         >×</button>
                       </div>
                     )}
@@ -892,7 +892,7 @@ export function AddConcertModal({ onClose }: { onClose: () => void }) {
           )}
 
           {/* Error */}
-          {error && <p className="text-sm text-accent-pink">{error}</p>}
+          {error && <p className="text-sm text-highlight">{error}</p>}
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-1">

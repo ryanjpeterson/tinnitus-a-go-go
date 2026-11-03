@@ -231,7 +231,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 | Object store   | MinIO (S3-compatible, swappable for real S3)                         |
 | Auth           | Hand-rolled sessions + `@node-rs/argon2`                             |
 | Validation     | Zod (shared between API and web)                                     |
-| Frontend       | React 18 + Vite + Tailwind CSS + TanStack Query                      |
+| Frontend       | React 18 + Vite + Tailwind CSS 4 + TanStack Query                    |
 | Routing        | React Router v6                                                      |
 | Home screen    | Web app manifest + iOS meta tags (no service worker)                 |
 | Photo viewer   | Swiper                                                               |
@@ -366,7 +366,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   ├── useBrand.ts       loads, applies and caches the brand theme
 │   │       │   ├── outbox.ts         attendance edits made offline, synced later
 │   │       │   └── cn.ts             class-name helper
-│   │       └── styles/globals.css   Tailwind base, type and component classes
+│   │       └── styles/globals.css   Tailwind 4 import, theme (@theme), type and component classes
 │   │
 │   └── worker/                   BullMQ worker
 │       └── src/jobs/
@@ -413,7 +413,7 @@ templates (each look in light, mid and dark) or fine-tuned in
 **Account → jimbo-ui config**,
 feed `src/lib/theme.ts`, which derives every colour token (surfaces, borders,
 text, tints — light backgrounds flip to dark text) as CSS variables. Tailwind
-colours point at those variables, so components never use raw hex. The logo (TINNITUS in the
+(v4, themed in `globals.css`'s `@theme`, built by `@tailwindcss/vite`) colours point at those variables, so components never use raw hex. The logo (TINNITUS in the
 accent, a-go-go in the highlight) follows the theme unless an uploaded logo replaces it; the favicon is the theme's motif in the accent on the page colour unless one is uploaded.
 Archivo 800 for headings, Inter for everything else by default; the theme can change the fonts, weights, spacing and sizes.
 

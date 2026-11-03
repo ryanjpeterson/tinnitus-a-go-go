@@ -7,6 +7,7 @@ import { UploadIndicator } from "@/components/UploadIndicator";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/Wordmark";
+import { Toaster } from "@/components/ui/feedback";
 import { api } from "@/lib/api";
 import { ConcertsPage } from "./ConcertsPage";
 import { ConcertDetailPage } from "./ConcertDetailPage";
@@ -102,7 +103,7 @@ export function AppShell() {
   }, []);
 
   return (
-    <div className="min-h-[100dvh] overflow-x-clip">
+    <div className="min-h-dvh overflow-x-clip">
       {/* Global "Add show" modal — triggered by N shortcut from any page (admin only) */}
       {isAdmin && globalAddOpen && <AddConcertModal onClose={() => setGlobalAddOpen(false)} />}
 
@@ -111,9 +112,11 @@ export function AppShell() {
       {/* Daily follow-up prompt — floats over all pages, shown once per day (admin only) */}
       {isAdmin && <FollowUpPrompt />}
 
+      <Toaster />
+
       {/* Sticky app bar. Top padding clears the iOS status bar / notch in
           standalone mode (black-translucent). */}
-      <header className="sticky top-0 z-40 border-b border-border bg-bg/90 pt-[var(--safe-top)] backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-border bg-bg/90 pt-(--safe-top) backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 sm:h-16 sm:px-6">
           <div className="flex h-full items-center gap-8">
             <Link to="/" aria-label="Home">
@@ -128,14 +131,14 @@ export function AppShell() {
                   className={() =>
                     `relative flex items-center text-15 font-semibold transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:rounded-t after:transition-colors ${
                       inTab(link)
-                        ? "text-text-base after:bg-accent-lime"
+                        ? "text-text-base after:bg-accent"
                         : "text-text-muted hover:text-text-base after:bg-transparent"
                     }`
                   }
                 >
                   {link.label}
                   {link.to === "/shows" && followupCount > 0 && isAdmin && (
-                    <span className="ml-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent-pink px-1.5 text-11 font-bold leading-none text-on-highlight">
+                    <span className="ml-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-highlight px-1.5 text-11 font-bold leading-none text-on-highlight">
                       {followupCount}
                     </span>
                   )}
@@ -172,9 +175,9 @@ export function AppShell() {
                 <Link
                   to="/account"
                   aria-label="Account"
-                  className="flex h-10 items-center gap-2 rounded-full border border-border pl-1 pr-1 transition-colors hover:border-accent-lime sm:pr-3.5"
+                  className="flex h-10 items-center gap-2 rounded-full border border-border pl-1 pr-1 transition-colors hover:border-accent sm:pr-3.5"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-lime font-display text-sm text-on-accent">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent font-display text-sm text-on-accent">
                     {(user?.username ?? "?").slice(0, 1).toUpperCase()}
                   </span>
                   <span className="hidden text-sm font-semibold sm:inline">{user?.username}</span>
@@ -206,7 +209,7 @@ export function AppShell() {
           <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface shadow-xl"
             style={{ opacity: Math.min(pull, 1) }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-              className={refreshing ? "animate-spin text-accent-lime" : pull >= 1 ? "text-accent-lime" : "text-text-muted"}
+              className={refreshing ? "animate-spin text-accent" : pull >= 1 ? "text-accent" : "text-text-muted"}
               style={refreshing ? undefined : { transform: `rotate(${pull * 270}deg)` }}>
               <path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" />
             </svg>
@@ -214,7 +217,7 @@ export function AppShell() {
         </div>
       )}
 
-      <main className="mx-auto max-w-5xl px-4 pt-6 pb-[var(--dock-space)] sm:px-6 sm:pt-8">
+      <main className="mx-auto max-w-5xl px-4 pt-6 pb-(--dock-space) sm:px-6 sm:pt-8">
         <Routes>
           {/* Handle legacy /app/* and /concerts routes with redirects */}
           <Route path="/app/concerts" element={<Navigate to="/shows" replace />} />
@@ -261,7 +264,7 @@ export function AppShell() {
       {/* Mobile tab bar — a floating, frosted dock above the home indicator.
           Content scrolls under it (and fades out behind it). */}
       {location.pathname !== "/map" && (
-        <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-[calc(6rem+var(--safe-bottom))] bg-gradient-to-t from-bg via-bg/70 to-transparent sm:hidden" />
+        <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-[calc(6rem+var(--safe-bottom))] bg-linear-to-t from-bg via-bg/70 to-transparent sm:hidden" />
       )}
       <nav
         aria-label="Main"
@@ -283,14 +286,14 @@ export function AppShell() {
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }
                 }}
-                className={`relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-[14px] transition-[background-color,color,transform] duration-200 active:scale-[0.92] ${
+                className={`relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-2xl transition-[background-color,color,transform] duration-200 active:scale-[0.92] ${
                   isActive ? "lit-accent" : "text-text-muted active:bg-surface-2"
                 }`}
               >
                 <span className="relative">
                   <BottomNavIcon name={link.label} active={isActive} />
                   {link.to === "/shows" && followupCount > 0 && isAdmin && (
-                    <span className="absolute -right-2 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent-pink px-1 text-10 font-bold leading-none text-on-highlight ring-2 ring-surface">
+                    <span className="absolute -right-2 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-highlight px-1 text-10 font-bold leading-none text-on-highlight ring-2 ring-surface">
                       {followupCount > 9 ? "9+" : followupCount}
                     </span>
                   )}
@@ -372,7 +375,7 @@ function OfflineBanner() {
   if (!offline && waiting === 0) return null;
   const changes = `${waiting} change${waiting === 1 ? "" : "s"}`;
   return (
-    <div className="sticky top-[var(--top-bar)] z-30 border-b border-yellow-800/60 bg-yellow-950/95 px-4 py-2 text-center text-sm font-semibold text-yellow-200 backdrop-blur">
+    <div className="sticky top-(--top-bar) z-30 border-b border-yellow-800/60 bg-yellow-950/95 px-4 py-2 text-center text-sm font-semibold text-yellow-200 backdrop-blur-sm">
       {offline
         ? <>Offline — showing what's saved on this device.{waiting > 0 ? ` ${changes} will sync when you're back online.` : " Attendance changes will sync later."}</>
         : <>Syncing {changes} made offline…</>}

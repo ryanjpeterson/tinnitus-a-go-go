@@ -301,13 +301,13 @@ export function PhotoGallery({
     >
       {/* Drag-over overlay */}
       {isDragging && !isFutureEvent && (
-        <div className="absolute inset-0 z-20 rounded-lg border-2 border-dashed border-accent-lime bg-accent-lime/5 flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 z-20 rounded-lg border-2 border-dashed border-accent bg-accent/5 flex items-center justify-center pointer-events-none">
           <div className="text-center">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="mx-auto text-accent-lime mb-2">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="mx-auto text-accent mb-2">
               <path d="M12 2v13m0-13L8 6m4-4l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
-            <span className="text-sm text-accent-lime font-bold">Drop to upload</span>
+            <span className="text-sm text-accent font-bold">Drop to upload</span>
           </div>
         </div>
       )}
@@ -344,7 +344,7 @@ export function PhotoGallery({
                     + Add media
                   </span>
                 ) : (
-                  <label className="cursor-pointer rounded border border-border px-3 py-1.5 text-xs text-text-muted transition-colors hover:border-accent-lime hover:text-accent-lime">
+                  <label className="cursor-pointer rounded border border-border px-3 py-1.5 text-xs text-text-muted transition-colors hover:border-accent hover:text-accent">
                     {uploading ? `+ Add media · ${pendingHere} uploading` : "+ Add media"}
                     <input
                       ref={fileRef}
@@ -388,7 +388,7 @@ export function PhotoGallery({
 
       {/* Tagging mode: artist selector + assign controls (admin only) */}
       {isAdmin && tagging && (
-        <div className="mb-4 rounded-lg border border-accent-lime/30 bg-surface-2 p-3 space-y-3">
+        <div className="mb-4 rounded-lg border border-accent/30 bg-surface-2 p-3 space-y-3">
           <p className="eyebrow">Tag artists in photos</p>
           <div className="flex gap-2 items-center flex-wrap">
             <div className="flex-1 min-w-[160px]">
@@ -421,8 +421,8 @@ export function PhotoGallery({
               </button>
             </div>
           </div>
-          {tagSaveMsg && <p className="text-sm text-accent-lime">{tagSaveMsg}</p>}
-          {tagError && <p className="text-sm text-accent-pink">{tagError}</p>}
+          {tagSaveMsg && <p className="text-sm text-accent">{tagSaveMsg}</p>}
+          {tagError && <p className="text-sm text-highlight">{tagError}</p>}
           <p className="text-sm text-text-subtle">
             Tap photos to select • Click "Tag N photos" to assign • Switch artist to tag another pass
           </p>
@@ -437,7 +437,7 @@ export function PhotoGallery({
       )}
 
       {uploadError && (
-        <p className="text-sm text-accent-pink mb-3">{uploadError}</p>
+        <p className="text-sm text-highlight mb-3">{uploadError}</p>
       )}
 
       {displayPhotos.length === 0 ? (
@@ -461,14 +461,14 @@ export function PhotoGallery({
                   className={clsx(
                     "w-full h-full rounded overflow-hidden bg-surface border transition-colors",
                     confirmDeleteId === p.id
-                      ? "border-accent-pink"
+                      ? "border-highlight"
                       : tagging
                         ? isSelected
-                          ? "border-accent-lime ring-2 ring-accent-lime/50 cursor-pointer"
-                          : "border-border hover:border-accent-lime/50 cursor-pointer"
+                          ? "border-accent ring-2 ring-accent/50 cursor-pointer"
+                          : "border-border hover:border-accent/50 cursor-pointer"
                         : reordering
                           ? "border-border cursor-default"
-                          : "border-border hover:border-accent-lime cursor-pointer",
+                          : "border-border hover:border-accent cursor-pointer",
                   )}
                 >
                   {p.processing ? (
@@ -494,8 +494,8 @@ export function PhotoGallery({
 
                 {/* Tagging: checkmark overlay when selected */}
                 {tagging && isSelected && (
-                  <div className="absolute inset-0 rounded bg-accent-lime/20 pointer-events-none flex items-center justify-center">
-                    <div className="w-7 h-7 rounded-full bg-accent-lime flex items-center justify-center shadow-lg">
+                  <div className="absolute inset-0 rounded bg-accent/20 pointer-events-none flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center shadow-lg">
                       <span className="text-on-accent text-base leading-none font-bold">✓</span>
                     </div>
                   </div>
@@ -512,7 +512,7 @@ export function PhotoGallery({
                           key={artistId}
                           onClick={(e) => { e.stopPropagation(); void handleRemoveTagFromPhoto(p.id, artistId); }}
                           title={`Remove ${artist.name} tag`}
-                          className="text-xs bg-accent-lime/80 text-on-accent rounded px-0.5 leading-4 hover:bg-accent-pink/80 hover:text-white transition-colors"
+                          className="text-xs bg-accent/80 text-on-accent rounded px-0.5 leading-4 hover:bg-highlight/80 hover:text-white transition-colors"
                         >
                           {initials(artist.name)}
                         </button>
@@ -529,7 +529,7 @@ export function PhotoGallery({
                       <button
                         onClick={() => void handleDelete(p.id)}
                         disabled={deleting}
-                        className="text-xs px-2 py-0.5 rounded bg-accent-pink text-white hover:opacity-90 disabled:opacity-50"
+                        className="text-xs px-2 py-0.5 rounded bg-highlight text-white hover:opacity-90 disabled:opacity-50"
                       >
                         {deleting ? "…" : "Yes"}
                       </button>
@@ -551,7 +551,7 @@ export function PhotoGallery({
                     className={clsx(
                       "absolute bottom-1 left-1 z-10 flex h-7 items-center rounded-control px-1.5 text-sm transition-opacity",
                       p.kind === "ticket"
-                        ? "bg-accent-lime text-on-accent opacity-100"
+                        ? "bg-accent text-on-accent opacity-100"
                         : "bg-black/60 text-white opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-70",
                     )}
                     title={p.kind === "ticket" ? (isAdmin ? "Ticket stub — tap to make it a photo" : "Ticket stub") : "Mark as ticket stub"}
@@ -565,7 +565,7 @@ export function PhotoGallery({
                 {isAdmin && !reordering && !tagging && confirmDeleteId !== p.id && !p.processing && (
                   <button
                     onClick={() => setConfirmDeleteId(p.id)}
-                    className="absolute top-1 right-1 w-6 h-6 rounded bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-70 transition-opacity hover:bg-accent-pink z-10"
+                    className="absolute top-1 right-1 w-6 h-6 rounded bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-70 transition-opacity hover:bg-highlight z-10"
                     title="Delete photo"
                   >
                     ✕
@@ -673,8 +673,8 @@ function ArtistUploadZone({
       className={clsx(
         "relative rounded-lg border-2 border-dashed p-3 text-center transition-colors cursor-pointer",
         isDragging
-          ? "border-accent-lime bg-accent-lime/5"
-          : "border-border hover:border-accent-lime/50",
+          ? "border-accent bg-accent/5"
+          : "border-border hover:border-accent/50",
         isFutureEvent && "opacity-40 cursor-not-allowed",
       )}
       onDragEnter={(e) => { e.preventDefault(); dragCounterRef.current++; if (dragCounterRef.current === 1) setIsDragging(true); }}
@@ -699,9 +699,9 @@ function ArtistUploadZone({
       />
       <p className="text-sm font-medium text-text-muted truncate leading-tight mb-0.5">{artist.name}</p>
       {pending > 0 ? (
-        <p className="text-sm text-accent-lime animate-pulse">{pending} uploading…</p>
+        <p className="text-sm text-accent animate-pulse">{pending} uploading…</p>
       ) : added > 0 ? (
-        <p className="text-sm text-accent-lime">+{added} tagged</p>
+        <p className="text-sm text-accent">+{added} tagged</p>
       ) : (
         <p className="text-sm text-text-subtle">Drop or click</p>
       )}

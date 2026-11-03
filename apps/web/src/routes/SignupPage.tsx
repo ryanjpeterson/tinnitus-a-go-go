@@ -158,7 +158,7 @@ export function SignupPage() {
                     <p
                       className={
                         "mt-1.5 text-xs " +
-                        (passwordStrength.tone === "ok" ? "text-accent-lime" : "text-text-muted")
+                        (passwordStrength.tone === "ok" ? "text-accent" : "text-text-muted")
                       }
                     >
                       {passwordStrength.msg}
@@ -192,7 +192,7 @@ function InviteBadge({ state }: { state: InviteState }) {
   }
   if (state === "valid") {
     return (
-      <span className="tag-pill mt-3 bg-accent-lime/15 text-accent-lime border border-accent-lime/30">
+      <span className="tag-pill mt-3 bg-accent/15 text-accent border border-accent/30">
         invite valid
       </span>
     );

@@ -264,7 +264,7 @@ export function SetlistSection({ concert, savedSetlists, isAdmin }: {
                     {state.loaded && state.result && (
                       <button
                         onClick={() => toggleExpanded(artist.id)}
-                        className="text-text-subtle hover:text-accent-lime transition-colors shrink-0"
+                        className="text-text-subtle hover:text-accent transition-colors shrink-0"
                       >
                         <svg
                           width="12"
@@ -279,7 +279,7 @@ export function SetlistSection({ concert, savedSetlists, isAdmin }: {
                     )}
                     <Link
                       to={`/artists/${artist.slug}`}
-                      className="text-sm text-text-base hover:text-accent-lime transition-colors truncate"
+                      className="text-sm text-text-base hover:text-accent transition-colors truncate"
                     >
                       {artist.name}
                     </Link>
@@ -323,7 +323,7 @@ export function SetlistSection({ concert, savedSetlists, isAdmin }: {
                     )}
                     {state.error && !state.showUrlInput && (
                       <>
-                        <span className="text-sm text-accent-pink">{state.error}</span>
+                        <span className="text-sm text-highlight">{state.error}</span>
                         <button
                           onClick={() => toggleUrlInput(artist.id)}
                           className="link-action"
@@ -336,7 +336,7 @@ export function SetlistSection({ concert, savedSetlists, isAdmin }: {
                     {state.showUrlInput && (
                       <button
                         onClick={() => toggleUrlInput(artist.id)}
-                        className="text-xs text-accent-lime transition-colors"
+                        className="text-xs text-accent transition-colors"
                       >
                         Cancel
                       </button>
@@ -362,7 +362,7 @@ export function SetlistSection({ concert, savedSetlists, isAdmin }: {
                         </button>
                         <button
                           onClick={() => void handleRemoveSetlist(artist.id)}
-                          className="link-action hover:text-accent-pink"
+                          className="link-action hover:text-highlight"
                         >
                           Remove
                         </button>

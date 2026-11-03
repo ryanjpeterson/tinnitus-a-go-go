@@ -62,7 +62,7 @@ export function AccountPage() {
         {user?.isAdmin && (
           <div className="flex justify-between gap-3 text-15">
             <span className="text-text-muted">Role</span>
-            <span className="text-accent-lime text-sm">Admin</span>
+            <span className="text-accent text-sm">Admin</span>
           </div>
         )}
       </div>
@@ -106,8 +106,8 @@ export function AccountPage() {
             />
           </div>
 
-          {error && <p className="text-sm text-accent-pink">{error}</p>}
-          {success && <p className="text-sm text-accent-lime">Password updated.</p>}
+          {error && <p className="text-sm text-highlight">{error}</p>}
+          {success && <p className="text-sm text-accent">Password updated.</p>}
 
           <button
             type="submit"
@@ -137,7 +137,7 @@ export function AccountPage() {
 
       {/* Sign out — the only sign-out control on mobile, where the header has no room for one */}
       <div className="space-y-3">
-        <Button variant="secondary" onClick={() => void signOut()} className="h-12 w-full rounded-control text-15 text-accent-pink">
+        <Button variant="secondary" onClick={() => void signOut()} className="h-12 w-full rounded-control text-15 text-highlight">
           Sign out
         </Button>
         <p className="text-center text-sm text-text-subtle">Tinnitus A Go Go · v{__APP_VERSION__}</p>
@@ -173,7 +173,7 @@ function CalendarCard() {
           Subscribe once and your Calendar app keeps every show you're attending or interested in up to date. The link is private — anyone with it can see your shows.
         </p>
       </div>
-      {error && <p className="text-sm text-accent-pink">{error}</p>}
+      {error && <p className="text-sm text-highlight">{error}</p>}
       {token && (
         <div className="flex flex-wrap gap-2">
           <a href={webcal}><Button>Subscribe in Calendar</Button></a>

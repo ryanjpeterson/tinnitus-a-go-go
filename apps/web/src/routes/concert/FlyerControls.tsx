@@ -118,7 +118,7 @@ export function FlyerControls({ concert }: { concert: ConcertDetail }) {
           </button>
         </div>
       )}
-      {error && <p className="w-full text-sm text-accent-pink">{error}</p>}
+      {error && <p className="w-full text-sm text-highlight">{error}</p>}
     </>
   );
 }

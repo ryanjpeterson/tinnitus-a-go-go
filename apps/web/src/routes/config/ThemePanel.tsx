@@ -48,7 +48,7 @@ function ThemeCard({ name, vibe, theme: input, selected, onPick }: { name: strin
   const c = themeHex(theme);
   return (
     <button type="button" onClick={onPick} aria-pressed={selected}
-      className={`group block w-full overflow-hidden rounded-2xl text-left transition-transform active:scale-[0.97] focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-text-base ${selected ? "ring-[3px] ring-offset-2 ring-offset-bg" : "ring-1 ring-border hover:ring-text-subtle"}`}
+      className={`group block w-full overflow-hidden rounded-2xl text-left transition-transform active:scale-[0.97] focus:outline-hidden focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-text-base ${selected ? "ring-[3px] ring-offset-2 ring-offset-bg" : "ring-1 ring-border hover:ring-text-subtle"}`}
       style={selected ? { ["--tw-ring-color" as string]: theme.accent } : undefined}>
       <div className="space-y-2.5 p-3" style={{ background: theme.background, color: c.text }}>
         <div className="flex items-center justify-between">

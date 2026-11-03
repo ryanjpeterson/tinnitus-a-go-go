@@ -44,7 +44,7 @@ const VIEW_TABS: { value: View; label: string }[] = [
 // Past opens on Attended; Upcoming on All (attending and interested together).
 const DEFAULT_STATUS: Record<View, StatusValue> = { past: "attended", upcoming: "all" };
 
-const ALL_OPTION = { value: "all" as StatusValue, label: "All", activeClass: "border-accent-lime bg-accent-lime text-on-accent" };
+const ALL_OPTION = { value: "all" as StatusValue, label: "All", activeClass: "border-accent bg-accent text-on-accent" };
 const STATUS_OPTIONS: Record<View, { value: StatusValue; label: string; activeClass: string }[]> = {
   upcoming: [
     ALL_OPTION,
@@ -53,7 +53,7 @@ const STATUS_OPTIONS: Record<View, { value: StatusValue; label: string; activeCl
   ],
   past: [
     ALL_OPTION,
-    { value: "attended",  label: "Attended",  activeClass: "border-lime-700 bg-lime-950 text-accent-lime" },
+    { value: "attended",  label: "Attended",  activeClass: "border-accent-700 bg-accent-950 text-accent" },
     { value: "missed",    label: "Missed",    activeClass: "border-red-800 bg-red-950 text-red-400" },
     { value: "cancelled", label: "Cancelled", activeClass: "border-border bg-surface-2 text-text-base" },
   ],
@@ -269,7 +269,7 @@ export function ConcertsPage() {
 
       {/* Select mode: what to do with the ticked shows, above the tab bar */}
       {selecting && (
-        <div className="fixed inset-x-0 z-40 flex justify-center px-3 bottom-[var(--above-dock)]">
+        <div className="fixed inset-x-0 z-40 flex justify-center px-3 bottom-(--above-dock)">
           <div className="flex w-full max-w-md items-center gap-2 rounded-2xl border border-white/10 bg-surface/95 p-2 pl-4 shadow-2xl shadow-black/60 backdrop-blur-xl">
             <p className="min-w-0 flex-1 truncate text-sm font-semibold">
               {selected.size === 0 ? "Tick shows to group" : `${selected.size} selected`}

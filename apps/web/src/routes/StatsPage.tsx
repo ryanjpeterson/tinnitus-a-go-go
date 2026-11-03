@@ -2,7 +2,7 @@
  * StatsPage — personal concert log analytics.
  *
  * All charts are custom CSS/SVG — no external chart library.
- * Design follows brand guidelines: dark bg, accent-lime / accent-pink,  numbers.
+ * Design follows brand guidelines: dark bg, accent / highlight,  numbers.
  */
 
 import { useMemo } from "react";
@@ -46,9 +46,9 @@ function YearBars({ byYear }: { byYear: DeepStatsResponse["byYear"] }) {
       {byYear.map((r) => (
         <Link key={r.year} to={`/year/${r.year}`} title={`${r.year} in review`}
           className="group flex h-9 items-center gap-3 rounded-lg px-1 transition-colors hover:bg-surface-2/70">
-          <span className="w-11 shrink-0 text-right text-sm font-semibold text-text-muted group-hover:text-accent-lime">{r.year}</span>
+          <span className="w-11 shrink-0 text-right text-sm font-semibold text-text-muted group-hover:text-accent">{r.year}</span>
           <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-2">
-            <span className="block h-full rounded-full bg-accent-lime" style={{ width: `${(r.count / maxCount) * 100}%` }} />
+            <span className="block h-full rounded-full bg-accent" style={{ width: `${(r.count / maxCount) * 100}%` }} />
           </span>
           <span className="w-8 shrink-0 text-right text-sm font-semibold">{r.count}</span>
         </Link>
@@ -100,26 +100,26 @@ function OnThisDay({ shows }: { shows: DeepStatsResponse["onThisDay"] }) {
     s.daysOff === 0 ? yearsAgo(s.date) : `${yearsAgo(s.date)} · ${fmtDayMonth(s.date)}`;
   return (
     <section className="space-y-3">
-      <h2 className="h-section px-0.5 text-accent-pink">♪ {exact.length > 0 ? "On this day" : "This week, years ago"}</h2>
+      <h2 className="h-section px-0.5 text-highlight">♪ {exact.length > 0 ? "On this day" : "This week, years ago"}</h2>
       {/* The lead show as a flyer card; any others as rows beneath it */}
       <Link to={`/shows/${lead!.slug}`}
-        className="card group flex gap-4 overflow-hidden border-accent-pink/40 p-3 transition-colors hover:border-accent-pink active:scale-[0.99]">
+        className="card group flex gap-4 overflow-hidden border-highlight/40 p-3 transition-colors hover:border-highlight active:scale-[0.99]">
         <div className="h-28 w-20 shrink-0 overflow-hidden rounded-xl bg-surface-2 sm:h-32 sm:w-24">
           {lead!.flyerUrl
             ? <img src={lead!.flyerUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
-            : <div className="flex h-full items-center justify-center font-display text-3xl text-accent-pink/60">♪</div>}
+            : <div className="flex h-full items-center justify-center font-display text-3xl text-highlight/60">♪</div>}
         </div>
         <div className="flex min-w-0 flex-1 flex-col justify-center">
-          <p className="eyebrow text-accent-pink">{when(lead!)}</p>
-          <p className="mt-1 line-clamp-2 font-display text-xl leading-tight group-hover:text-accent-lime">
+          <p className="eyebrow text-highlight">{when(lead!)}</p>
+          <p className="mt-1 line-clamp-2 font-display text-xl leading-tight group-hover:text-accent">
             {showTitle(lead!.info, showName(lead!.headlinerHint, lead!.seriesName))}
           </p>
           <p className="mt-1 truncate text-sm text-text-muted">{[lead!.venueName, fmtFull(lead!.date)].filter(Boolean).join(" · ")}</p>
         </div>
-        <Chevron className="self-center text-text-subtle group-hover:text-accent-lime" />
+        <Chevron className="self-center text-text-subtle group-hover:text-accent" />
       </Link>
       {rest.length > 0 && (
-        <List className="border-accent-pink/40">
+        <List className="border-highlight/40">
           {rest.map((s) => (
             <EventRow
               key={s.concertId}
@@ -171,17 +171,17 @@ function Milestones({ milestones }: { milestones: DeepStatsResponse["milestones"
           return (
             <Link key={m.n} to={`/shows/${m.concertId}`}
               className="group relative flex min-h-[76px] items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-2/70">
-              <span className="z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-accent-lime/60 bg-surface-2 text-xs font-bold text-accent-lime">
+              <span className="z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-accent/60 bg-surface-2 text-xs font-bold text-accent">
                 {ordinal(m.n)}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 text-15 font-semibold leading-snug text-text-base group-hover:text-accent-lime">
+                <p className="line-clamp-2 text-15 font-semibold leading-snug text-text-base group-hover:text-accent">
                   {showTitle(m.info, showName(m.headlinerHint, m.seriesName))}
                 </p>
                 {sub && <p className="truncate text-sm text-text-muted">{sub}</p>}
                 <p className="text-sm text-text-subtle">{fmtDate(m.date)}</p>
               </div>
-              <Chevron className="text-text-subtle group-hover:text-accent-lime" />
+              <Chevron className="text-text-subtle group-hover:text-accent" />
             </Link>
           );
         })}
@@ -331,14 +331,14 @@ export function StatsPage() {
         <div className="grid sm:grid-cols-2 gap-3">
           <div className="card p-4 sm:p-5">
             <p className="eyebrow mb-1">Average ticket</p>
-            <p className="text-2xl font-bold text-accent-lime">
+            <p className="text-2xl font-bold text-accent">
               ${(d.avgTicketCents / 100).toFixed(2)}
             </p>
           </div>
           {d.mostExpensiveShow && (
             <div className="card p-4 sm:p-5">
               <p className="eyebrow mb-1">Most expensive</p>
-              <p className="text-2xl font-bold text-accent-pink">
+              <p className="text-2xl font-bold text-highlight">
                 ${(d.mostExpensiveShow.amountCents / 100).toFixed(2)}{" "}
                 <span className="text-sm font-normal text-text-subtle">{d.mostExpensiveShow.currency}</span>
               </p>

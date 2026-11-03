@@ -368,7 +368,7 @@ export function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDet
             </button>
           ) : (
             <div className="flex items-center gap-2 flex-wrap justify-end">
-              {saveError && <span className="text-sm text-accent-pink">{saveError}</span>}
+              {saveError && <span className="text-sm text-highlight">{saveError}</span>}
               <button onClick={cancelEdit} className="btn btn-sm btn-ghost">
                 Cancel
               </button>
@@ -397,20 +397,20 @@ export function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDet
                 return (
                   <li key={a.id}>
                     <Link to={`/artists/${a.slug}`}
-                      className="group flex min-h-[56px] items-center gap-3 rounded-xl px-2 transition-colors hover:bg-white/[0.04]">
+                      className="group flex min-h-[56px] items-center gap-3 rounded-xl px-2 transition-colors hover:bg-white/4">
                       <span className={clsx(
                         "flex shrink-0 items-center justify-center rounded-full font-display",
                         top
-                          ? "h-11 w-11 bg-accent-lime/15 text-base text-accent-lime ring-1 ring-accent-lime/40"
+                          ? "h-11 w-11 bg-accent/15 text-base text-accent ring-1 ring-accent/40"
                           : "h-9 w-9 bg-surface-2 text-sm text-text-subtle ring-1 ring-white/5",
                       )}>
                         {initials(a.name)}
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className={clsx("block truncate", top ? "text-base font-semibold" : "text-15 text-text-muted")}>{a.name}</span>
-                        {top && <span className="block text-xs font-semibold uppercase tracking-wider text-accent-lime/80">{ROLE_LABEL[a.role] ?? "Headliner"}</span>}
+                        {top && <span className="block text-xs font-semibold uppercase tracking-wider text-accent/80">{ROLE_LABEL[a.role] ?? "Headliner"}</span>}
                       </span>
-                      <Chevron className="text-text-subtle transition-transform group-hover:translate-x-0.5 group-hover:text-accent-lime" />
+                      <Chevron className="text-text-subtle transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
                     </Link>
                   </li>
                 );
@@ -447,7 +447,7 @@ export function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDet
                     onDragEnd={handleDragEndItem}
                     className={clsx(
                       "flex items-center gap-2 py-1 rounded transition-opacity",
-                      isDropTarget && "border-t-2 border-accent-lime",
+                      isDropTarget && "border-t-2 border-accent",
                       !isDropTarget && "border-t-2 border-transparent",
                       isDragging ? "opacity-30" : "opacity-100",
                     )}
@@ -479,7 +479,7 @@ export function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDet
 
                     <span className="flex-1 text-sm text-text-base truncate min-w-0">
                       {(a.role === "headliner" || a.role === "co_headliner") && (
-                        <span className="text-accent-lime text-sm mr-1.5">★</span>
+                        <span className="text-accent text-sm mr-1.5">★</span>
                       )}
                       {a.name}
                     </span>
@@ -500,7 +500,7 @@ export function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDet
                       <button
                         onClick={() => handleRemove(a.uid)}
                         title="Remove from lineup"
-                        className="w-6 h-6 ml-1 link-action hover:text-accent-pink"
+                        className="w-6 h-6 ml-1 link-action hover:text-highlight"
                       >×</button>
                     </div>
                   </li>
@@ -527,7 +527,7 @@ export function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDet
                   }}
                   className={clsx(
                     "field h-11 w-full",
-                    addSelectedArtist && "border-accent-lime text-accent-lime",
+                    addSelectedArtist && "border-accent text-accent",
                   )}
                 />
                 {showDropdown && !addSelectedArtist && (searching || addResults.length > 0) && (
@@ -583,7 +583,7 @@ export function LineupEditor({ concert, isAdmin = false }: { concert: ConcertDet
                 Did you mean{" "}
                 <button
                   type="button"
-                  className="text-accent-lime hover:underline"
+                  className="text-accent hover:underline"
                   onMouseDown={() => {
                     setAddSelectedArtist(suggestedArtist);
                     setAddQuery(suggestedArtist.name);

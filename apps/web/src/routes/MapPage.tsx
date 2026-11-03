@@ -38,7 +38,7 @@ function VenuePopup({ venue, here, onSelect, onClose }: {
           <div className="min-w-0 flex-1">
             <Link
               to={`/venues/${venue.slug}`}
-              className="font-display text-xl hover:text-accent-lime transition-colors block truncate"
+              className="font-display text-xl hover:text-accent transition-colors block truncate"
             >
               {venue.name}
             </Link>
@@ -56,7 +56,7 @@ function VenuePopup({ venue, here, onSelect, onClose }: {
                 {here.filter((v) => v.id !== venue.id).map((v, i) => (
                   <span key={v.id}>
                     {i > 0 && ", "}
-                    <button onClick={() => onSelect(v)} className="font-semibold text-text-base underline-offset-2 hover:text-accent-lime hover:underline">{v.name}</button>
+                    <button onClick={() => onSelect(v)} className="font-semibold text-text-base underline-offset-2 hover:text-accent hover:underline">{v.name}</button>
                   </span>
                 ))}
               </p>
@@ -260,9 +260,9 @@ function VenuePanel({ venues, selected, onCity, onVenue, onAll }: {
                 <div className="pb-1">
                   {g.venues.map((v) => (
                     <button key={v.id} onClick={() => onVenue(v)}
-                      className={`flex min-h-[44px] w-full items-center justify-between gap-3 py-2 pl-6 pr-3 text-left transition-colors hover:bg-surface-2/70 ${selected?.id === v.id ? "bg-rose-950/30" : ""}`}>
+                      className={`flex min-h-[44px] w-full items-center justify-between gap-3 py-2 pl-6 pr-3 text-left transition-colors hover:bg-surface-2/70 ${selected?.id === v.id ? "bg-highlight-950/30" : ""}`}>
                       <span className="flex min-w-0 items-center gap-2">
-                        <span className={`h-2 w-2 shrink-0 rounded-full ${selected?.id === v.id ? "bg-accent-pink" : "bg-accent-pink/50"}`} />
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${selected?.id === v.id ? "bg-highlight" : "bg-highlight/50"}`} />
                         <span className="truncate text-sm">{v.name}</span>
                       </span>
                       <span className="shrink-0 text-xs text-text-subtle">{v.showCount}</span>
@@ -348,7 +348,7 @@ export function MapPage() {
       <div>
         <PageHeader title="Map" />
         <div className="card p-8 text-center">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="mx-auto mb-4 text-accent-pink">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="mx-auto mb-4 text-highlight">
             <path
               d="M12 2C8.134 2 5 5.134 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7z"
               fill="currentColor"
@@ -380,7 +380,7 @@ export function MapPage() {
   // The map fills the screen edge to edge below the app bar, running under the
   // floating tab bar on phones, breaking out of the page column and padding.
   return (
-    <div className="relative -mt-6 ml-[calc(50%-50vw)] w-screen -mb-[var(--dock-space)] sm:-mt-8">
+    <div className="relative -mt-6 ml-[calc(50%-50vw)] w-screen -mb-(--dock-space) sm:-mt-8">
       <div className="relative h-[calc(100dvh-var(--top-bar))] min-h-[360px]">
         {/* Venues tab: back to the list */}
         <div className="absolute right-4 top-4 z-20"><VenueViewSwitch view="map" floating /></div>

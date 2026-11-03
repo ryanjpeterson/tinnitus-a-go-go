@@ -279,7 +279,7 @@ export function Banner({ backdrop, glow = "accent", back, badge, children, pullU
         {backdrop ? (
           <img src={backdrop} alt="" className="absolute inset-0 h-full w-full scale-150 object-cover blur-2xl saturate-150" />
         ) : (
-          <div className={cn("absolute inset-0 bg-gradient-to-br via-support-950/60 to-transparent", glowCls)} />
+          <div className={cn("absolute inset-0 bg-linear-to-br via-support-950/60 to-transparent", glowCls)} />
         )}
         <div className="absolute inset-0 bg-black/35" />
       </div>
@@ -367,14 +367,14 @@ export function Hero({ imageUrl, imageAlt, eyebrow, title, children, actions, ba
               className="group relative block h-full w-full cursor-zoom-in">
               <img src={imageUrl} alt={imageAlt ?? title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
               {/* Small expand hint in the corner */}
-              <span className="absolute bottom-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white/90 backdrop-blur-sm">
+              <span className="absolute bottom-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white/90 backdrop-blur-xs">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
                 </svg>
               </span>
             </button>
           ) : (
-            <div className={cn("flex h-full w-full items-center justify-center bg-gradient-to-br to-surface-2", glow)}>
+            <div className={cn("flex h-full w-full items-center justify-center bg-linear-to-br to-surface-2", glow)}>
               <span className="font-display text-3xl text-white/40 sm:text-5xl">{initials(title)}</span>
             </div>
           )}
@@ -462,7 +462,7 @@ export function LayoutSwitch({ value, onChange }: { value: ListLayout; onChange:
 /** Sticky-style group label between rows (month headers etc.). */
 export function ListGroupLabel({ children }: { children: ReactNode }) {
   return (
-    <div className="list-group-label flex items-center gap-2 bg-gradient-to-r from-support-900/50 via-support-950/40 to-transparent px-4 py-2 text-xs font-semibold uppercase tracking-wider text-support">
+    <div className="list-group-label flex items-center gap-2 bg-linear-to-r from-support-900/50 via-support-950/40 to-transparent px-4 py-2 text-xs font-semibold uppercase tracking-wider text-support">
       <span aria-hidden="true" className="dot-support h-2 w-2" />
       {children}
     </div>
@@ -578,7 +578,7 @@ export function SwitchRow({ label, hint, checked, onChange, disabled }: {
         {hint && <span className="block text-sm text-text-muted">{hint}</span>}
       </span>
       <span className={cn("relative h-7 w-12 shrink-0 rounded-full border transition-colors", checked ? "lit-accent border-transparent" : "border-border bg-surface-2")}>
-        <span className={cn("absolute top-0.5 h-[22px] w-[22px] rounded-full shadow-sm transition-[left]", checked ? "left-[22px] bg-on-accent" : "left-0.5 bg-text-subtle")} />
+        <span className={cn("absolute top-0.5 h-[22px] w-[22px] rounded-full shadow-xs transition-[left]", checked ? "left-[22px] bg-on-accent" : "left-0.5 bg-text-subtle")} />
       </span>
     </button>
   );
@@ -705,7 +705,7 @@ export function MediaCard({ to, name, imageUrl, sub, meta, aspect = "video", con
             <img src={imageUrl} alt={name} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
           )
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-surface-2 to-surface">
+          <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-surface-2 to-surface">
             <span className="font-display text-3xl text-text-subtle/50">{initials(name)}</span>
           </div>
         )}
@@ -927,7 +927,7 @@ export function TrendChart({ labels, series, format = compactNumber, height = 18
       </div>
       <div ref={ref} tabIndex={0} onKeyDown={onKey} onBlur={() => setActive(null)}
         aria-label={`${title ?? lines.map((l) => l.label).join(", ")}: use the arrow keys to read each point`}
-        className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent" style={{ height }} data-no-swipe>
+        className="rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-accent" style={{ height }} data-no-swipe>
         {width > 0 && (
           <svg width={width} height={height} aria-hidden="true" className="touch-pan-y select-none overflow-visible">
             {ticks.map((t) => (
@@ -1023,7 +1023,7 @@ export function BarChart({ items, direction = "horizontal", tone = "accent", for
         {items.map((it, i) => (
           <button key={it.id} type="button" aria-label={`${it.label}: ${format(it.value)}`}
             onPointerEnter={() => setActive(i)} onPointerDown={() => setActive(i)} onFocus={() => setActive(i)}
-            className="group flex h-full min-w-0 flex-1 items-end justify-center px-[1px] outline-none">
+            className="group flex h-full min-w-0 flex-1 items-end justify-center px-[1px] outline-hidden">
             <span className={cn("block w-full max-w-6 rounded-t-[4px] transition-opacity", KEY[tone],
               shown === i ? "opacity-100" : "opacity-70 group-hover:opacity-100", "group-focus-visible:ring-2 group-focus-visible:ring-text-base")}
               style={{ height: `${Math.max((it.value / max) * 100, it.value > 0 ? 2 : 0)}%` }} />
@@ -1380,7 +1380,7 @@ export function Sheet({ title, subtitle, onClose, children, wide = false }: {
   // Portalled to <body>, so a parent's spacing (space-y margins) or transform can't shift the backdrop.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-6"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs sm:items-center sm:p-6"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div

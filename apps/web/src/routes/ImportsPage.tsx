@@ -7,9 +7,9 @@ import type { ExportFormat } from "@/lib/api";
 
 const STATUS_COLORS: Record<ImportRow["status"], string> = {
   queued: "text-text-muted",
-  running: "text-accent-lime",
+  running: "text-accent",
   completed: "text-emerald-400",
-  failed: "text-accent-pink",
+  failed: "text-highlight",
 };
 
 export function ImportsPage() {
@@ -82,7 +82,7 @@ export function ImportsPage() {
           accept=".csv,text/csv"
           className="block w-full text-sm text-text-muted file:mr-4 file:h-10 file:rounded-control file:border-0 file:bg-surface-2 file:px-4 file:text-sm file:font-semibold file:text-text-base hover:file:bg-border"
         />
-        {error && <p className="text-sm text-accent-pink">{error}</p>}
+        {error && <p className="text-sm text-highlight">{error}</p>}
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={uploadMutation.isPending}>
             {uploadMutation.isPending ? "Uploading…" : "Start import"}
@@ -97,7 +97,7 @@ export function ImportsPage() {
           action={<span className={`text-sm font-semibold capitalize ${STATUS_COLORS[active.status]}`}>{active.status}</span>}
         >
           <div className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
-            <div className="h-full rounded-full bg-accent-lime transition-all" style={{ width: `${pct}%` }} />
+            <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
           </div>
           <p className="meta mt-2">{active.processedRows} / {active.totalRows} shows · {pct}%</p>
 
@@ -114,7 +114,7 @@ export function ImportsPage() {
 
           {active.errorsSample && active.errorsSample.length > 0 && (
             <details className="mt-4">
-              <summary className="cursor-pointer text-sm font-semibold text-accent-pink">
+              <summary className="cursor-pointer text-sm font-semibold text-highlight">
                 {active.errorCount} warning{active.errorCount === 1 ? "" : "s"}
               </summary>
               <ul className="meta mt-2 space-y-1">
@@ -198,11 +198,11 @@ function ExportSection() {
               <span className="block text-15 font-semibold">{e.label}</span>
               <span className="meta block">{e.sub}</span>
             </span>
-            <span className="shrink-0 text-sm font-semibold text-accent-lime">{busy === e.format ? "Preparing…" : "Download"}</span>
+            <span className="shrink-0 text-sm font-semibold text-accent">{busy === e.format ? "Preparing…" : "Download"}</span>
           </button>
         ))}
       </List>
-      {error && <p className="text-sm text-accent-pink">{error}</p>}
+      {error && <p className="text-sm text-highlight">{error}</p>}
     </section>
   );
 }

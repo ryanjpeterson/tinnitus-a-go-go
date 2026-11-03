@@ -133,8 +133,8 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
   };
 
   return (
-    <div className="rounded-lg border border-accent-lime/30 bg-surface p-5 mb-6">
-      <h2 className="font-display text-sm text-accent-lime tracking-widest mb-4">
+    <div className="rounded-lg border border-accent/30 bg-surface p-5 mb-6">
+      <h2 className="font-display text-sm text-accent tracking-widest mb-4">
         Edit Artist
       </h2>
 
@@ -154,15 +154,15 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
             {enriching ? "Fetching…" : "Fetch from Last.fm"}
           </button>
         </div>
-        {enrichError && <p className="text-sm text-accent-pink mt-2">{enrichError}</p>}
-        {enrichSuccess && <p className="text-sm text-accent-lime mt-2">{enrichSuccess}</p>}
+        {enrichError && <p className="text-sm text-highlight mt-2">{enrichError}</p>}
+        {enrichSuccess && <p className="text-sm text-accent mt-2">{enrichSuccess}</p>}
       </div>
 
       {/* Image section */}
       <div className="mb-5">
         <label className="block mb-2 label">Image</label>
         <div className="flex items-start gap-4">
-          <div className="w-20 h-20 rounded-lg border border-border bg-surface-2 flex-shrink-0 overflow-hidden relative group">
+          <div className="w-20 h-20 rounded-lg border border-border bg-surface-2 shrink-0 overflow-hidden relative group">
             {imageUrl ? (
               <>
                 <img src={imageUrl} alt={artist.name} className="w-full h-full object-cover" />
@@ -247,7 +247,7 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
                 </button>
               </div>
             )}
-            {imageError && <p className="text-sm text-accent-pink">{imageError}</p>}
+            {imageError && <p className="text-sm text-highlight">{imageError}</p>}
             <p className="text-sm text-text-subtle">JPEG, PNG or WebP · max 10 MB</p>
           </div>
         </div>
@@ -301,7 +301,7 @@ function ArtistEditForm({ artist, onCancel, onSaved }: ArtistEditFormProps) {
 
       {/* Actions */}
       <div className="flex items-center gap-2 mt-4">
-        {saveError && <span className="text-sm text-accent-pink">{saveError}</span>}
+        {saveError && <span className="text-sm text-highlight">{saveError}</span>}
         <div className="ml-auto flex gap-2">
           <button
             type="button"
@@ -484,7 +484,7 @@ export function ArtistPage() {
           <ol className="divide-etched">
             {stats.topSongs.map((s, i) => (
               <li key={s.song} className="flex min-h-[52px] items-center gap-3 px-4 py-2">
-                <span className={`w-6 shrink-0 text-right font-display text-lg ${i === 0 ? "text-accent-lime" : "text-text-subtle"}`}>{i + 1}</span>
+                <span className={`w-6 shrink-0 text-right font-display text-lg ${i === 0 ? "text-accent" : "text-text-subtle"}`}>{i + 1}</span>
                 <span className="min-w-0 flex-1 truncate text-15 font-semibold">{s.song}</span>
                 <span className="shrink-0 text-sm text-text-muted">{s.times}×<span className="ml-1.5 text-text-subtle">last {s.last.slice(0, 4)}</span></span>
               </li>
@@ -500,13 +500,13 @@ export function ArtistPage() {
             {setlistsQ.data!.setlists.map((setlist) => (
               <div key={setlist.id} className="p-4 sm:p-5">
                 <div className="mb-3 flex items-baseline gap-2">
-                  <Link to={`/shows/${setlist.concertId}`} className="min-w-0 truncate text-15 font-semibold hover:text-accent-lime">
+                  <Link to={`/shows/${setlist.concertId}`} className="min-w-0 truncate text-15 font-semibold hover:text-accent">
                     {fmtDate(setlist.concertDate)}
                     {setlist.venue && <span className="font-normal text-text-muted"> · {setlist.venue.name}{setlist.venue.city && `, ${setlist.venue.city}`}</span>}
                   </Link>
                   {setlist.setlistfmId && (
                     <a href={`https://www.setlist.fm/setlist/-/${setlist.setlistfmId}.html`} target="_blank" rel="noopener noreferrer"
-                      className="ml-auto shrink-0 text-sm text-text-subtle hover:text-accent-lime">
+                      className="ml-auto shrink-0 text-sm text-text-subtle hover:text-accent">
                       setlist.fm ↗
                     </a>
                   )}
@@ -538,7 +538,7 @@ export function ArtistPage() {
           <div className="space-y-5">
             {photoGroups.map(([concertId, group]) => (
               <div key={concertId}>
-                <Link to={`/shows/${concertId}`} className="mb-2 block text-sm font-semibold text-text-muted hover:text-accent-lime">
+                <Link to={`/shows/${concertId}`} className="mb-2 block text-sm font-semibold text-text-muted hover:text-accent">
                   {fmtDate(group.date)}
                   {group.venueName && <span className="font-normal text-text-subtle"> · {group.venueName}{group.venueCity && `, ${group.venueCity}`}</span>}
                 </Link>
@@ -547,7 +547,7 @@ export function ArtistPage() {
                     <button
                       key={p.id}
                       onClick={() => setPhotoLightbox({ photos: group.photos, index: pi })}
-                      className="aspect-square overflow-hidden rounded-lg border border-border bg-surface-2 transition-colors hover:border-accent-lime"
+                      className="aspect-square overflow-hidden rounded-lg border border-border bg-surface-2 transition-colors hover:border-accent"
                     >
                       <img src={p.urls.thumb ?? p.urls.medium ?? p.urls.original} alt="" className="h-full w-full object-cover" loading="lazy" />
                     </button>
@@ -563,7 +563,7 @@ export function ArtistPage() {
         <Section title="About">
           <p className={`text-15 leading-relaxed text-text-muted ${bioOpen ? "" : "line-clamp-4"}`}>{artist.bio}</p>
           {artist.bio.length > 280 && (
-            <button onClick={() => setBioOpen((v) => !v)} className="mt-2 text-sm font-semibold text-accent-lime">
+            <button onClick={() => setBioOpen((v) => !v)} className="mt-2 text-sm font-semibold text-accent">
               {bioOpen ? "Show less" : "Read more"}
             </button>
           )}
@@ -580,7 +580,7 @@ export function ArtistPage() {
             caption: (
               <Link
                 to={`/shows/${p.concert.id}`}
-                className="hover:text-accent-lime transition-colors"
+                className="hover:text-accent transition-colors"
               >
                 {fmtDate(p.concert.date)}
                 {p.concert.venue && ` · ${p.concert.venue.name}`}

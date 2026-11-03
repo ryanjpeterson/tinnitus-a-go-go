@@ -49,7 +49,7 @@ export function VerifyEmailPage() {
 
         {state === "ok" && (
           <>
-            <h1 className="h-page mb-3 text-accent-lime">
+            <h1 className="h-page mb-3 text-accent">
               You're verified.
             </h1>
             <p className="meta">
@@ -67,13 +67,13 @@ export function VerifyEmailPage() {
 
         {state === "error" && (
           <>
-            <h1 className="h-page mb-3 text-accent-pink">
+            <h1 className="h-page mb-3 text-highlight">
               Couldn't verify.
             </h1>
             <p className="meta">{message}</p>
             <Link
               to="/app"
-              className="mt-6 inline-block text-sm text-accent-lime hover:underline"
+              className="mt-6 inline-block text-sm text-accent hover:underline"
             >
               Back to the app
             </Link>

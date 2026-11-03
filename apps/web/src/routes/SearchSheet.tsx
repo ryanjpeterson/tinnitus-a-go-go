@@ -80,7 +80,7 @@ export function SearchSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <Sheet title="Search" onClose={onClose} wide>
-      <div className="sticky top-0 z-10 border-b border-border bg-bg/95 p-4 backdrop-blur">
+      <div className="sticky top-0 z-10 border-b border-border bg-bg/95 p-4 backdrop-blur-sm">
         <div className="relative">
           <svg className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-subtle" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
             <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
@@ -182,7 +182,7 @@ function Row({ to, lead, title, sub, onGo }: { to: string; lead: React.ReactNode
     <Link to={to} onClick={onGo} className="group flex min-h-[64px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-2/70 active:bg-surface-2">
       {lead}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-15 font-semibold group-hover:text-accent-lime">{title}</p>
+        <p className="truncate text-15 font-semibold group-hover:text-accent">{title}</p>
         {sub && <p className="truncate text-sm text-text-muted">{sub}</p>}
       </div>
       <Chevron className="text-text-subtle" />

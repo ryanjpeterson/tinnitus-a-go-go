@@ -84,7 +84,7 @@ function DuplicateGroup({ type, group }: { type: DataEntityType; group: DupGroup
                   {[r.sub, plural(r.showCount, "show"), years(r.firstDate, r.lastDate)].filter(Boolean).join(" · ")}
                 </span>
               </span>
-              {r.id === keepId && <span className="shrink-0 text-xs font-semibold text-accent-lime">Keep</span>}
+              {r.id === keepId && <span className="shrink-0 text-xs font-semibold text-accent">Keep</span>}
               <Link to={href} className="link-action shrink-0" onClick={(e) => e.stopPropagation()}>View</Link>
             </label>
           );
@@ -97,7 +97,7 @@ function DuplicateGroup({ type, group }: { type: DataEntityType; group: DupGroup
         <Button size="sm" variant="ghost" onClick={() => dismiss.mutate()} disabled={dismiss.isPending}>
           Not duplicates
         </Button>
-        {(preview.isError || dismiss.isError) && <span className="text-sm text-accent-pink">Something went wrong — try again.</span>}
+        {(preview.isError || dismiss.isError) && <span className="text-sm text-highlight">Something went wrong — try again.</span>}
       </div>
 
       {previews && (
@@ -114,7 +114,7 @@ function DuplicateGroup({ type, group }: { type: DataEntityType; group: DupGroup
                 </p>
               </div>
             ))}
-            {merge.isError && <p className="text-sm text-accent-pink">{(merge.error as Error).message}</p>}
+            {merge.isError && <p className="text-sm text-highlight">{(merge.error as Error).message}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setPreviews(null)}>Cancel</Button>
               <Button onClick={() => merge.mutate()} disabled={merge.isPending}>{merge.isPending ? "Merging…" : "Merge"}</Button>
@@ -165,7 +165,7 @@ function Check({ check }: { check: HealthCheck }) {
           <p className="text-15 font-semibold">{check.title}</p>
           <p className="meta">{check.description}</p>
         </div>
-        <span className={`mt-0.5 shrink-0 rounded-md px-2.5 py-0.5 text-sm font-semibold ${n > 0 ? "bg-yellow-950 text-yellow-300" : "bg-lime-950 text-accent-lime"}`}>
+        <span className={`mt-0.5 shrink-0 rounded-md px-2.5 py-0.5 text-sm font-semibold ${n > 0 ? "bg-yellow-950 text-yellow-300" : "bg-accent-950 text-accent"}`}>
           {n > 0 ? n : "✓"}
         </span>
       </div>
@@ -213,7 +213,7 @@ function Check({ check }: { check: HealthCheck }) {
             {fix.isPending ? "Working…" : check.fix.label}
           </Button>
           {fix.isSuccess && <span className="meta">Done.</span>}
-          {fix.isError && <span className="text-sm text-accent-pink">{(fix.error as Error).message}</span>}
+          {fix.isError && <span className="text-sm text-highlight">{(fix.error as Error).message}</span>}
         </div>
       )}
     </div>
@@ -325,7 +325,7 @@ function History() {
           </div>
         ))}
       </List>
-      {undo.isError && <p className="text-sm text-accent-pink">{(undo.error as Error).message}</p>}
+      {undo.isError && <p className="text-sm text-highlight">{(undo.error as Error).message}</p>}
       <p className="meta px-0.5">Only the most recent merge can be undone.</p>
     </div>
   );
@@ -367,7 +367,7 @@ function FestivalSuggestions() {
             <div>
               <p className="eyebrow">{s.kind === "join" ? "Part of a festival?" : "A festival?"}</p>
               <h3 className="mt-1 text-17 font-semibold">
-                {s.kind === "join" ? <>Add to <Link to={`/festivals/${s.festival!.slug}`} className="hover:text-accent-lime">{s.festival!.name}</Link></> : `${plural(s.shows.length, "show")} at ${s.venue ?? "one venue"}`}
+                {s.kind === "join" ? <>Add to <Link to={`/festivals/${s.festival!.slug}`} className="hover:text-accent">{s.festival!.name}</Link></> : `${plural(s.shows.length, "show")} at ${s.venue ?? "one venue"}`}
               </h3>
               <p className="meta mt-0.5">{fmtDate(s.shows[0]!.date)}{s.shows.length > 1 && ` – ${fmtDate(s.shows[s.shows.length - 1]!.date)}`}</p>
             </div>

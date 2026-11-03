@@ -7,13 +7,27 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ## [Unreleased]
 
+### Added
+
+- **Show reminders and a weekly recap, by ntfy and email** — the worker sends a reminder before each show you're attending (7, 3 and 1 days out by default; 2 weeks and interested shows optional) and, on the day you pick, a recap: shows you attended that week in past years ("15 years ago"), what's coming up in the next 60 days, and shows so far this year. Pick the channels, days, recap day and send hour in **Account → Notifications**, which also has *Send a test reminder* / *Send a test recap* and the ntfy link to subscribe to. It checks every 15 minutes, sends each notification once (`notifications_sent`) and catches up later the same day if the worker was down; a show added inside a window gets that window's reminder. Times follow `TIMEZONE` (default `America/Toronto`).
+- **Branded HTML emails** — reminder and recap emails in the current theme's colours: the TINNITUS / a Go Go wordmark, calendar-ticket dates, countdown and "years ago" pills, stat tiles, a button to the show; readable on phones, light themes and dark ones, with a plain-text version. No images (Gmail can't load from a Tailscale address). `pnpm --filter @tagg/worker preview-emails <dir>` renders them all from sample data.
+- **ntfy push server** — a new `ntfy` service in `docker-compose.yml` (port 8090) with ntfy.sh as upstream, so the iPhone app gets instant pushes (ntfy.sh only sees a message id). Pushes open the show when tapped.
+- **First-run setup** — a fresh install opens **/setup** to create the account, the only one and the admin; it closes once the account exists. `pnpm set-password` (in the api container) sets a new password and signs out every session, since there's no email reset.
+
 ### Changed
 
+- **One account** — the app is a personal tool now: no signup, invites or email verification. To share it, someone clones the repo and runs their own. Other accounts already in a database are left alone (migration 0020 shows how to delete them).
+- **Email is sent by the worker, through Gmail in production** — `SMTP_USER` / `SMTP_PASS` (a Google app password) with STARTTLS on 587; the API no longer needs any `SMTP_*` variable. **Mailpit is dev-only**: it runs when `COMPOSE_PROFILES=mailpit` (in `.env.example`), which production leaves out. README → Deployment → **Notifications** has the ntfy and Gmail setup.
+- **The worker installs its dependencies on every start** (like the web container), so new ones such as `nodemailer` reach its `node_modules` volume. `nodemailer` moved from the API to the worker.
 - **Updated to jimbo.ui 0.14.1: console looks and heavier headings again** — page and section titles are back to the theme's heading weight, tracking and size (since the Tailwind 4 move they had fallen to a regular weight). The Looks tab has a **Consoles** sub-tab under Games with eleven retro console looks (PlayStation 1–3, Nintendo 64, Dreamcast, Xbox, GameCube, Game Boy Advance, PSP, Xbox 360, Wii); picking one also brings its menu font, backdrop and motif, and its tile shows them.
 
 ### Fixed
 
 - **Dependency changes now reach the web container on deploy** — `apps/web` is bind-mounted, so the container used whatever `node_modules` was installed last and skipped installing while `vite` existed (a Tailwind 4 deploy would have kept Tailwind 3). The entrypoint now runs `pnpm install` on every start; it takes a second or two when nothing changed.
+
+### Removed
+
+- **Signup, invites and email verification** — `/auth/signup`, `/auth/verify-email`, the `/invites` routes, the Signup and Verify email pages, `bootstrap-invite`, `INVITES_PER_USER` / `INVITE_TTL_DAYS`, the `invites` and `email_verification_tokens` tables and the users' invite and verification columns. Also dropped: the Web Push leftovers (`push_subscriptions`, `push_sent`, `app_secrets`, `users.push_prefs`). Requires migration `0020_single_account_notifications.sql`.
 
 ## [2026.11.0] — 2026-11-03
 

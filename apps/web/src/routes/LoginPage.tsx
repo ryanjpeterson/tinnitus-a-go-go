@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { loginSchema } from "@tagg/shared";
 import { api, ApiError } from "@/lib/api";
@@ -19,6 +19,11 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // A fresh install has no account yet: send it to the setup page.
+  useEffect(() => {
+    void api.setupStatus().then((r) => { if (r.needed) navigate("/setup", { replace: true }); }).catch(() => {});
+  }, [navigate]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -91,10 +96,6 @@ export function LoginPage() {
                 I was there
               </Button>
             </form>
-
-            <p className="meta mt-6">
-              Don't have an account? Accounts are invite-only — get a link from a friend.
-            </p>
           </CardContent>
         </Card>
       </div>

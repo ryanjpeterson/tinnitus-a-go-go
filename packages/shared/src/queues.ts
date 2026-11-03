@@ -8,6 +8,7 @@ export const QUEUE_CSV_IMPORT = "csv-import";
 export const QUEUE_MEDIA_PROCESS = "media-process";
 export const QUEUE_ARTIST_ENRICH = "artist-enrich";
 export const QUEUE_SETLIST_ENRICH = "setlist-enrich";
+export const QUEUE_NOTIFY = "notify";
 
 export interface MediaProcessJobData {
   photoId: string;
@@ -68,4 +69,28 @@ export type SetlistEnrichJobData =
 export interface SetlistEnrichJobResult {
   result: "linked" | "no_match" | "taken" | "skipped" | "scanned";
   queued?: number;
+}
+
+/** Notifications. The worker sends reminders and recaps on its own schedule; the API only queues tests. */
+export type NotifyTestKind = "reminder" | "recap";
+
+export interface NotifyJobData {
+  kind: "test";
+  userId: string;
+  what: NotifyTestKind;
+}
+
+export interface NotifyJobResult {
+  /** Per channel: "sent", "off" (not configured) or the error. */
+  email: string;
+  ntfy: string;
+}
+
+/** Redis key where the worker publishes which channels it has configured (JSON NotifyChannels). */
+export const NOTIFY_CHANNELS_KEY = "notify:channels";
+
+export interface NotifyChannels {
+  email: { configured: boolean; host: string | null };
+  ntfy: { configured: boolean; subscribeUrl: string | null };
+  timezone: string;
 }

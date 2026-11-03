@@ -23,7 +23,10 @@ COPY apps/worker apps/worker
 # We need api's source on disk for tsx to resolve it.
 COPY apps/api apps/api
 COPY packages/shared packages/shared
+COPY apps/worker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 WORKDIR /app/apps/worker
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["pnpm", "dev"]
 
 FROM deps AS build

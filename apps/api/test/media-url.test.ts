@@ -11,9 +11,6 @@ const ENV = {
   MINIO_ROOT_USER: "user",
   MINIO_ROOT_PASSWORD: "password",
   MINIO_BUCKET: "tagg-media",
-  SMTP_HOST: "mailpit",
-  SMTP_PORT: "1025",
-  SMTP_FROM: "test@example.com",
   SESSION_SECRET: "x".repeat(32),
   CORS_ORIGINS: "http://localhost:4444",
 };

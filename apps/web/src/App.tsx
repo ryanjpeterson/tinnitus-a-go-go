@@ -6,9 +6,8 @@ import { useApplyBrand } from "@/lib/useBrand";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth-context";
 import { LoginPage } from "@/routes/LoginPage";
-import { SignupPage } from "@/routes/SignupPage";
+import { SetupPage } from "@/routes/SetupPage";
 import { AppShell } from "@/routes/AppShell";
-import { VerifyEmailPage } from "@/routes/VerifyEmailPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,8 +39,7 @@ export default function App() {
           <Routes>
             {/* Auth routes */}
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/setup" element={<SetupPage />} />
 
             {/* All routes go through AppShell (including /) */}
             <Route path="/*" element={<AppShell />} />

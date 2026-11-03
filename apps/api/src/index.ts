@@ -7,7 +7,6 @@ import rateLimit from "@fastify/rate-limit";
 import { env } from "./lib/env.js";
 import { attachUser } from "./auth/middleware.js";
 import { authRoutes } from "./routes/auth.js";
-import { inviteRoutes } from "./routes/invites.js";
 import { healthRoutes } from "./routes/health.js";
 import { adminImportRoutes } from "./routes/admin/imports.js";
 import { adminDataRoutes } from "./routes/admin/data.js";
@@ -22,6 +21,7 @@ import { parseUrlRoutes } from "./routes/parseurl.js";
 import { statsRoutes } from "./routes/stats.js";
 import { searchRoutes } from "./routes/search.js";
 import { calendarRoutes } from "./routes/calendar.js";
+import { notificationRoutes } from "./routes/notifications.js";
 import { themeRoutes } from "./routes/theme.js";
 import { startStorageOrphanSweep } from "./lib/storage-orphans.js";
 
@@ -83,7 +83,6 @@ async function start(): Promise<void> {
 
   await app.register(healthRoutes);
   await app.register(authRoutes);
-  await app.register(inviteRoutes);
   await app.register(adminImportRoutes);
   await app.register(adminDataRoutes);
   await app.register(concertRoutes);
@@ -97,6 +96,7 @@ async function start(): Promise<void> {
   await app.register(statsRoutes);
   await app.register(searchRoutes);
   await app.register(calendarRoutes);
+  await app.register(notificationRoutes);
   await app.register(themeRoutes);
 
   // 404 handler

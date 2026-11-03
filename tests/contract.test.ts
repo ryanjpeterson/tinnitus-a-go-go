@@ -52,7 +52,7 @@ describe("web client ↔ API routes", () => {
   });
 
   it("removed routes stay removed", () => {
-    for (const gone of ["/public/concerts", "/public/copy", "/admin/copy", "/concerts/batch", "/concerts/stats", "/offline/bundle", "/push/key", "/push/prefs"]) {
+    for (const gone of ["/public/concerts", "/public/copy", "/admin/copy", "/concerts/batch", "/concerts/stats", "/offline/bundle", "/push/key", "/push/prefs", "/auth/signup", "/auth/verify-email", "/invites", "/invites/check"]) {
       expect(apiRoutes, gone).not.toContain(gone);
     }
   });

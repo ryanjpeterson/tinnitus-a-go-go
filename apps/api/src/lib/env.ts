@@ -17,10 +17,6 @@ const envSchema = z.object({
   // Defaults to the internal endpoint so existing deployments don't break.
   MINIO_PUBLIC_URL: z.string().url().optional(),
 
-  SMTP_HOST: z.string(),
-  SMTP_PORT: z.coerce.number().int().positive(),
-  SMTP_FROM: z.string(),
-
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be at least 32 chars"),
   SESSION_COOKIE_NAME: z.string().default("tagg_session"),
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
@@ -31,9 +27,6 @@ const envSchema = z.object({
   // Optional: Last.fm API key for artist data enrichment (bio, images, tags).
   // Get a free key at https://www.last.fm/api/account/create
   LASTFM_API_KEY: z.string().optional(),
-
-  INVITES_PER_USER: z.coerce.number().int().nonnegative().default(3),
-  INVITE_TTL_DAYS: z.coerce.number().int().positive().default(14),
 
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   RATE_LIMIT_WINDOW: z.string().default("1 minute"),

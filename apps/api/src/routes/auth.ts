@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, eq, gt } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "../db/client.js";
 import { env } from "../lib/env.js";
@@ -14,11 +14,9 @@ import {
   createSession,
   invalidateSession,
 } from "../auth/session.js";
-import { hashToken } from "../auth/tokens.js";
-import { createVerificationToken, sendVerificationEmail } from "../auth/email.js";
 import { requireUser } from "../auth/middleware.js";
 
-const signupBody = z.object({
+const setupBody = z.object({
   username: z
     .string()
     .min(3)
@@ -26,7 +24,6 @@ const signupBody = z.object({
     .regex(/^[a-zA-Z0-9_-]+$/, "Letters, numbers, underscore, and hyphen only."),
   email: z.string().email().max(254),
   password: z.string(),
-  inviteCode: z.string().min(16).max(128),
   displayName: z.string().max(64).optional(),
 });
 
@@ -36,20 +33,25 @@ const loginBody = z.object({
 });
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
-  // ----- Signup (invite-required) -----
+  // ----- First-run setup -----
+  // There is one account, the admin. Until it exists the web app shows the setup
+  // page; once it does, setup is closed for good (reset a lost password with
+  // `pnpm set-password`).
+  app.get("/auth/setup", async () => ({ needed: (await countUsers()) === 0 }));
+
   app.post(
-    "/auth/signup",
+    "/auth/setup",
     {
       config: {
         rateLimit: { max: 10, timeWindow: "10 minutes" },
       },
     },
     async (req, reply) => {
-      const parsed = signupBody.safeParse(req.body);
+      const parsed = setupBody.safeParse(req.body);
       if (!parsed.success) {
         return reply.code(400).send({ error: "Invalid input.", details: parsed.error.flatten() });
       }
-      const { username, email, password, inviteCode, displayName } = parsed.data;
+      const { username, email, password, displayName } = parsed.data;
 
       const pwError = validatePasswordShape(password);
       if (pwError) return reply.code(400).send({ error: pwError });
@@ -60,78 +62,45 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         });
       }
 
-      const inviteHash = hashToken(inviteCode);
-      const invite = await db.query.invites.findFirst({
-        where: eq(schema.invites.codeHash, inviteHash),
-      });
-      if (!invite || invite.usedAt) {
-        await logAuthEvent(req, "signup.fail", null, { reason: "bad_invite" });
-        return reply.code(400).send({ error: "Invite is invalid or already used." });
-      }
-      if (invite.expiresAt && invite.expiresAt < new Date()) {
-        return reply.code(400).send({ error: "Invite has expired." });
-      }
-
       const passwordHash = await hashPassword(password);
 
-      try {
-        const { user, rawVerificationToken } = await db.transaction(async (tx) => {
-          const [created] = await tx
-            .insert(schema.users)
-            .values({
-              username,
-              email: email.toLowerCase(),
-              passwordHash,
-              displayName: displayName ?? null,
-              invitedByUserId: invite.createdByUserId ?? null,
-              invitesRemaining: env.INVITES_PER_USER,
-            })
-            .returning();
-          if (!created) throw new Error("Failed to create user.");
+      // The lock makes "no account yet" and the insert one step, so two setup
+      // requests can't both create an admin.
+      const user = await db.transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext('tagg:setup'))`);
+        const [row] = await tx.select({ n: count() }).from(schema.users);
+        if ((row?.n ?? 0) > 0) return null;
+        const [created] = await tx
+          .insert(schema.users)
+          .values({
+            username,
+            email: email.toLowerCase(),
+            passwordHash,
+            displayName: displayName ?? null,
+            isAdmin: true,
+          })
+          .returning();
+        return created ?? null;
+      });
+      if (!user) return reply.code(409).send({ error: "This instance is already set up. Sign in instead." });
 
-          await tx
-            .update(schema.invites)
-            .set({ usedAt: new Date(), usedByUserId: created.id })
-            .where(eq(schema.invites.id, invite.id));
+      const { token, expiresAt } = await createSession(user.id, {
+        userAgent: req.headers["user-agent"],
+        ipAddress: req.ip,
+      });
+      reply.setCookie(env.SESSION_COOKIE_NAME, token, { ...SESSION_COOKIE_OPTS, expires: expiresAt });
 
-          const { rawToken } = await createVerificationToken(created.id, created.email, tx);
+      await logAuthEvent(req, "setup", user.id);
 
-          return { user: created, rawVerificationToken: rawToken };
-        });
-
-        const { token, expiresAt } = await createSession(user.id, {
-          userAgent: req.headers["user-agent"],
-          ipAddress: req.ip,
-        });
-        reply.setCookie(env.SESSION_COOKIE_NAME, token, { ...SESSION_COOKIE_OPTS, expires: expiresAt });
-
-        await logAuthEvent(req, "signup", user.id);
-
-        // Fire-and-log: never block the signup response on SMTP.
-        void sendVerificationEmail(
-          { email: user.email, displayName: user.displayName, username: user.username },
-          rawVerificationToken,
-        ).catch((err) => {
-          req.log.error({ err }, "verification email failed to send");
-        });
-
-        return reply.code(201).send({
-          user: {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            displayName: user.displayName,
-            isAdmin: user.isAdmin,
-          },
-        });
-      } catch (err: any) {
-        // Likely a unique-violation on username/email. Don't leak which.
-        if (err?.code === "23505") {
-          return reply.code(409).send({ error: "Username or email already in use." });
-        }
-        req.log.error({ err }, "signup failed");
-        return reply.code(500).send({ error: "Could not create account." });
-      }
+      return reply.code(201).send({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          displayName: user.displayName,
+          isAdmin: user.isAdmin,
+        },
+      });
     },
   );
 
@@ -201,41 +170,6 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return { user: req.user };
   });
 
-  // ----- Verify email -----
-  // Single-use; deletes the token row on success so a click can't be replayed.
-  app.post(
-    "/auth/verify-email",
-    {
-      config: { rateLimit: { max: 20, timeWindow: "10 minutes" } },
-    },
-    async (req, reply) => {
-      const parsed = z.object({ token: z.string().min(16).max(256) }).safeParse(req.body);
-      if (!parsed.success) return reply.code(400).send({ error: "Invalid token." });
-
-      const tokenHash = hashToken(parsed.data.token);
-      const row = await db.query.emailVerificationTokens.findFirst({
-        where: and(
-          eq(schema.emailVerificationTokens.tokenHash, tokenHash),
-          gt(schema.emailVerificationTokens.expiresAt, new Date()),
-        ),
-      });
-      if (!row) return reply.code(400).send({ error: "Token invalid or expired." });
-
-      await db.transaction(async (tx) => {
-        await tx
-          .update(schema.users)
-          .set({ emailVerifiedAt: new Date() })
-          .where(eq(schema.users.id, row.userId));
-        await tx
-          .delete(schema.emailVerificationTokens)
-          .where(eq(schema.emailVerificationTokens.tokenHash, tokenHash));
-      });
-
-      await logAuthEvent(req, "email.verified", row.userId);
-      return reply.send({ ok: true });
-    },
-  );
-
   // ----- Change password -----
   app.patch(
     "/auth/password",
@@ -293,4 +227,9 @@ async function logAuthEvent(
   } catch {
     /* swallow — auth event log failure should not break auth */
   }
+}
+
+async function countUsers(): Promise<number> {
+  const [row] = await db.select({ n: count() }).from(schema.users);
+  return row?.n ?? 0;
 }

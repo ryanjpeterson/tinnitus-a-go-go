@@ -99,9 +99,7 @@ async function main() {
     email:           "admin@example.com",
     passwordHash:    adminHash,
     displayName:     "Admin",
-    emailVerifiedAt: new Date(),
     isAdmin:         true,
-    invitesRemaining: 10,
   }).returning();
 
   await db.insert(s.users).values({
@@ -109,8 +107,6 @@ async function main() {
     email:           "dev@example.com",
     passwordHash:    userHash,
     displayName:     "Dev User",
-    emailVerifiedAt: new Date(),
-    invitesRemaining: 3,
   });
 
   console.log("✓ Users — admin@example.com / dev@example.com (password: password123456)");

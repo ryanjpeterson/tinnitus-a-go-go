@@ -1,7 +1,7 @@
 # Tinnitus A Go Go
 
-A multi-user concert log for people who still believe the next show is worth the ringing.
-Self-hosted, invite-only, served directly from a personal Mac via Tailscale to a small group of friends.
+A personal concert log for people who still believe the next show is worth the ringing.
+Self-hosted with a single account, served from a personal Mac over Tailscale. To use it yourself, clone it and run your own.
 
 > **Current status:** Phase 14 complete — PWA support for iOS/desktop (installable, splash screens), Last.fm artist enrichment (auto-fetch bio, genre, MusicBrainz ID; scheduled worker enriches 50 artists/hour), URL import for venue/artist photos.
 
@@ -127,16 +127,12 @@ docker compose up -d
 # 3. create the schema: every migration, in order
 for f in apps/api/drizzle/0*.sql; do docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < "$f"; done
 
-# 4. create your first invite (only works while DB is empty)
-docker compose exec api pnpm bootstrap-invite
+# 4. open http://localhost:4444 — a fresh install shows the setup page: create
+#    the account (the only one; it's the admin)
 
-# 5. open the URL it prints, sign up, then verify your email in Mailpit (localhost:8025)
+# 5. import your concert CSV via the admin UI or CLI (see below)
 
-# 6. promote yourself to admin:
-docker compose exec db psql -U tagg -d tagg -c \
-  "UPDATE users SET is_admin = true WHERE username = 'YOUR_USERNAME';"
-
-# 7. import your concert CSV via the admin UI or CLI (see below)
+# 6. optional: show reminders and a weekly recap by ntfy and email — see Notifications
 ```
 
 Then visit:
@@ -146,7 +142,8 @@ Then visit:
 | <http://localhost:4444>        | Web app                         |
 | <http://localhost:3000/health> | API health                      |
 | <http://localhost:9001>        | MinIO console                   |
-| <http://localhost:8025>        | Mailpit (captures dev SMTP)     |
+| <http://localhost:8025>        | Mailpit (catches dev email)     |
+| <http://localhost:8090>        | ntfy (push notifications)       |
 
 Credentials for everything: see [Dev logins](#dev-logins) below.
 
@@ -158,20 +155,13 @@ Credentials for everything: see [Dev logins](#dev-logins) below.
 
 ### Web app — <http://localhost:4444>
 
-The DB starts with zero users. To get in the first time:
+The DB starts with no account. The first visit opens **/setup**: pick a username, email and password (≥12 chars, screened against haveibeenpwned) and you're signed in as the admin. Setup closes once the account exists — there's no signup.
+
+Later logins at <http://localhost:4444/login> with the same username (or email) + password. Forgot it? There's no email reset; set a new one from the server:
 
 ```bash
-docker compose exec api pnpm bootstrap-invite
-# Open the printed http://localhost:4444/signup?invite=... URL.
-# Pick a username/email/password (≥12 chars, screened against haveibeenpwned).
-# Verify your email in Mailpit (localhost:8025) before logging in.
-
-# Then promote yourself to admin:
-docker compose exec db psql -U tagg -d tagg -c \
-  "UPDATE users SET is_admin = true WHERE username = 'YOUR_USERNAME';"
+docker compose exec api pnpm set-password      # prompts for the new password; signs out every session
 ```
-
-Subsequent logins at <http://localhost:4444/login> with the same username (or email) + password.
 
 ### MinIO console — <http://localhost:9001>
 
@@ -184,7 +174,11 @@ S3 API on `:9000` (same credentials). Default bucket: `tagg-media`.
 
 ### Mailpit — <http://localhost:8025>
 
-No login. Catches every email the API sends in dev. Signup triggers a verification email — click the link in Mailpit to flip `users.email_verified_at`. SMTP relay on `:1025`.
+No login. Dev only: catches every email the worker sends (reminders, recaps, tests) so nothing reaches a real inbox. SMTP on `:1025`. It runs when `COMPOSE_PROFILES=mailpit` (set in `.env.example`); production leaves that out and sends through Gmail.
+
+### ntfy — <http://localhost:8090>
+
+No login. The push server the worker posts reminders to; subscribe to `NTFY_PUBLIC_URL/NTFY_TOPIC` in the ntfy app or the web UI here.
 
 ### Postgres — `localhost:5432`
 
@@ -241,7 +235,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 | Artist data    | Last.fm API — bio, genre, MusicBrainz ID (optional); photos from Deezer / Wikidata (no key) |
 | Setlists       | setlist.fm API (optional) — linking, song cache, automatic finder    |
 | Fonts          | Archivo 800 (headings, `font-display`) · Inter (everything else, tabular figures) |
-| Mail (dev)     | Mailpit                                                               |
+| Notifications  | ntfy (self-hosted push) and email via Nodemailer — Gmail SMTP in production, Mailpit in dev |
 | Tests          | Vitest — unit, web ↔ API contract, and a live API smoke test          |
 | Dev orchestr.  | Docker Compose                                                        |
 
@@ -256,12 +250,12 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │   ├── drizzle/              SQL migrations, committed (0005+ applied by hand — see Migration workflow)
 │   │   └── src/
 │   │       ├── index.ts          server setup: plugins, rate limit, error handler (DB rule → 4xx), routes
-│   │       ├── auth/             argon2id passwords, sessions, tokens, verification email, auth middleware
+│   │       ├── auth/             argon2id passwords, sessions, tokens, auth middleware
 │   │       ├── db/               schema.ts (Drizzle), client
 │   │       ├── routes/
 │   │       │   ├── health.ts         /health (process up), /health/deep (database reachable)
-│   │       │   ├── auth.ts           signup, login, logout, me, verify email, change password
-│   │       │   ├── invites.ts        list, issue, check, revoke invites
+│   │       │   ├── auth.ts           first-run setup, login, logout, me, change password
+│   │       │   ├── notifications.ts  notification settings, send a test (the worker sends)
 │   │       │   ├── concerts.ts       shows, split by group into concerts/: read.ts (list, detail by id or
 │   │       │   │                     readable slug, follow-up list), write.ts (create, edit, delete),
 │   │       │   │                     flyer.ts, lineup.ts (lineup, saved setlists)
@@ -298,8 +292,8 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   ├── merge.ts          merge a duplicate (with an undo snapshot) and undo it
 │   │       │   ├── data-health.ts    data health checks and their fixes
 │   │       │   ├── safe-fetch.ts     fetch user-supplied URLs without reaching the private network
-│   │       │   └── env, mailer, queues, redis, s3 (+ mediaUrl, the public URL of a stored file)
-│   │       └── scripts/              bootstrap-invite, import-csv (direct to DB), cache-setlists (backfill),
+│   │       │   └── env, queues, redis, s3 (+ mediaUrl, the public URL of a stored file)
+│   │       └── scripts/              set-password, import-csv (direct to DB), cache-setlists (backfill),
 │   │                                 requeue-stuck-photos, seed-dev
 │   │
 │   ├── web/                      Vite + React 18 + Tailwind, add to Home Screen
@@ -329,14 +323,14 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   ├── SearchSheet.tsx       search across shows, artists, festivals, venues, songs
 │   │       │   ├── TicketsPage.tsx       ticket stub wall
 │   │       │   ├── FollowUpPrompt.tsx    daily prompt to resolve past shows still marked attending/interested
-│   │       │   ├── AccountPage.tsx       profile, password, calendar feed, admin links
+│   │       │   ├── AccountPage.tsx       profile, password, notifications (NotificationsCard), calendar feed, admin links
 │   │       │   ├── ImportsPage.tsx       admin: CSV import + CSV / JSON / Markdown export
 │   │       │   ├── DataCleanupPage.tsx   admin: duplicates, festival suggestions, merges + undo, data health, setlist finder
 │   │       │   ├── JimboConfigPage.tsx   admin: jimbo-ui config (/jimbo-ui) — Looks, Colours, Type, Backdrop,
 │   │       │   │                         Brand (logo, favicon), Style guide and About tabs
 │   │       │   ├── config/ThemePanel.tsx       its Looks, Colours, Type and Backdrop tabs (one draft, one save bar)
 │   │       │   ├── config/StyleGuidePanel.tsx  its Style guide tab: every component, live in the current theme
-│   │       │   ├── LoginPage, SignupPage, VerifyEmailPage
+│   │       │   ├── LoginPage, SetupPage  sign in; create the one account on first run
 │   │       │   └── RequireAuth, RequireAdmin     route guards
 │   │       ├── components/
 │   │       │   ├── ui/kit.tsx        the UI kit every page is built from: PageHeader, Hero/Banner,
@@ -375,6 +369,12 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │           ├── csv-import.ts         admin CSV import
 │           ├── artist-enrich*.ts     hourly: Last.fm data + automatic photos, stored locally
 │           └── setlist-enrich.ts     hourly setlist.fm finder (rate limited, daily budget)
+│       └── src/notify/
+│           ├── run.ts                show reminders and the weekly recap (every 15 min), tests
+│           ├── channels.ts           SMTP (Nodemailer) and ntfy
+│           ├── templates.ts          the branded HTML + text emails
+│           ├── data.ts, theme.ts     what they're made of; brand colours for email
+│           └── preview.ts            pnpm --filter @tagg/worker preview-emails: render them to files
 │
 ├── packages/shared/              shared by api, web and worker: Zod schemas and types (attendance
 │                                 statuses, roles), CSV parsing, slugify, queue names
@@ -384,7 +384,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   ├── backup.sh                 Postgres dump + MinIO mirror with rotation (TAGG_BACKUP_DIR)
 │   ├── setup-tailscale.sh        Tailscale overlay setup helper
 │   └── venue-coords.sql          one-off venue coordinate fill
-├── docker-compose.yml            db, redis, minio (+ minio-init), mailpit, api, worker, web
+├── docker-compose.yml            db, redis, minio (+ minio-init), ntfy, mailpit (dev profile), api, worker, web
 ├── docker-compose.tailscale.yml  overlay: bind ports for the tailnet, Tailscale URLs
 ├── tests/                        live API smoke test and the web ↔ API contract test (unit tests sit
 │                                 in each package's test/)
@@ -433,12 +433,15 @@ All defined in [.env.example](./.env.example). Highlights:
 | `MINIO_ROOT_PASSWORD`      | MinIO secret key — **rotate before sharing access**               |
 | `MINIO_BUCKET`             | Object storage bucket (default `tagg-media`)                      |
 | `MINIO_PUBLIC_URL`         | Externally-reachable MinIO URL for media links                    |
-| `SMTP_HOST/PORT/FROM`      | SMTP config (Mailpit in dev)                                      |
+| `TIMEZONE`                 | Time zone notifications are scheduled in (default `America/Toronto`) |
+| `SMTP_HOST/PORT/USER/PASS/FROM` | Worker email: Gmail (`smtp.gmail.com`, 587, address + app password) in production, Mailpit in dev; blank host turns email off |
+| `NTFY_TOPIC`               | ntfy topic for pushes — long and random, it's the password; blank turns ntfy off |
+| `NTFY_PUBLIC_URL`          | How your phone reaches ntfy (`http://100.x.x.x:8090`); also the server's base URL |
+| `NTFY_URL` / `NTFY_TOKEN`  | How the worker reaches ntfy (default `http://ntfy`) / an access token if you turned on ntfy auth |
+| `COMPOSE_PROFILES`         | `mailpit` in dev to run Mailpit; leave out in production          |
 | `SESSION_SECRET`           | 32+ byte secret — **regenerate per environment**                  |
 | `SESSION_COOKIE_NAME`      | Cookie key for session ID                                         |
 | `SESSION_TTL_DAYS`         | Session lifetime (default 30)                                     |
-| `INVITES_PER_USER`         | How many invites each new user gets (default 3)                   |
-| `INVITE_TTL_DAYS`          | Invite expiry (default 14)                                        |
 | `CORS_ORIGINS`             | Comma-separated allowed web origins                               |
 | `RATE_LIMIT_MAX`           | Max requests per window per IP (default 200)                      |
 | `RATE_LIMIT_WINDOW`        | Rate-limit window (default `1 minute`)                            |
@@ -446,7 +449,7 @@ All defined in [.env.example](./.env.example). Highlights:
 | `LASTFM_API_KEY`           | Optional — enables Last.fm artist enrichment (bio, genre, MBID)   |
 | `GOOGLE_MAPS_API_KEY`      | Optional — enables embedded maps; OSM link shown when absent      |
 | `VITE_GOOGLE_MAPS_API_KEY` | Frontend Maps key (passed to `@vis.gl/react-google-maps`)         |
-| `APP_URL`                  | Public app base URL (used in email links and calendar-feed links) |
+| `APP_URL`                  | Public app base URL (links in emails, ntfy pushes and the calendar feed) |
 | `TAGG_BACKUP_DIR`          | Backup destination path for `scripts/backup.sh` (prod only)      |
 
 ---
@@ -465,7 +468,7 @@ pnpm logs                 # follow all logs
 
 pnpm db:generate          # generate a new migration from schema changes
 pnpm db:studio            # open Drizzle Studio for the DB
-pnpm bootstrap-invite     # one-time first-user invite (only when DB is empty)
+pnpm set-password         # new password for the account (run in the api container)
 pnpm import-csv -- --username <user>   # direct-to-DB CSV import (no Docker needed)
 
 pnpm test                 # unit + web ↔ API contract tests (no stack needed)
@@ -500,16 +503,15 @@ All routes require a valid session cookie (`tagg_session`) unless noted.
 | ------ | --------------------- | -------------------------------------------------------- |
 | `GET`  | `/health`             | Health check (open, no auth required)                    |
 | `GET`  | `/health/deep`        | Database reachability check; 503 if the database is down |
-| `POST` | `/auth/signup`        | Create account; requires valid invite code               |
+| `GET`  | `/auth/setup`         | `{ needed }` — true until the account exists             |
+| `POST` | `/auth/setup`         | Create the account (admin) and sign in; 409 once it exists |
 | `POST` | `/auth/login`         | Password login; sets `tagg_session` cookie               |
 | `POST` | `/auth/logout`        | Invalidates current session                              |
 | `GET`  | `/auth/me`            | Returns current user object                              |
-| `POST` | `/auth/verify-email`  | Confirms email address via token from signup email       |
 | `PATCH` | `/auth/password`     | Change your password (current + new)                     |
-| `GET`  | `/invites/check`      | Validates an invite code (`?code=`)                      |
-| `GET`  | `/invites`            | Signed in. Invites you've issued, with used / expired state |
-| `POST` | `/invites`            | Signed in. Issue an invite (uses one of your invites; rate limited) |
-| `DELETE` | `/invites/:id`      | Signed in. Revoke one of your unused invites (409 if already used) |
+| `GET`  | `/notifications`      | Signed in. Notification settings, account email, which channels the worker has set up |
+| `PATCH` | `/notifications`     | Signed in. Change settings (reminder days, channels, recap day, send hour, email address) |
+| `POST` | `/notifications/test` | Signed in. Send a reminder or recap now (`{ what }`); answers with each channel's result |
 
 ### Public (unauthenticated)
 
@@ -699,14 +701,13 @@ for f in apps/api/drizzle/0*.sql; do docker compose exec -T db psql -U tagg -d t
 ## Auth & security
 
 - Passwords hashed with **argon2id** (`@node-rs/argon2`, OWASP 2024 params)
-- Password length ≥ 12, checked against the **Pwned Passwords** k-anonymity API at signup
+- Password length ≥ 12, checked against the **Pwned Passwords** k-anonymity API at setup and on change
 - **Server-side sessions** stored in Postgres; only the SHA-256 of the token is stored
 - Session cookies: `HttpOnly`, `SameSite=Lax`, `Secure` in production
 - Sessions auto-renew when more than halfway elapsed; explicit logout invalidates server-side
-- Rate-limited routes: signup and login (configurable via `RATE_LIMIT_*` env vars)
-- Invite codes hashed in DB; raw codes only ever exist in the URL sent to the invitee
+- Rate-limited routes: setup, login and notification tests (configurable via `RATE_LIMIT_*` env vars)
+- One account: setup only works while there's none (guarded by an advisory lock), and there's no signup
 - `@fastify/helmet` security headers; CORS locked to `CORS_ORIGINS`
-- Email must be verified before logging in; token sent via SMTP, captured by Mailpit in dev
 
 ---
 
@@ -714,11 +715,9 @@ for f in apps/api/drizzle/0*.sql; do docker compose exec -T db psql -U tagg -d t
 
 | Table | Purpose |
 | ----- | ------- |
-| `users` | Accounts with username, email, argon2id hash, `is_admin`, `calendar_token` (private feed URL), `push_prefs` (unused since notifications were removed) |
+| `users` | Accounts with username, email, argon2id hash, `is_admin`, `calendar_token` (private feed URL), `notify_prefs` (notification settings; missing keys use the defaults in code) |
 | `sessions` | Server-side sessions; stores SHA-256 of token |
 | `auth_events` | Audit log: login, logout, password change |
-| `email_verification_tokens` | Single-use tokens from signup email |
-| `invites` | Invite codes (hashed); tracks who issued and who used |
 | `concerts` | Canonical show record: date, venue FK, series FK, flyer, flyer hash. Maintained by the database: `type` (`festival_day` exactly when it belongs to a festival), `headliner_hint` (from the lineup), and a unique readable `slug` (festival or headliner + date; a second set on a festival date adds its headliner). A festival can have several shows on one date. A show joining a festival takes its venue if it has none; a festival whose last show leaves is removed |
 | `concert_attendees` | Per-user junction: status (`interested` / `attending` / `attended` / `missed` / `cancelled`), notes, ticket price, timestamps |
 | `concert_artists` | Lineup: artist FK, role (`headliner` / `co_headliner` / `support`, default `support`), set_order, appearance_notes, stage_name (festival days). At most one headliner, never alongside co-headliners (enforced by the database). `headliner` and `co_headliner` are mutually exclusive in any one lineup |
@@ -732,7 +731,7 @@ for f in apps/api/drizzle/0*.sql; do docker compose exec -T db psql -U tagg -d t
 | `setlists` | Saved setlist.fm links per artist per concert: concert FK, artist FK, setlistfm_id (full URL or ID) |
 | `setlist_songs` | Individual songs in a setlist: position, song_name, is_cover, cover_artist, notes |
 | `imports` | CSV import job queue: status, row counts, error samples |
-| `push_subscriptions`, `push_sent`, `app_secrets` | Left from the removed Web Push notifications; nothing reads or writes them |
+| `notifications_sent` | Each reminder (`remind:<show>:<days>`) and weekly recap (`recap:<date>`) sent, so it goes out once; pruned after a year |
 | `storage_orphans` | Storage files nothing references any more (queued by triggers); the API deletes them hourly |
 
 ---
@@ -766,6 +765,7 @@ Applied migrations:
 | `0011_data_cleanup.sql` | `merge_log` (each duplicate merge with an undo snapshot) and `duplicate_dismissals` ("not a duplicate" pairs) |
 | `0012_setlist_lookups.sql` | `setlist_lookups`: which (show, artist) pairs the automatic setlist finder has searched, with attempts and result |
 | `0013_artist_photos.sql` | `enriched_at` and `image_source` on artists (automatic photos; hourly enrichment moves through the list) |
+| `0020_single_account_notifications.sql` | One account: drops `invites`, `email_verification_tokens` and the invite / verification columns on `users`; adds `users.notify_prefs` and `notifications_sent`; drops the Web Push leftovers (`push_subscriptions`, `push_sent`, `app_secrets`, `users.push_prefs`) |
 | `0019_brand_theme.sql` | Creates `site_copy` if it's missing (0008 never ran on some installs) — the brand theme lives there |
 | `0018_couple_decouple_festivals.sql` | Shows join and leave festivals freely: several shows per festival date allowed, venue inherited on joining, a festival whose last show leaves is removed (its flyer moves to that show or is queued in `storage_orphans`), festival suggestions can be dismissed |
 | `0017_notification_prefs.sql` | `users.push_prefs`: which push notifications each user wants (tonight, how was it, anniversaries — all on by default) |
@@ -773,7 +773,7 @@ Applied migrations:
 | `0015_show_integrity_and_slugs.sql` | Database-enforced show rules: `type` derived from the festival link (+ check), one show per festival per date, festival dates/venue/year widened to cover its days, one headliner per lineup (no headliner + co-headliner mix), `headliner_hint` maintained from the lineup, readable unique `slug` on every show |
 | `0014_festival_days_single_source.sql` | Festival days become the only source for festival lineups and attendance: `stage_name` on `concert_artists`; anything only `festival_sets` / `festival_attendees` held is copied onto the days, then both tables are dropped |
 
-0005–0019 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
+0005–0020 are not in the Drizzle journal; apply them by hand, then backfill the setlist cache once:
 
 ```bash
 docker compose exec -T db psql -U tagg -d tagg -f - < apps/api/drizzle/0010_setlist_song_sets.sql
@@ -786,6 +786,7 @@ docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/ap
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0017_notification_prefs.sql
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0018_couple_decouple_festivals.sql
 docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0019_brand_theme.sql
+docker compose exec -T db psql -U tagg -d tagg -v ON_ERROR_STOP=1 -f - < apps/api/drizzle/0020_single_account_notifications.sql
 docker compose exec api npx tsx src/scripts/cache-setlists.ts
 ```
 
@@ -795,9 +796,9 @@ For destructive changes (drop column/table, rename), use **expand/contract**: ad
 
 ## Deployment (Tailscale, self-hosted from Mac)
 
-This is a friends project served from a personal Mac — no VPS. Tailscale handles access control. All Docker services run with `restart: always` so they survive reboots automatically.
+This is a personal tool served from a personal Mac — no VPS. Tailscale handles access control. All Docker services run with `restart: always` so they survive reboots automatically.
 
-1. Install [Tailscale](https://tailscale.com) on the host Mac and each friend's device
+1. Install [Tailscale](https://tailscale.com) on the host Mac and each of your devices
 2. Use **Tailscale Funnel** for public HTTPS, or share via Tailnet for Tailscale-only access
 3. `docker compose up -d` keeps the stack running; `restart: always` handles reboots
 4. Rotate all secrets from `.env.example` before sharing access (see [Dev logins](#dev-logins) warning)
@@ -814,6 +815,31 @@ cd /Volumes/jimbos-sloppydrive/tinnitus-a-go-go && git pull --ff-only && docker 
 ```
 
 When a release adds a migration, apply it after the pull and before the build (see [Migration workflow](#migration-workflow)). The app is at `http://macmini:4444`.
+
+### Notifications (ntfy + Gmail)
+
+Reminders and the weekly recap are sent by the worker. Each channel is off until its variables are set in `.env` on the Mac mini; after changing them, `docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d` recreates the worker and ntfy.
+
+**ntfy** (the `ntfy` service in compose, port 8090):
+
+1. In `.env`: `NTFY_TOPIC=tinnitus-<openssl rand -hex 12>` (the topic is the password — anyone on the tailnet who knows it can read it) and `NTFY_PUBLIC_URL=http://100.123.243.36:8090`.
+2. In the ntfy app on the iPhone (on Tailscale): **Settings → Default server** → `http://100.123.243.36:8090` exactly as in `NTFY_PUBLIC_URL` (instant iOS pushes go through ntfy.sh, which only gets a message id, and it matches on that URL). Then **+** → the topic name → **Subscribe**. Allow notifications when asked.
+3. Account → Notifications shows the link to subscribe to; **Send a test reminder** should buzz the phone.
+
+**Gmail** (sending to yourself through your own account):
+
+1. Turn on 2-Step Verification for the Google account, then make an app password at <https://myaccount.google.com/apppasswords> (name it "Tinnitus"); Google shows a 16-letter code once.
+2. In `.env`: delete `COMPOSE_PROFILES=mailpit`, and set
+   ```env
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USER=you@gmail.com
+   SMTP_PASS=the16lettercode
+   SMTP_FROM="Tinnitus A Go Go <you@gmail.com>"
+   ```
+3. Emails go to the account's email unless Account → Notifications says otherwise. **Send a test recap** to check; Gmail's free limit (500 a day) is far beyond what this sends.
+
+Stop the old Mailpit container once: `docker compose stop mailpit && docker compose rm -f mailpit`.
 
 ### Tailscale Funnel (public internet access)
 
@@ -944,7 +970,11 @@ An installable web app (add it to your phone's Home Screen). Phone-first layout:
 - **Import & export** — CSV import (queued in the worker); export your log as CSV (with setlists), JSON or Markdown.
 - **Data cleanup** — suggested duplicate venues and artists with merge preview, merge history with undo, data health checks with one-tap fixes, setlist finder progress; similar names flagged when adding a show.
 - **jimbo-ui config** (Account → jimbo-ui config, `/jimbo-ui`) — **Looks**: templates by category, each in light, mid and dark, with a search box and *Share this look*; **Colours**: a picker for the accent, highlight, support and background colours (the logo uses the accent and highlight) with readability checks; **Type**: fonts, weight, spacing and size for headings and body; **Backdrop**: one of 48 patterns behind every page, still or slowly moving. All four preview live across the app and share one save bar; everything else is derived from them (a light background switches to dark text). **Brand**: the motif (circles, or a shape such as a triforce, stars or hearts — it's also the favicon) and logo or favicon uploads; the built-in ones recolour with the theme. Tabs, sub-tabs and filters stay in the URL, so a refresh or link lands on the same view. **Style guide**: every component in the current colours. **About**: the jimbo.ui version, registry status and any newer jimbo.ui release, with what updating would change.
-- Invites (accounts are invite-only), service health links.
+- Service health links.
+
+### Notifications
+- **Show reminders** before each show you're attending (7, 3 and 1 days out by default; interested shows optional) and a **weekly recap** on the day you pick: anniversaries of shows you attended that week in past years, what's coming up in the next 60 days and a few numbers. By **ntfy** push, **email**, or both, at the hour you pick (Account → Notifications, with *Send a test*). The worker checks every 15 minutes, sends each once, and catches up later the same day if it was down.
+- Emails are branded from the current theme's colours (TINNITUS / a Go Go wordmark, calendar-ticket dates, countdown pills), with a plain-text version; no images, since Gmail can't load anything from a Tailscale address. `pnpm --filter @tagg/worker preview-emails <dir>` renders every email from sample data.
 
 ### Offline edits
 - **Attendance edits made without a connection** (status, notes, ticket price) are kept on the device and sent when it's back; a banner shows while they wait. This works over plain http. (The old Web Push notifications and offline page cache needed HTTPS and were removed; see the CHANGELOG.)
@@ -959,14 +989,14 @@ An installable web app (add it to your phone's Home Screen). Phone-first layout:
 ### ✅ Shipped
 Summarised by area — [CHANGELOG.md](./CHANGELOG.md) has the detail.
 
-- **Foundation** — Docker Compose stack, Postgres + Drizzle, argon2id auth, email verification, invite-only accounts, self-hosting on a Mac mini over Tailscale, automated backups
+- **Foundation** — Docker Compose stack, Postgres + Drizzle, argon2id auth, a single account set up on first run, self-hosting on a Mac mini over Tailscale, automated backups
 - **The log** — shows with whole-bill names and readable links; Past / Upcoming; lineups with database-enforced billing rules; attendance with notes and ticket price; daily follow-up prompt
 - **Festivals** — festivals as containers of day shows; day numbers from the festival's dates; days attended; brands linking years
 - **Media** — photos and videos with WebP / H.264 processing, HEIC support, artist tagging, ticket stubs, background upload queue, full-screen viewer, share images
 - **Setlists** — per-artist setlist.fm links with a song cache and an automatic hourly finder
 - **Artists and venues** — automatic artist photos (stored locally), Last.fm bios, venue aliases, full-screen venue map, artists-seen and songs-heard stats
 - **Home and Year in review** — on this day, totals, charts, milestones, a recap for every year
-- **App** — phone-first UI kit, tab dock, search across everything (including songs), pull to refresh, skeleton loaders, calendar feed
+- **App** — phone-first UI kit, tab dock, search across everything (including songs), pull to refresh, skeleton loaders, calendar feed, ntfy + email reminders and weekly recap
 - **Admin** — CSV import, CSV / JSON / Markdown export, data cleanup (duplicates, merge + undo, health checks)
 - **Code health** — unit, contract and live smoke tests (`pnpm test`, `pnpm test:smoke`); the show page and concert routes split into one file per section; unused endpoints and the HTTPS-only push / offline code removed
 

@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
-    "bootstrap-invite": "tsx src/scripts/bootstrap-invite.ts",
+    "set-password": "tsx src/scripts/set-password.ts",
     "import-csv": "tsx src/scripts/import-csv.ts",
     "seed": "tsx src/scripts/seed-dev.ts",
     "requeue-stuck": "tsx src/scripts/requeue-stuck-photos.ts"
@@ -29,7 +29,6 @@
     "drizzle-orm": "^0.36.4",
     "fastify": "^5.1.0",
     "ioredis": "^5.4.1",
-    "nodemailer": "^6.9.16",
     "pino": "^9.5.0",
     "pino-pretty": "^13.0.0",
     "postgres": "^3.4.5",
@@ -37,7 +36,6 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
-    "@types/nodemailer": "^6.4.17",
     "drizzle-kit": "^0.28.1",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"

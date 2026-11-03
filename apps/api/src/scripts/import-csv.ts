@@ -240,7 +240,7 @@ async function main(): Promise<void> {
   });
   if (!user) {
     console.error(`Error: no user with username "${username}" found in the database.`);
-    console.error("  Run the bootstrap-invite script first, then sign up.");
+    console.error("  Open the app and create the account on its setup page first.");
     process.exit(1);
   }
 

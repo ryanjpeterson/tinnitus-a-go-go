@@ -15,8 +15,6 @@ export interface UserPublic {
   email: string;
   displayName: string | null;
   isAdmin: boolean;
-  emailVerifiedAt: Date | null;
-  invitesRemaining: number;
 }
 
 const SESSION_TTL_MS = () => env.SESSION_TTL_DAYS * 24 * 60 * 60 * 1000;
@@ -86,8 +84,6 @@ export async function validateSession(token: string): Promise<
       email: userRow.email,
       displayName: userRow.displayName,
       isAdmin: userRow.isAdmin,
-      emailVerifiedAt: userRow.emailVerifiedAt,
-      invitesRemaining: userRow.invitesRemaining,
     },
     renewed,
   };

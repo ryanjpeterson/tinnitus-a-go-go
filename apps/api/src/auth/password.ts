@@ -38,7 +38,7 @@ export async function isPasswordPwned(plain: string): Promise<boolean> {
       headers: { "Add-Padding": "true" },
       signal: AbortSignal.timeout(3000),
     });
-    if (!res.ok) return false; // fail open: if HIBP is down, don't block signup
+    if (!res.ok) return false; // fail open: if HIBP is down, don't block setting a password
     const body = await res.text();
     return body
       .split("\n")

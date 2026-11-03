@@ -19,7 +19,7 @@
     "test": "vitest run --exclude \"tests/smoke/**\"",
     "db:generate": "pnpm --filter @tagg/api db:generate",
     "db:studio": "pnpm --filter @tagg/api db:studio",
-    "bootstrap-invite": "pnpm --filter @tagg/api bootstrap-invite",
+    "set-password": "pnpm --filter @tagg/api set-password",
     "import-csv": "pnpm --filter @tagg/api import-csv",
     "test:smoke": "vitest run tests/smoke"
   },

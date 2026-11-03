@@ -73,7 +73,11 @@
       "map-view",
       "jimbo-config",
       "url-state",
-      "toast"
+      "toast",
+      "switch-row",
+      "toggle-grid",
+      "key-value",
+      "text-field"
     ],
     "local": [
       {
@@ -191,12 +195,6 @@
         "matches": "badge"
       },
       {
-        "name": "InviteBadge",
-        "path": "apps/web/src/routes/SignupPage.tsx",
-        "kind": "domain",
-        "matches": "badge"
-      },
-      {
         "name": "AddConcertModal",
         "path": "apps/web/src/routes/AddConcertModal.tsx",
         "kind": "domain",
@@ -247,6 +245,18 @@
       {
         "name": "OnThisDay",
         "path": "apps/web/src/routes/StatsPage.tsx",
+        "kind": "domain",
+        "matches": null
+      },
+      {
+        "name": "NotificationsCard",
+        "path": "apps/web/src/routes/NotificationsCard.tsx",
+        "kind": "domain",
+        "matches": null
+      },
+      {
+        "name": "Notification emails (wordmark, ticket, pill, stat tiles — email-safe HTML)",
+        "path": "apps/worker/src/notify/templates.ts",
         "kind": "domain",
         "matches": null
       }

@@ -4,10 +4,12 @@ import {
   QUEUE_MEDIA_PROCESS,
   QUEUE_ARTIST_ENRICH,
   QUEUE_SETLIST_ENRICH,
+  QUEUE_NOTIFY,
   type CsvImportJobData,
   type MediaProcessJobData,
   type ArtistEnrichJobData,
   type SetlistEnrichJobData,
+  type NotifyJobData,
 } from "@tagg/shared";
 import { redis } from "./redis.js";
 
@@ -43,3 +45,9 @@ export const artistEnrichQueue = new Queue<ArtistEnrichJobData>(QUEUE_ARTIST_ENR
 // Automatic setlist finder — the worker schedules its own hourly scans; the API
 // only adds a scan when an admin presses "Run now".
 export const setlistEnrichQueue = new Queue<SetlistEnrichJobData>(QUEUE_SETLIST_ENRICH, { connection: redis });
+
+// "Send a test" from the Account page; the worker sends reminders and recaps on its own.
+export const notifyQueue = new Queue<NotifyJobData>(QUEUE_NOTIFY, {
+  connection: redis,
+  defaultJobOptions: { attempts: 1, removeOnComplete: { age: 60 * 60, count: 20 }, removeOnFail: { age: 60 * 60 * 24 } },
+});

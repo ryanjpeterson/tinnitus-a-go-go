@@ -72,8 +72,12 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET: ${MINIO_BUCKET}
 
+  # Dev only: catches every email so you can look at it (localhost:8025) instead
+  # of sending it. Runs when COMPOSE_PROFILES includes "mailpit" (.env.example
+  # sets it; production leaves it out and sends through Gmail).
   mailpit:
     image: axllent/mailpit:latest
+    profiles: ["mailpit"]
     restart: always
     ports:
       - "1025:1025" # SMTP
@@ -82,6 +86,30 @@ services:
       MP_MAX_MESSAGES: 5000
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  # ntfy push server: the worker posts show reminders and the weekly recap here;
+  # the ntfy app on your phone subscribes over Tailscale (NTFY_PUBLIC_URL/NTFY_TOPIC).
+  # upstream-base-url lets the iPhone app get instant pushes through ntfy.sh,
+  # which only ever sees a message id, never the text.
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    command: serve
+    restart: always
+    environment:
+      NTFY_BASE_URL: ${NTFY_PUBLIC_URL:-http://localhost:8090}
+      NTFY_UPSTREAM_BASE_URL: https://ntfy.sh
+      NTFY_CACHE_FILE: /var/cache/ntfy/cache.db
+      NTFY_CACHE_DURATION: 72h
+      TZ: ${TIMEZONE:-America/Toronto}
+    volumes:
+      - ntfy_cache:/var/cache/ntfy
+    ports:
+      - "8090:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 -O- http://localhost:80/v1/health | grep -q true"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   api:
     build:
@@ -108,14 +136,9 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET: ${MINIO_BUCKET}
       MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_FROM: ${SMTP_FROM}
       SESSION_SECRET: ${SESSION_SECRET}
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME}
       SESSION_TTL_DAYS: ${SESSION_TTL_DAYS}
-      INVITES_PER_USER: ${INVITES_PER_USER}
-      INVITE_TTL_DAYS: ${INVITE_TTL_DAYS}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX}
       RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW}
       CORS_ORIGINS: ${CORS_ORIGINS}
@@ -153,6 +176,18 @@ services:
       MINIO_BUCKET: ${MINIO_BUCKET}
       LASTFM_API_KEY: ${LASTFM_API_KEY:-}
       SETLISTFM_API_KEY: ${SETLISTFM_API_KEY:-}
+      # Notifications — see .env.example
+      APP_URL: ${APP_URL}
+      TIMEZONE: ${TIMEZONE:-America/Toronto}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      NTFY_URL: ${NTFY_URL:-http://ntfy}
+      NTFY_PUBLIC_URL: ${NTFY_PUBLIC_URL:-}
+      NTFY_TOPIC: ${NTFY_TOPIC:-}
+      NTFY_TOKEN: ${NTFY_TOKEN:-}
     volumes:
       - ./apps/worker:/app/apps/worker
       # Worker imports the Drizzle schema directly from the api workspace, so it needs
@@ -178,7 +213,7 @@ services:
       # When absent, pages fall back to an OpenStreetMap link.
       VITE_GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
       # Admin services panel — set these so the dashboard shows clickable links
-      # to MinIO console and Mailpit for admin users.
+      # to MinIO console and (dev) Mailpit for admin users.
       VITE_MINIO_CONSOLE_URL: ${VITE_MINIO_CONSOLE_URL:-}
       VITE_MAILPIT_URL: ${VITE_MAILPIT_URL:-}
     volumes:
@@ -194,3 +229,4 @@ volumes:
   minio_data:
   api_node_modules:
   worker_node_modules:
+  ntfy_cache:

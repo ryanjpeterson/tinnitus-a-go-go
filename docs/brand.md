@@ -24,6 +24,7 @@ a newer one, ask Claude to "update to the latest jimbo-ui".
 | Tabs: Home · Shows · Artists · Festivals · Venues | `apps/web/src/routes/AppShell.tsx` |
 | UI kit | `apps/web/src/components/ui/jimbo-kit.tsx` is an exact copy of jimbo.ui's reference kit (update by copying); `kit.tsx` re-exports it and adds Tinnitus's pieces — attendance statuses, `EventRow` with an attendance status, the Venues list/map switch, the share button |
 | jimbo-ui config section (`/jimbo-ui`, admins only) | `apps/web/src/routes/JimboConfigPage.tsx` and `routes/config/` — jimbo.ui's reference, with the Wordmark in the theme previews and a logo upload on the Brand tab |
+| Notification emails — the wordmark as text (TINNITUS in the accent, a Go Go in the highlight; Antonio and Caveat Brush where the mail app loads web fonts), calendar-ticket dates, countdown pills, colours from the current theme | `apps/worker/src/notify/templates.ts` and `theme.ts`; preview with `pnpm --filter @tagg/worker preview-emails` |
 | Attendance status colours | `STATUS` in `apps/web/src/components/ui/kit.tsx` (jimbo-ui's tones: attended = accent, attending = yellow, interested = purple, missed = red, cancelled = muted) |
 
 ## Rules for changing the look

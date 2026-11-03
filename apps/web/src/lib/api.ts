@@ -1,5 +1,5 @@
 import type { SavedTheme, Theme } from "./theme";
-import type { UserPublic, AttendanceStatus } from "@tagg/shared";
+import type { UserPublic, AttendanceStatus, NotifyChannels, NotifyJobResult, NotifyTestKind } from "@tagg/shared";
 import { enqueue, queueable } from "./outbox";
 
 export class ApiError extends Error {
@@ -62,23 +62,15 @@ async function request<T>(
 }
 
 export const api = {
-  signup: (body: {
-    username: string;
-    email: string;
-    password: string;
-    inviteCode: string;
-    displayName?: string;
-  }) => request<{ user: UserPublic }>("/auth/signup", { method: "POST", body: JSON.stringify(body) }),
+  setupStatus: () => request<{ needed: boolean }>("/auth/setup"),
+  setup: (body: { username: string; email: string; password: string; displayName?: string }) =>
+    request<{ user: UserPublic }>("/auth/setup", { method: "POST", body: JSON.stringify(body) }),
   login: (body: { identifier: string; password: string }) =>
     request<{ user: UserPublic }>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
   logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     request<{ ok: true }>("/auth/password", { method: "PATCH", body: JSON.stringify(body) }),
   me: () => request<{ user: UserPublic }>("/auth/me"),
-  checkInvite: (code: string) =>
-    request<{ valid: boolean }>(`/invites/check?code=${encodeURIComponent(code)}`),
-  verifyEmail: (token: string) =>
-    request<{ ok: true }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
   health: () => request<{ ok: boolean }>("/health"),
 
   // Concerts
@@ -130,6 +122,13 @@ export const api = {
   // Calendar feed (private subscribe link)
   getCalendarToken: () => request<{ token: string }>("/calendar/token"),
   resetCalendarToken: () => request<{ token: string }>("/calendar/token/reset", { method: "POST" }),
+
+  // Notifications (ntfy + email; the worker sends them)
+  getNotifications: () => request<NotificationSettings>("/notifications"),
+  patchNotifications: (body: Partial<NotifyPrefs>) =>
+    request<{ prefs: NotifyPrefs }>("/notifications", { method: "PATCH", body: JSON.stringify(body) }),
+  testNotification: (what: NotifyTestKind) =>
+    request<{ result: NotifyJobResult }>("/notifications/test", { method: "POST", body: JSON.stringify({ what }) }),
   /** Mark a photo as a ticket stub (or back to a photo). */
   setPhotoKind: (photoId: string, kind: "photo" | "ticket") =>
     request<{ ok: true }>(`/photos/${photoId}`, { method: "PATCH", body: JSON.stringify({ kind }) }),
@@ -1250,4 +1249,25 @@ export interface FestivalSuggestion {
   suggestedName: string;
   venue: string | null;
   shows: { id: string; slug: string; date: string; title: string | null }[];
+}
+
+/** What the worker sends and when; mirrors NotifyPrefs in the API schema. */
+export interface NotifyPrefs {
+  remindDays: number[];
+  remindNtfy: boolean;
+  remindEmail: boolean;
+  remindInterested: boolean;
+  recapNtfy: boolean;
+  recapEmail: boolean;
+  /** 0 = Sunday … 6 = Saturday. */
+  recapWeekday: number;
+  hour: number;
+  emailTo: string | null;
+}
+
+export interface NotificationSettings {
+  prefs: NotifyPrefs;
+  accountEmail: string | null;
+  /** null until the worker has started with notifications. */
+  channels: NotifyChannels | null;
 }

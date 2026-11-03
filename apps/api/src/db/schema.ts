@@ -40,14 +40,36 @@ export const photoKindEnum = pgEnum("photo_kind", ["flyer", "ticket", "photo", "
 
 // ===== Users / Auth =====
 
-export interface PushPrefs {
-  /** Day of a show you're attending. */
-  tonight: boolean;
-  /** The morning after, if it's still marked attending. */
-  howWasIt: boolean;
-  /** "N years ago today" for shows you attended. */
-  anniversaries: boolean;
+/** What the worker sends you and when (migration 0020). Times are in the worker's TIMEZONE. */
+export interface NotifyPrefs {
+  /** Days before a show to remind you, e.g. [7, 3, 1]; empty turns reminders off. */
+  remindDays: number[];
+  remindNtfy: boolean;
+  remindEmail: boolean;
+  /** Also remind for shows marked interested, not only attending. */
+  remindInterested: boolean;
+  /** Weekly recap: anniversaries this week and what's coming up. Both off turns it off. */
+  recapNtfy: boolean;
+  recapEmail: boolean;
+  /** 0 = Sunday … 6 = Saturday. */
+  recapWeekday: number;
+  /** Hour of the day (0–23) reminders and the recap go out. */
+  hour: number;
+  /** Where emails go; null = the account's email. */
+  emailTo: string | null;
 }
+
+export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
+  remindDays: [7, 3, 1],
+  remindNtfy: true,
+  remindEmail: true,
+  remindInterested: false,
+  recapNtfy: true,
+  recapEmail: true,
+  recapWeekday: 1,
+  hour: 9,
+  emailTo: null,
+};
 
 export const users = pgTable(
   "users",
@@ -55,21 +77,17 @@ export const users = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     username: text("username").notNull(),
     email: text("email").notNull(),
-    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     passwordHash: text("password_hash").notNull(),
     displayName: text("display_name"),
     avatarKey: text("avatar_key"),
     bio: text("bio"),
-    invitedByUserId: uuid("invited_by_user_id"),
-    invitesRemaining: integer("invites_remaining").notNull().default(3),
     isAdmin: boolean("is_admin").notNull().default(false),
     // Reserved for future TOTP/2FA — adding column now avoids a migration later.
     totpSecret: text("totp_secret"),
     // Secret in the private calendar-feed URL (/calendar/<token>.ics); reset to revoke.
     calendarToken: text("calendar_token").unique(),
-    // Which push notifications this user wants (migration 0017).
-    pushPrefs: jsonb("push_prefs").$type<PushPrefs>().notNull()
-      .default({ tonight: true, howWasIt: true, anniversaries: true }),
+    // ntfy and email notifications (migration 0020); missing keys fall back to DEFAULT_NOTIFY_PREFS.
+    notifyPrefs: jsonb("notify_prefs").$type<Partial<NotifyPrefs>>().notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -99,47 +117,6 @@ export const sessions = pgTable(
   }),
 );
 
-export const invites = pgTable(
-  "invites",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    // sha256 hash of the raw code; raw code is only in the URL we send.
-    codeHash: text("code_hash").notNull().unique(),
-    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
-      onDelete: "set null",
-    }),
-    note: text("note"),
-    expiresAt: timestamp("expires_at", { withTimezone: true }),
-    usedAt: timestamp("used_at", { withTimezone: true }),
-    usedByUserId: uuid("used_by_user_id").references(() => users.id, { onDelete: "set null" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => ({
-    createdByIdx: index("invites_created_by_idx").on(t.createdByUserId),
-  }),
-);
-
-export const emailVerificationTokens = pgTable("email_verification_tokens", {
-  tokenHash: text("token_hash").primaryKey(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  email: text("email").notNull(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const passwordResetTokens = pgTable("password_reset_tokens", {
-  tokenHash: text("token_hash").primaryKey(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  usedAt: timestamp("used_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-// Rate-limit / audit log of auth events. Used for lockout heuristics + audit.
 export const authEvents = pgTable(
   "auth_events",
   {
@@ -414,45 +391,22 @@ export const setlistLookups = pgTable(
   (t) => ({ pk: primaryKey({ columns: [t.concertId, t.artistId] }) }),
 );
 
-// ===== Push notifications =====
+// ===== Notifications =====
 
-/** A device that asked for notifications (Web Push subscription). */
-export const pushSubscriptions = pgTable(
-  "push_subscriptions",
+/** Notifications already sent (one row per reminder, recap week or test), so each goes out once. */
+export const notificationsSent = pgTable(
+  "notifications_sent",
   {
-    id:        uuid("id").defaultRandom().primaryKey(),
-    userId:    uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    endpoint:  text("endpoint").notNull().unique(),
-    p256dh:    text("p256dh").notNull(),
-    auth:      text("auth").notNull(),
-    userAgent: text("user_agent"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    key:    text("key").notNull(), // "remind:<concertId>:<days>" | "recap:<YYYY-MM-DD>"
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({ userIdx: index("push_subscriptions_user_idx").on(t.userId) }),
-);
-
-/** Notifications already sent, so each reminder goes out once. */
-export const pushSent = pgTable(
-  "push_sent",
-  {
-    userId:    uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    concertId: uuid("concert_id").notNull().references(() => concerts.id, { onDelete: "cascade" }),
-    kind:      text("kind").notNull(), // "tonight" | "how-was-it"
-    sentAt:    timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => ({ pk: primaryKey({ columns: [t.userId, t.concertId, t.kind] }) }),
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.key] }) }),
 );
 
 /** Storage objects no longer referenced by any row (queued by migration 0018's triggers); the API deletes them. */
 export const storageOrphans = pgTable("storage_orphans", {
   key:       text("key").primaryKey(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-/** Server-generated secrets kept in the database (e.g. the Web Push VAPID key pair). */
-export const appSecrets = pgTable("app_secrets", {
-  key:       text("key").primaryKey(),
-  value:     text("value").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -492,7 +446,6 @@ export const duplicateDismissals = pgTable(
 
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
-  invites: many(invites),
   concertAttendees: many(concertAttendees),
   imports: many(imports),
 }));
@@ -570,11 +523,6 @@ export const setlistSongsRelations = relations(setlistSongs, ({ one }) => ({
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
-}));
-
-export const invitesRelations = relations(invites, ({ one }) => ({
-  createdBy: one(users, { fields: [invites.createdByUserId], references: [users.id] }),
-  usedBy: one(users, { fields: [invites.usedByUserId], references: [users.id] }),
 }));
 
 // ===== Imports =====

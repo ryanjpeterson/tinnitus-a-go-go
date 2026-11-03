@@ -1,5 +1,5 @@
 /**
- * Account settings — password change, admin tools, and sign out.
+ * Account settings — password change, notifications, calendar, admin tools, and sign out.
  */
 
 import { useEffect, useState } from "react";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ServicesPanel } from "@/components/ServicesPanel";
 import { LinkCard, PageHeader } from "@/components/ui/kit";
 import { JimboConfigLink } from "./JimboConfigPage";
+import { NotificationsCard } from "./NotificationsCard";
 
 export function AccountPage() {
   const { user, signOut } = useAuth();
@@ -132,6 +133,8 @@ export function AccountPage() {
           <ServicesPanel />
         </>
       )}
+
+      <NotificationsCard />
 
       <CalendarCard />
 

@@ -1,6 +1,7 @@
 /**
  * Worker entrypoint.
- * Registers BullMQ Workers for the csv-import, media-process, and artist-enrich queues.
+ * Registers BullMQ Workers for the csv-import, media-process, artist-enrich, setlist-enrich
+ * and notify queues, and runs the hourly enrichment scans and the notification schedule.
  */
 import { Worker } from "bullmq";
 import {
@@ -8,10 +9,13 @@ import {
   QUEUE_MEDIA_PROCESS,
   QUEUE_ARTIST_ENRICH,
   QUEUE_SETLIST_ENRICH,
+  QUEUE_NOTIFY,
   type CsvImportJobData,
   type MediaProcessJobData,
   type ArtistEnrichJobData,
   type SetlistEnrichJobData,
+  type NotifyJobData,
+  type NotifyJobResult,
 } from "@tagg/shared";
 import { redis } from "./redis.js";
 import { runCsvImport } from "./jobs/csv-import.js";
@@ -19,6 +23,8 @@ import { runMediaProcess } from "./jobs/media-processing.js";
 import { runArtistEnrich } from "./jobs/artist-enrich.js";
 import { runArtistEnrichScheduler } from "./jobs/artist-enrich-scheduler.js";
 import { bindSetlistWorker, runSetlistEnrich, setlistQueue } from "./jobs/setlist-enrich.js";
+import { publishChannels } from "./notify/channels.js";
+import { pruneNotificationsSent, runNotifyTest, runNotifyTick } from "./notify/run.js";
 
 // ── CSV import ─────────────────────────────────────────────────────────────
 
@@ -155,13 +161,38 @@ const startEnrichScheduler = (): void => {
 
 startEnrichScheduler();
 
+// ── Notifications ─────────────────────────────────────────────────────────
+// Show reminders and the weekly recap go out on their own (checked every 15
+// minutes); the notify queue only carries "send a test" from the Account page.
+
+const notifyWorker = new Worker<NotifyJobData, NotifyJobResult>(
+  QUEUE_NOTIFY,
+  async (job) => runNotifyTest(job.data),
+  { connection: redis, concurrency: 1 },
+);
+notifyWorker.on("ready", () => console.log(`[worker] listening on queue "${QUEUE_NOTIFY}"`));
+notifyWorker.on("completed", (job, result) =>
+  console.log(`[worker] notify test ${job.data.what} email=${result.email} ntfy=${result.ntfy}`),
+);
+notifyWorker.on("failed", (job, err) => console.error(`[worker] notify test failed job=${job?.id} ${err.message}`));
+
+void publishChannels().catch((err) => console.error("[notify] couldn't publish channels:", err));
+const notifyTick = (): void => {
+  void runNotifyTick().catch((err) => console.error("[notify] tick error:", err));
+};
+setTimeout(notifyTick, 20_000);
+const notifyInterval = setInterval(notifyTick, 15 * 60 * 1000);
+const pruneInterval = setInterval(() => void pruneNotificationsSent().catch(() => {}), 24 * 60 * 60 * 1000);
+
 // ── Graceful shutdown ──────────────────────────────────────────────────────
 
 const shutdown = async (signal: string): Promise<void> => {
   console.log(`[worker] ${signal} received, shutting down`);
   if (enrichSchedulerInterval) clearInterval(enrichSchedulerInterval);
   clearInterval(setlistScanInterval);
-  await Promise.all([csvWorker.close(), mediaWorker.close(), enrichWorker.close(), setlistWorker.close()]);
+  clearInterval(notifyInterval);
+  clearInterval(pruneInterval);
+  await Promise.all([csvWorker.close(), mediaWorker.close(), enrichWorker.close(), setlistWorker.close(), notifyWorker.close()]);
   await redis.quit();
   process.exit(0);
 };

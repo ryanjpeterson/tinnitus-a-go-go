@@ -230,7 +230,7 @@ async function applyShows(
 async function main(): Promise<void> {
   const { username, file } = parseArgs(process.argv);
 
-  console.log(`\nTinnitus A Go Go — CSV importer`);
+  console.log(`\ntinnitus a-go-go — CSV importer`);
   console.log(`  User    : ${username}`);
   console.log(`  File    : ${file}\n`);
 

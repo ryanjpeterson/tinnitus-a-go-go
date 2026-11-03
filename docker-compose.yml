@@ -1,4 +1,4 @@
-# Tinnitus A Go Go — base compose stack
+# tinnitus a-go-go — base compose stack
 # Used directly for dev. Production overrides via docker-compose.prod.yml.
 
 # Pinned so `docker compose` commands work regardless of which directory you run them from

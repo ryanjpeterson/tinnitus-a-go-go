@@ -1,4 +1,4 @@
-# Tinnitus A Go Go
+# tinnitus a-go-go
 
 A personal concert log for people who still believe the next show is worth the ringing.
 Self-hosted with a single account, served from a personal Mac over Tailscale. To use it yourself, clone it and run your own.
@@ -829,14 +829,14 @@ Reminders and the weekly recap are sent by the worker. Each channel is off until
 
 **Gmail** (sending to yourself through your own account):
 
-1. Turn on 2-Step Verification for the Google account, then make an app password at <https://myaccount.google.com/apppasswords> (name it "Tinnitus"); Google shows a 16-letter code once.
+1. Turn on 2-Step Verification for the Google account, then make an app password at <https://myaccount.google.com/apppasswords> (name it "tinnitus a-go-go"); Google shows a 16-letter code once.
 2. In `.env`: delete `COMPOSE_PROFILES=mailpit`, and set
    ```env
    SMTP_HOST=smtp.gmail.com
    SMTP_PORT=587
    SMTP_USER=you@gmail.com
    SMTP_PASS=the16lettercode
-   SMTP_FROM="Tinnitus A Go Go <you@gmail.com>"
+   SMTP_FROM="tinnitus a-go-go <you@gmail.com>"
    ```
 3. Emails go to the account's email unless the Notifications page says otherwise. **Send a test recap** to check; Gmail's free limit (500 a day) is far beyond what this sends.
 
@@ -975,7 +975,7 @@ An installable web app (add it to your phone's Home Screen). Phone-first layout:
 
 ### Notifications
 - **Show reminders** before each show you're attending (7, 3 and 1 days out by default; interested shows optional) and a **weekly recap** on the day you pick: anniversaries of shows you attended that week in past years, what's coming up in the next 60 days and a few numbers. By **ntfy** push, **email**, or both, at the hour you pick (**/notifications**, linked from Account next to jimbo-ui config, with *Send a test*). Built to the [jimbo-notify](https://github.com/ryanjpeterson/jimbo-notify) standard — `jimbo-notify.json` records how. The worker checks every 15 minutes, sends each once, and catches up later the same day if it was down.
-- Emails are branded from the current theme's colours (TINNITUS / a Go Go wordmark, calendar-ticket dates, countdown pills), with a plain-text version; no images, since Gmail can't load anything from a Tailscale address. `pnpm --filter @tagg/worker preview-emails <dir>` renders every email from sample data.
+- Emails are branded from the current theme's colours (tinnitus a-go-go wordmark, calendar-ticket dates, countdown pills), with a plain-text version; no images, since Gmail can't load anything from a Tailscale address. `pnpm --filter @tagg/worker preview-emails <dir>` renders every email from sample data.
 
 ### Offline edits
 - **Attendance edits made without a connection** (status, notes, ticket price) are kept on the device and sent when it's back; a banner shows while they wait. This works over plain http. (The old Web Push notifications and offline page cache needed HTTPS and were removed; see the CHANGELOG.)

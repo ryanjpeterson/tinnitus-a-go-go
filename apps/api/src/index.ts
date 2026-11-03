@@ -106,7 +106,7 @@ async function start(): Promise<void> {
 
   await app.listen({ port: env.PORT, host: env.HOST });
   startStorageOrphanSweep(app.log);
-  app.log.info(`Tinnitus A Go Go API listening on http://${env.HOST}:${env.PORT}`);
+  app.log.info(`tinnitus a-go-go API listening on http://${env.HOST}:${env.PORT}`);
 }
 
 /** Postgres errors from the show rules, as user-facing messages. */

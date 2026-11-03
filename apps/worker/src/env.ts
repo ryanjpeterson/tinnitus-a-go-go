@@ -25,7 +25,7 @@ const envSchema = z.object({
   SMTP_PORT: z.coerce.number().int().positive().default(587),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
-  SMTP_FROM: z.string().default("Tinnitus A Go Go <no-reply@tinnitusagogo.local>"),
+  SMTP_FROM: z.string().default("tinnitus a-go-go <no-reply@tinnitusagogo.local>"),
   // ntfy push. NTFY_URL is how the worker reaches the server (http://ntfy in
   // compose); NTFY_PUBLIC_URL is how your phone does (shown on the Account page).
   // Unset NTFY_TOPIC turns ntfy off.

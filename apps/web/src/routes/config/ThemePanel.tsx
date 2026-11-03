@@ -59,7 +59,7 @@ function ThemeCard({ name, vibe, theme: input, style, selected, onPick }: { name
         <div className="flex items-center justify-between">
           <span className="font-display text-15 leading-none"
             style={{ color: theme.accent, ...(heading && FONTS[heading] ? { fontFamily: FONTS[heading]!.css, fontWeight: style!.fonts!.headingsWeight } : {}) }}>
-            TINNITUS<span className="block text-10" style={{ color: theme.highlight }}>a-go-go</span>
+            tinnitus<span className="block text-10" style={{ color: theme.highlight }}>a-go-go</span>
           </span>
           <span className="flex h-5 w-5 items-center justify-center rounded-full text-8 font-bold" style={{ ...dot(c, "support"), color: c["on-support"] }}>A</span>
         </div>

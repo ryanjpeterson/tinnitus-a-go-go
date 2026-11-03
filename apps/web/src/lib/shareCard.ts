@@ -166,7 +166,7 @@ async function draw(card: ShareCard): Promise<Blob> {
   ctx.fillStyle = c.accent;
   ctx.font = "800 40px Archivo, system-ui, sans-serif";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText("Tinnitus A Go Go", left, H - 110);
+  ctx.fillText("tinnitus a-go-go", left, H - 110);
 
   return new Promise((resolve, reject) => {
     try {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tinnitus A Go Go — Tailscale setup helper
+# tinnitus a-go-go — Tailscale setup helper
 # Run this once to configure your .env for Tailscale access.
 #
 # Prerequisites:

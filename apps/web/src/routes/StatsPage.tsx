@@ -254,7 +254,7 @@ export function StatsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Tinnitus A Go Go" title="The damage" />
+      <PageHeader eyebrow={<span className="normal-case">tinnitus a-go-go</span>} title="The damage" />
 
       {/* On This Day — shown prominently when applicable */}
       {d.onThisDay.length > 0 && <OnThisDay shows={d.onThisDay} />}

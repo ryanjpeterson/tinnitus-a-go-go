@@ -234,7 +234,7 @@ function md(text: string): string {
 
 function toMarkdown(shows: ExportShow[]): string {
   const out: string[] = [
-    "# Tinnitus A Go Go — concert log",
+    "# tinnitus a-go-go — concert log",
     "",
     `Exported ${new Date().toISOString().slice(0, 10)} · ${shows.length} show${shows.length === 1 ? "" : "s"}`,
   ];

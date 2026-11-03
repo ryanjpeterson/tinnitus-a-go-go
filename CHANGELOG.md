@@ -18,6 +18,7 @@ Versioning: CalVer (`YYYY.MM.PATCH`). Dates are local to the maintainer.
 
 ### Changed
 
+- **The name is "tinnitus a-go-go" everywhere, all lower case** — the browser tab, home-screen name, header logo's label, Stats eyebrow, Account footer, share cards, the Looks tab tiles, the calendar feed, the Markdown export, and emails (the text wordmark, sign-off, "Open tinnitus a-go-go" button and the sender name). The drawn logo itself is unchanged.
 - **One account** — the app is a personal tool now: no signup, invites or email verification. To share it, someone clones the repo and runs their own. Other accounts already in a database are left alone (migration 0020 shows how to delete them).
 - **Email is sent by the worker, through Gmail in production** — `SMTP_USER` / `SMTP_PASS` (a Google app password) with STARTTLS on 587; the API no longer needs any `SMTP_*` variable. **Mailpit is dev-only**: it runs when `COMPOSE_PROFILES=mailpit` (in `.env.example`), which production leaves out. README → Deployment → **Notifications** has the ntfy and Gmail setup.
 - **The worker installs its dependencies on every start** (like the web container), so new ones such as `nodemailer` reach its `node_modules` volume. `nodemailer` moved from the API to the worker.

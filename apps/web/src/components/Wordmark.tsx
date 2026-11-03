@@ -36,7 +36,7 @@ function LogoSVG({ size }: { size: "sm" | "md" | "lg" | "xl" }) {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 190 92.3"
       role="img"
-      aria-label="Tinnitus A Go Go"
+      aria-label="tinnitus a-go-go"
       style={{ height: h, width: "auto" }}
     >
       {/* TINNITUS — accent, outlined in the text colour (white on dark themes, near-black on light) */}
@@ -69,7 +69,7 @@ export function Wordmark({ className, size = "md", svg: _svg = false }: Props) {
   return (
     <div className={cn("inline-flex select-none", className)}>
       {logoUrl
-        ? <img src={logoUrl} alt="Tinnitus A Go Go" style={{ height: heightMap[size], width: "auto" }} />
+        ? <img src={logoUrl} alt="tinnitus a-go-go" style={{ height: heightMap[size], width: "auto" }} />
         : <LogoSVG size={size} />}
     </div>
   );

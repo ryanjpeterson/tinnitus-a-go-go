@@ -1,6 +1,6 @@
 {
-  "name": "Tinnitus A Go Go",
-  "short_name": "Tinnitus",
+  "name": "tinnitus a-go-go",
+  "short_name": "tinnitus a-go-go",
   "description": "A multi-user concert log for people who still believe the next show is worth the ringing.",
   "start_url": "/",
   "display": "standalone",

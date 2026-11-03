@@ -142,7 +142,7 @@ export function AccountPage() {
         <Button variant="secondary" onClick={() => void signOut()} className="h-12 w-full rounded-control text-15 text-highlight">
           Sign out
         </Button>
-        <p className="text-center text-sm text-text-subtle">Tinnitus A Go Go · v{__APP_VERSION__}</p>
+        <p className="text-center text-sm text-text-subtle">tinnitus a-go-go · v{__APP_VERSION__}</p>
       </div>
     </div>
   );

@@ -46,8 +46,8 @@ function dots(t: EmailTheme): string {
 }
 
 function wordmark(t: EmailTheme): string {
-  return `<span style="font-family:${DISPLAY};font-size:30px;line-height:1;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${t.accentText};">Tinnitus</span>`
-    + `<span style="font-family:${SCRIPT};font-size:26px;line-height:1;color:${t.highlightText};padding-left:6px;">a Go Go</span>`;
+  return `<span style="font-family:${DISPLAY};font-size:30px;line-height:1;font-weight:700;letter-spacing:0.02em;color:${t.accentText};">tinnitus</span>`
+    + `<span style="font-family:${SCRIPT};font-size:26px;line-height:1;color:${t.highlightText};padding-left:6px;">a-go-go</span>`;
 }
 
 function sectionHeading(t: EmailTheme, label: string): string {
@@ -166,7 +166,7 @@ function layout(t: EmailTheme, o: LayoutOptions): string {
         </table>
       </td></tr>
       <tr><td class="edge" style="padding:20px 6px 0;font-family:${BODY};font-size:12px;line-height:18px;color:${t.muted};">
-        Sent by your own Tinnitus A Go Go. Change what you get in <a href="${esc(settings)}" style="color:${t.muted};text-decoration:underline;">Notifications</a>.
+        Sent by your own tinnitus a-go-go. Change what you get in <a href="${esc(settings)}" style="color:${t.muted};text-decoration:underline;">Notifications</a>.
       </td></tr>
     </table>
   </td></tr>
@@ -230,7 +230,7 @@ export function reminderEmail(t: EmailTheme, items: ReminderItem[], appUrl: stri
     ]),
     nudge(first.days),
     "",
-    "— Tinnitus A Go Go",
+    "— tinnitus a-go-go",
   ].join("\n");
 
   return { subject, html, text };
@@ -299,7 +299,7 @@ export function recapEmail(t: EmailTheme, d: RecapData, appUrl: string): Rendere
       ? "No anniversaries, nothing booked. Your ears thank you. Maybe check who's touring?"
       : `${esc(summary[0]!.toUpperCase() + summary.slice(1))}. Here's what's ringing.`,
     rows,
-    cta: { label: "Open Tinnitus", url: appUrl },
+    cta: { label: "Open tinnitus a-go-go", url: appUrl },
     appUrl,
   });
 
@@ -322,7 +322,7 @@ export function recapEmail(t: EmailTheme, d: RecapData, appUrl: string): Rendere
     `${d.attendedThisYear} shows so far in ${d.year}.`,
     "",
     appUrl,
-    "— Tinnitus A Go Go",
+    "— tinnitus a-go-go",
   ].join("\n");
 
   return { subject, html, text };

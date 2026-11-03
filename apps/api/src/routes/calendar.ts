@@ -94,10 +94,10 @@ export async function calendarRoutes(app: FastifyInstance): Promise<void> {
     const lines = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//Tinnitus A Go Go//Shows//EN",
+      "PRODID:-//tinnitus a-go-go//Shows//EN",
       "CALSCALE:GREGORIAN",
       "METHOD:PUBLISH",
-      `X-WR-CALNAME:${esc("Tinnitus A Go Go")}`,
+      `X-WR-CALNAME:${esc("tinnitus a-go-go")}`,
       "X-WR-CALDESC:Your shows",
       "REFRESH-INTERVAL;VALUE=DURATION:PT6H",
       "X-PUBLISHED-TTL:PT6H",

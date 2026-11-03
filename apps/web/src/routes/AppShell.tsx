@@ -284,7 +284,7 @@ export function AppShell() {
                   }
                 }}
                 className={`relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-[14px] transition-[background-color,color,transform] duration-200 active:scale-[0.92] ${
-                  isActive ? "bg-accent/15 text-accent shadow-[inset_0_0_0_1px_rgb(var(--c-accent)/0.3)]" : "text-text-muted active:bg-white/5"
+                  isActive ? "lit-accent" : "text-text-muted active:bg-surface-2"
                 }`}
               >
                 <span className="relative">

@@ -414,7 +414,7 @@ templates (each look in light, mid and dark) or fine-tuned in
 feed `src/lib/theme.ts`, which derives every colour token (surfaces, borders,
 text, tints — light backgrounds flip to dark text) as CSS variables. Tailwind
 colours point at those variables, so components never use raw hex. The logo (TINNITUS in the
-accent, a-go-go in the highlight) and favicon follow the theme unless an uploaded logo/favicon replaces them.
+accent, a-go-go in the highlight) follows the theme unless an uploaded logo replaces it; the favicon is the theme's motif in the accent on the page colour unless one is uploaded.
 Archivo 800 for headings, Inter for everything else by default; the theme can change the fonts, weights, spacing and sizes.
 
 ---
@@ -642,7 +642,7 @@ Data cleanup (`/admin/data` in the app):
 | `POST`  | `/admin/imports`        | Upload a CSV file for async import; returns `importId`             |
 | `GET`   | `/admin/imports`        | List all import jobs with status and row counts                    |
 | `GET`   | `/admin/imports/:id`    | Get full status, row counts, and error samples for one import job  |
-| `PUT`    | `/admin/theme`         | Set the theme `{ accent, background, highlight?, support?, fonts?, backdrop?, infer?, vibrancy?, contrast? }` (colours #RRGGBB); anything left out is cleared |
+| `PUT`    | `/admin/theme`         | Set the theme: the whole theme object `{ accent, background, highlight?, support?, … }` (colours #RRGGBB), stored as sent — fonts, backdrop and its motion, motif and any newer jimbo.ui option save without an API change |
 | `DELETE` | `/admin/theme`         | Back to the default colours                                       |
 | `POST`   | `/admin/theme/:asset`  | Upload a `logo` or `favicon` (SVG/PNG/WebP/JPEG ≤ 1 MB; SVGs with scripts or embedded content are refused) |
 | `DELETE` | `/admin/theme/:asset`  | Remove it (back to the built-in, theme-coloured one)              |
@@ -728,7 +728,7 @@ for f in apps/api/drizzle/0*.sql; do docker compose exec -T db psql -U tagg -d t
 | `event_series` | Festival: name, slug, year, `brand` (the festival across years, e.g. "Bluesfest" — filled from the name when empty), venue, dates, flyer. A container — its lineup and attendance live on its day shows (`concerts` with `type = 'festival_day'`) |
 | `photos` | Concert photos/videos: MinIO key, kind (`photo`, `ticket`, `video`, …), dimensions, set_order, content_hash, processing variants |
 | `photo_artists` | Junction: which artists appear in which photos (`photo_id`, `artist_id`) |
-| `site_copy` | Key/value settings (key PK, value, description, section, updated_at). Section `theme` holds the brand colours and the uploaded logo/favicon storage keys |
+| `site_copy` | Key/value settings (key PK, value, description, section, updated_at). Section `theme` holds the theme as one JSON value (`theme.json`; older per-field keys are read until the next save) and the uploaded logo/favicon storage keys |
 | `setlists` | Saved setlist.fm links per artist per concert: concert FK, artist FK, setlistfm_id (full URL or ID) |
 | `setlist_songs` | Individual songs in a setlist: position, song_name, is_cover, cover_artist, notes |
 | `imports` | CSV import job queue: status, row counts, error samples |
@@ -943,7 +943,7 @@ An installable web app (add it to your phone's Home Screen). Phone-first layout:
 ### Admin
 - **Import & export** — CSV import (queued in the worker); export your log as CSV (with setlists), JSON or Markdown.
 - **Data cleanup** — suggested duplicate venues and artists with merge preview, merge history with undo, data health checks with one-tap fixes, setlist finder progress; similar names flagged when adding a show.
-- **jimbo-ui config** (Account → jimbo-ui config, `/jimbo-ui`) — **Looks**: templates by category, each in light, mid and dark, with a search box and *Share this look*; **Colours**: a picker for the accent, highlight, support and background colours (the logo uses the accent and highlight) with readability checks; **Type**: fonts, weight, spacing and size for headings and body; **Backdrop**: one of 48 patterns behind every page. All four preview live across the app and share one save bar; everything else is derived from them (a light background switches to dark text). **Brand**: upload a logo or favicon, or keep the built-in ones, which recolour with the theme. **Style guide**: every component in the current colours. **About**: the jimbo.ui version, registry status and any newer jimbo.ui release, with what updating would change.
+- **jimbo-ui config** (Account → jimbo-ui config, `/jimbo-ui`) — **Looks**: templates by category, each in light, mid and dark, with a search box and *Share this look*; **Colours**: a picker for the accent, highlight, support and background colours (the logo uses the accent and highlight) with readability checks; **Type**: fonts, weight, spacing and size for headings and body; **Backdrop**: one of 48 patterns behind every page, still or slowly moving. All four preview live across the app and share one save bar; everything else is derived from them (a light background switches to dark text). **Brand**: the motif (circles, or a shape such as a triforce, stars or hearts — it's also the favicon) and logo or favicon uploads; the built-in ones recolour with the theme. Tabs, sub-tabs and filters stay in the URL, so a refresh or link lands on the same view. **Style guide**: every component in the current colours. **About**: the jimbo.ui version, registry status and any newer jimbo.ui release, with what updating would change.
 - Invites (accounts are invite-only), service health links.
 
 ### Offline edits

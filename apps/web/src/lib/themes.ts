@@ -1,7 +1,8 @@
 /**
  * Theme templates for the config section's Theme tab, in categories:
  * Everyday, Holidays, Countries (by region), Provinces, Sports (NHL, NBA,
- * MLB, NFL, and city tabs for Toronto, Ottawa and Chicago) and Games. Each
+ * MLB, NFL, and city tabs for Toronto, Ottawa and Chicago) and Games (Zelda,
+ * Mario, Donkey Kong, more Nintendo, Sly Cooper, Tony Hawk's Underground). Each
  * look comes once, as a family with a light, a mid and a dark page
  * (`FAMILY_SETS`, `familyLook`): the tones it was written in, and the rest
  * made from its own colours by `atTone`. Every one passes
@@ -443,7 +444,7 @@ const SETS: TemplateSet[] = [
       t("Nunavut", "Gold and white, red inukshuk, blue star", "#D72C20", "#E35147", "#FFFFFF", "#0055A4"),
     ] },
   ] },
-  { label: "Games", groups: [
+  { label: "Games", tabs: true, groups: [
     // Palettes from the games' looks — colours only, no artwork.
     { label: "The Legend of Zelda", templates: [
       t("The Legend of Zelda", "1986 · cartridge gold, tunic green, red", "#F8B800", "#E04020", "#000000", "#2EB82E"),
@@ -459,13 +460,54 @@ const SETS: TemplateSet[] = [
       t("The Minish Cap", "2004 · forest, cap yellow, Picori pink", "#F6D55C", "#FF9A8A", "#2F4A2A", "#A8E0F0"),
       t("Echoes of Wisdom", "2024 · rift violet, Tri gold, echo teal", "#B994FF", "#FFD15C", "#1A1430", "#6FE0D8"),
     ] },
+    { label: "Super Mario", templates: [
+      t("Mario", "Cap red, overall blue, button yellow", "#04AEF1", "#E52521", "#1B0E0F", "#FBD000"),
+      t("Luigi", "Cap green and overall navy", "#2B3990", "#33953D", "#F7FAF6", "#226429"),
+      t("Princess Peach", "Gown pink, crown gold, gem blue", "#C61B6B", "#1C6FD1", "#FCF8F9", "#A21658"),
+      t("Bowser", "Shell green, mane orange, horn yellow", "#F9D423", "#F26722", "#16210E", "#8FCB5A"),
+      t("Toad", "Cap spots red, vest blue, white", "#D81A1F", "#2257A8", "#FBF7F6", "#9C1316"),
+      t("Wario", "Cap yellow, overall purple, green", "#FCD200", "#5FB548", "#3A1C55", "#FFE359"),
+      t("Yoshi", "Dino green, saddle red, boot orange", "#6BBE45", "#E7262B", "#131812", "#F68B1F"),
+      t("Yoshi's Island", "Crayon sky, egg spots, flower pink", "#287832", "#E7262B", "#FFF8E6", "#1E5BB0"),
+    ] },
+    { label: "Donkey Kong", templates: [
+      t("Donkey Kong", "Fur brown, tie red, banana yellow", "#D8232A", "#FFD31A", "#2A160B", "#D9A06A"),
+      t("Diddy Kong", "Cap red, fur brown, star yellow", "#D8232A", "#7A4A22", "#FBF7F6", "#89161B"),
+      t("Donkey Kong Country", "Jungle green, banana yellow, barrel brown", "#FFD31A", "#5CB848", "#0F2414", "#D9A06A"),
+      t("Donkey Kong arcade", "1981 · girder red, ladder cyan on black", "#3CBCFC", "#F83800", "#000000", "#FCE4A0"),
+    ] },
+    { label: "More Nintendo", templates: [
+      t("Kirby", "Puff pink, shoe red, sky blue", "#D8232A", "#E53F8D", "#FCF8F9", "#2F5FB8"),
+      t("Metroid", "Power suit orange, red, visor green", "#5FD35F", "#F26B1D", "#0C0F14", "#F58B4D"),
+      t("Star Fox", "Arwing blue, fur orange, silver", "#F28C28", "#3D7EE8", "#0A1226", "#C8CDD6"),
+      t("Pikmin", "Red, yellow and blue leaves on soil", "#F7D11E", "#E8382F", "#1C1610", "#6E9EF0"),
+      t("Splatoon", "Ink orange, ink blue, neon green", "#FA7E37", "#4A5CF0", "#141018", "#CFF622"),
+    ] },
+    { label: "Sly Cooper", templates: [
+      t("Sly Cooper", "Thief blue, cane gold, moonlight", "#E3B23C", "#3E74D0", "#0D1530", "#C8CCD4"),
+      t("Bentley", "Shell green, sweater gold, gadget blue", "#77BD40", "#E8C55A", "#132012", "#7FB0E8"),
+      t("Murray", "Hippo pink, van blue, gloves yellow", "#E584B5", "#3E8EDE", "#1E1028", "#F2D04A"),
+      t("Carmelita Fox", "Fur orange, Interpol blue, shock gold", "#2E5DB0", "#E06418", "#FCF9F6", "#7A5C00"),
+      t("Thievius Raccoonus", "Night violet, moon yellow, rooftop blue", "#F2D04A", "#9A7BE0", "#120E24", "#4FA3E0"),
+    ] },
+    // The menu themes from Tony Hawk's Underground's display options.
+    { label: "Tony Hawk's Underground", templates: [
+      t("T.H.U.G.", "Interface · spray-can lime and red on black", "#9BE22D", "#E8382F", "#0E0E0E", "#F2F2F2"),
+      t("Cloudbuster", "Interface · sky blue, cloud white, sun orange", "#1E6FC0", "#D2601A", "#EAF4FB", "#124171"),
+      t("Retro Hawk", "Interface · seventies orange, mustard and brown", "#F28C28", "#F2C230", "#2A1A10", "#E8D8B8"),
+      t("Chilled", "Interface · ice teal, lilac and frost", "#6FD3E8", "#B8A6F2", "#0E1E2A", "#E8F4F8"),
+      t("Skullz 'N Stuff", "Interface · bone, blood red and black", "#E8E0CC", "#D3202A", "#0B0B0B", "#A89F8A"),
+    ] },
   ] },
   { label: "Brands", groups: [
-    // Companies' own palettes — colours only, no logos.
+    // Companies' own palettes — colours only, no logos. Only the colours on a brand's own
+    // site; a brand with one colour stays one colour (tonal: shades of it fill the rest).
     { label: "Brands", templates: [
-      // Marcone (Pantone 1795 red, black wordmark) with mSupply, its parent's navy.
-      t("Marcone", "Parts red and mSupply navy", "#D22630", "#1B365D", "#FBF7F6", "#A71E26"),
-      t("Marcone", "Parts red and mSupply navy", "#D22630", "#DF4C55", "#101F35", null, { infer: "tonal" }),
+      // marcone.com: logo red (Pantone 1795) and black, on white.
+      t("Marcone", "Logo red and black", "#D22630", null, "#FFFFFF", null, { infer: "tonal" }),
+      t("Marcone", "Logo red and black", "#D22630", null, "#000000", null, { infer: "tonal" }),
+      // msupply.com: navy (Pantone 534) on white — its only colour.
+      t("mSupply", "Navy on white", "#1B365D", null, "#FFFFFF", null, { infer: "tonal" }),
     ] },
   ] },
   { label: "Sports", tabs: true, groups: [

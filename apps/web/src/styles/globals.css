@@ -86,6 +86,15 @@
     background-size: var(--bg-size, 100% 100%);
     background-position: var(--bg-position, 0 0);
     background-repeat: var(--bg-repeat, no-repeat);
+    /* Backdrop motion (theme backdrop.motion) drift, breathe or sway: a slow
+       transform of this layer, set by theme.ts as --bg-animation; scaled up a
+       little first so its edges never show. Off when the device asks for
+       reduced motion. (Alive and pulse animate inside the pattern instead.) */
+    animation: var(--bg-animation, none);
+    transform-origin: 50% 50%;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body::before { animation: none; }
   }
   #root { position: relative; z-index: 0; }
   /* Full-width openers (Banner, HeroSection) fade into the page instead of
@@ -173,6 +182,24 @@
   .dot-accent, .orb-accent       { @apply rounded-full bg-accent; }
   .dot-highlight, .orb-highlight { @apply rounded-full bg-highlight; }
   .dot-support, .orb-support     { @apply rounded-full bg-support; }
+  /* The motif (ThemeDots): a brand colour in the theme's motif shape —
+     circles by default, or a flat shape from theme.ts MOTIFS drawn as a
+     mask (--motif-mask). Brand moments only; status and avatars keep .dot-*. */
+  .motif-accent, .motif-highlight, .motif-support {
+    display: inline-block;
+    border-radius: var(--motif-radius, 9999px);
+    -webkit-mask-image: var(--motif-mask, none);
+    mask-image: var(--motif-mask, none);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+  .motif-accent    { @apply bg-accent; }
+  .motif-highlight { @apply bg-highlight; }
+  .motif-support   { @apply bg-support; }
   .eyebrow {
     @apply text-11 font-semibold uppercase tracking-[0.12em] text-text-subtle;
   }
@@ -207,7 +234,7 @@
   }
   /* Flat accent fill with a slight outline in the accent's darker shade. */
   .btn-primary {
-    @apply bg-accent text-on-accent shadow-[inset_0_0_0_1px_rgb(var(--c-accent-darker)/0.55)] hover:bg-accent-hover;
+    @apply bg-accent text-on-accent hover:bg-accent-hover;
   }
   .btn-secondary {
     @apply border border-border bg-surface-2 text-text-base hover:border-text-subtle;
@@ -235,11 +262,12 @@
     box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.05);
   }
   /* A solid brand fill for small shapes (active tabs and pills, count badges,
-     date bands): flat colour with a slight outline in its darker shade, and
-     its on- colour for text. (Named "lit" before they went flat; kept.) */
-  .lit-accent    { @apply bg-accent text-on-accent shadow-[inset_0_0_0_1px_rgb(var(--c-accent-darker)/0.55)]; }
-  .lit-highlight { @apply bg-highlight text-on-highlight shadow-[inset_0_0_0_1px_rgb(var(--c-highlight-darker)/0.55)]; }
-  .lit-support   { @apply bg-support text-on-support shadow-[inset_0_0_0_1px_rgb(var(--c-support-darker)/0.55)]; }
+     date bands): one flat colour, no outline, and its on- colour for text.
+     Pair with border-transparent where the shape has a border. (Named "lit"
+     before they went flat; kept.) */
+  .lit-accent    { @apply bg-accent text-on-accent; }
+  .lit-highlight { @apply bg-highlight text-on-highlight; }
+  .lit-support   { @apply bg-support text-on-support; }
   /* Inline text action ("Edit", "Remove", "+ Add"). */
   .link-action {
     @apply text-sm font-semibold text-text-muted transition-colors hover:text-accent;
@@ -252,4 +280,21 @@
   input, select, textarea {
     font-size: 16px !important;
   }
+}
+
+/* Backdrop motions that move the whole layer (theme backdrop.motion; theme.ts
+   BACKDROP_MOTIONS). Each runs alternate, so it eases back the way it came —
+   no jump at the loop. Alive and pulse move the pattern's own lines and
+   shapes instead, inside its SVG (theme.ts animatePattern). */
+@keyframes jimbo-bg-drift {
+  from { transform: scale(1.14) translate(-3.5%, -2.5%); }
+  to   { transform: scale(1.14) translate(3.5%, 2.5%); }
+}
+@keyframes jimbo-bg-breathe {
+  from { transform: scale(1.02); }
+  to   { transform: scale(1.12); }
+}
+@keyframes jimbo-bg-sway {
+  from { transform: scale(1.18) rotate(-2.5deg); }
+  to   { transform: scale(1.18) rotate(2.5deg); }
 }

@@ -20,13 +20,15 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
-import { applyTheme, BACKDROP_BASES, BACKDROP_GROUPS, BACKDROPS, backdropCss, brandConfigLine, contrast, exportTheme, FONT_GROUPS, FONTS, fullTheme, importTheme, loadFonts, ownColours, PAGE_TONES, themeHex, toneOf, tokensCss, type PageTone, type Theme, THEME_KEYS } from "@/lib/theme";
+import { applyTheme, BACKDROP_BASES, BACKDROP_GROUPS, BACKDROP_MOTIONS, BACKDROPS, MOTIFS, motifMask, backdropCss, brandConfigLine, contrast, exportTheme, FONT_GROUPS, FONTS, fullTheme, importTheme, loadFonts, ownColours, PAGE_TONES, themeHex, toneOf, tokensCss, type PageTone, type Theme, THEME_KEYS } from "@/lib/theme";
 import { ALL_FAMILIES, FAMILY_SETS, familyAt, familyLook, sameTheme, type Template, type TemplateFamily } from "@/lib/themes";
 import { useBrand } from "@/lib/useBrand";
+import { setUrlParams, useUrlState } from "@/lib/useUrlState";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ColorPicker";
-import { PillTabs, RangeField, SearchField, Sheet, Tabs } from "@/components/ui/kit";
+import { FloatingBar, PillTabs, RangeField, SearchField, Sheet, Tabs } from "@/components/ui/kit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Templates
@@ -192,15 +194,17 @@ export function LooksPanel({ d }: { d: ThemeDraft }) {
     for (const s of FAMILY_SETS) for (const g of s.groups) if (g.families.some(has)) return { set: s.label, group: g.label };
     return { set: FAMILY_SETS[0]!.label, group: "" };
   });
-  const [set, setSet] = useState(home.set);
-  const [subTab, setSubTab] = useState(home.group);
-  const [tone, setTone] = useState<PageTone>(() => toneOf(saved));
-  const [query, setQuery] = useState("");
+  // The category, sub-tab, tone and search are in the URL (?set=, group=, tone=, q=).
+  const [, setParams] = useSearchParams();
+  const [set] = useUrlState("set", home.set, FAMILY_SETS.map((s) => s.label));
+  const [subTab, setSubTab] = useUrlState("group", home.group);
+  const [tone, setTone] = useUrlState<PageTone>("tone", toneOf(saved), PAGE_TONES);
+  const [query, setQuery] = useUrlState("q", "");
 
   const current = FAMILY_SETS.find((s) => s.label === set)!;
   const group = current.groups.find((g) => g.label === subTab) ?? current.groups[0];
-  // A template sets the colours; the type and backdrop you've chosen stay.
-  const pick = (tpl: Template) => setDraft(ownColours({ ...tpl.theme, fonts: draft.fonts, backdrop: draft.backdrop }));
+  // A template sets the colours; the type, backdrop and motif you've chosen stay.
+  const pick = (tpl: Template) => setDraft(ownColours({ ...tpl.theme, fonts: draft.fonts, backdrop: draft.backdrop, motif: draft.motif }));
   // Lower-case and without accents, so "quebec" finds Québec.
   const plain = (v: string) => v.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
   const words = plain(query.trim()).split(/\s+/).filter(Boolean);
@@ -224,7 +228,7 @@ export function LooksPanel({ d }: { d: ThemeDraft }) {
           <TemplateGrid label={`${results.length} ${results.length === 1 ? "look" : "looks"}`} families={results} tone={tone} draft={draft} pick={pick} />
         ) : (
           <>
-            <PillTabs value={set} onChange={(v) => { setSet(v); setSubTab(""); }}
+            <PillTabs value={set} onChange={(v) => setUrlParams(setParams, { set: v === home.set ? null : v, group: null })}
               options={FAMILY_SETS.map((s) => ({ value: s.label, label: s.label }))} />
             {current.tabs && (
               <div className="rounded-xl border border-border bg-surface-2/60 p-2">
@@ -318,8 +322,8 @@ export function ColoursPanel({ d }: { d: ThemeDraft }) {
 /** Backdrop: the pattern behind every page, its base, strength, size, contrast and saturation. */
 export function BackdropPanel({ d }: { d: ThemeDraft }) {
   const { draft, setDraft, shown, saved } = d;
-  const [bdGroup, setBdGroup] = useState<(typeof BACKDROP_GROUPS)[number]>(
-    () => BACKDROPS.find((b) => b.key === fullTheme(saved).backdrop.pattern)?.group ?? "Abstract");
+  const [bdGroup, setBdGroup] = useUrlState<(typeof BACKDROP_GROUPS)[number]>("patterns",
+    BACKDROPS.find((b) => b.key === fullTheme(saved).backdrop.pattern)?.group ?? "Abstract", BACKDROP_GROUPS);
   const setBackdrop = (patch: NonNullable<Theme["backdrop"]>) => setDraft((t) => ownColours({ ...t, backdrop: { ...t.backdrop, ...patch } }));
   return (
     <section className="space-y-3">
@@ -355,6 +359,53 @@ export function BackdropPanel({ d }: { d: ThemeDraft }) {
           <RangeField label="Saturation" min={0} max={1.6} step={0.05} value={shown.backdrop.saturation!}
             onChange={(v) => setBackdrop({ saturation: v })} format={(v) => (v === 0 ? "Greys" : `${Math.round(v * 100)}%`)} />
         </div>
+        {/* Motion: the backdrop moves slowly behind the page; devices set to reduce motion keep it still. */}
+        <div className="space-y-2 border-t border-border pt-4">
+          <p className="text-sm text-text-muted">Motion</p>
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Backdrop motion">
+            {BACKDROP_MOTIONS.map((m) => {
+              const active = shown.backdrop.motion === m.key;
+              return (
+                <button key={m.key} type="button" role="radio" aria-checked={active} title={m.hint} onClick={() => setBackdrop({ motion: m.key })}
+                  className={`h-11 rounded-control border text-sm font-semibold transition-colors ${active ? "lit-accent border-transparent" : "glass text-text-muted hover:text-text-base"}`}>
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-text-subtle">{BACKDROP_MOTIONS.find((m) => m.key === shown.backdrop.motion)?.hint}. Off on devices set to reduce motion.</p>
+          {shown.backdrop.motion !== "none" && (
+            <RangeField label="Speed" min={0.5} max={2} step={0.1} value={shown.backdrop.speed!}
+              onChange={(v) => setBackdrop({ speed: v })} format={(v) => `${Math.round(v * 100)}%`} />
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Motif: the flat shape the theme's colours take in brand moments (ThemeDots) — circles, or a triforce, sparkles, stars… */
+export function MotifPanel({ d }: { d: ThemeDraft }) {
+  const { setDraft, shown } = d;
+  return (
+    <section className="space-y-3">
+      <Intro title="Motif">Your colours as three flat shapes side by side, in empty states and brand moments. Circles unless you pick another.</Intro>
+      <div className="card grid grid-cols-3 gap-2 p-4 sm:grid-cols-4 sm:p-5" role="radiogroup" aria-label="Motif">
+        {MOTIFS.map((m) => {
+          const active = shown.motif === m.key;
+          const mask = motifMask({ ...shown, motif: m.key });
+          return (
+            <button key={m.key} type="button" role="radio" aria-checked={active} onClick={() => setDraft((t) => ownColours({ ...t, motif: m.key }))}
+              className={`flex flex-col items-center gap-2 rounded-xl border px-2 py-3 transition-colors ${active ? "border-accent ring-1 ring-accent" : "border-border hover:border-text-subtle"}`}>
+              <span aria-hidden="true" className="inline-flex items-center gap-1.5">
+                {(["accent", "highlight", "support"] as const).map((k) => (
+                  <span key={k} className="h-4 w-4" style={{ background: shown[k], borderRadius: mask === "none" ? 9999 : 0, WebkitMaskImage: mask, maskImage: mask, WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat", WebkitMaskPosition: "center", maskPosition: "center" }} />
+                ))}
+              </span>
+              <span className={`text-11 font-semibold ${active ? "text-accent" : "text-text-muted"}`}>{m.label}</span>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -365,7 +416,8 @@ export function TypePanel({ d }: { d: ThemeDraft }) {
   const { setDraft, shown } = d;
   // The type pickers show each style in its own face.
   useEffect(() => { loadFonts(Object.keys(FONTS)); }, []);
-  const [fontTab, setFontTab] = useState<Partial<Record<"headings" | "body", string>>>({});
+  // Each picker's group tab is in the URL (?headings-fonts=, body-fonts=).
+  const [params, setParams] = useSearchParams();
   const setFonts = (patch: NonNullable<Theme["fonts"]>) => setDraft((t) => ownColours({ ...t, fonts: { ...t.fonts, ...patch } }));
   return (
     <section className="space-y-3">
@@ -378,11 +430,11 @@ export function TypePanel({ d }: { d: ThemeDraft }) {
           const trackKey = part === "headings" ? "headingsTracking" : "bodyTracking";
           const sizeKey = part === "headings" ? "headingsSize" : "bodySize";
           const groups = FONT_GROUPS.filter((g) => part === "headings" || g !== "Decorative");
-          const group = fontTab[part] ?? def.group;
+          const group = groups.find((g) => g === params.get(`${part}-fonts`)) ?? def.group;
           return (
             <div key={part} className="space-y-3">
               <p className="label">{part === "headings" ? "Headings" : "Body text"}</p>
-              <PillTabs value={group} onChange={(g) => setFontTab((t) => ({ ...t, [part]: g }))} options={groups.map((g) => ({ value: g, label: g }))} />
+              <PillTabs value={group} onChange={(g) => setUrlParams(setParams, { [`${part}-fonts`]: g })} options={groups.map((g) => ({ value: g, label: g }))} />
               <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={part === "headings" ? "Headings font" : "Body font"}>
                 {Object.entries(FONTS).filter(([, f]) => f.group === group && (part === "headings" || f.body !== false)).map(([k, f]) => {
                   const active = key === k;
@@ -419,19 +471,16 @@ export function ThemeSaveBar({ d }: { d: ThemeDraft }) {
   const { dirty, note, saving, save, undo, setNote } = d;
   if (!dirty && !note) return null;
   return (
-    <div className="fixed inset-x-0 z-40 flex justify-center px-3 bottom-[var(--above-dock)]">
-      <div className="flex w-full max-w-md items-center gap-2 rounded-2xl border border-border bg-surface/95 p-2 pl-4 shadow-2xl shadow-black/50 backdrop-blur-xl">
-        <p className="min-w-0 flex-1 truncate text-sm font-semibold">{dirty ? "Unsaved look" : note}</p>
-        {dirty ? (
-          <>
-            <Button size="sm" variant="ghost" onClick={undo}>Undo</Button>
-            <Button size="sm" disabled={saving} onClick={() => void save()}>{saving ? "Saving…" : "Save"}</Button>
-          </>
-        ) : (
-          <Button size="sm" variant="ghost" onClick={() => setNote(null)}>OK</Button>
-        )}
-      </div>
-    </div>
+    <FloatingBar actions={dirty ? (
+      <>
+        <Button size="sm" variant="ghost" onClick={undo}>Undo</Button>
+        <Button size="sm" disabled={saving} onClick={() => void save()}>{saving ? "Saving…" : "Save"}</Button>
+      </>
+    ) : (
+      <Button size="sm" variant="ghost" onClick={() => setNote(null)}>OK</Button>
+    )}>
+      {dirty ? "Unsaved look" : note}
+    </FloatingBar>
   );
 }
 

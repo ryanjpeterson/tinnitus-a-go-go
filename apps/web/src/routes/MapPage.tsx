@@ -12,6 +12,7 @@ import { APIProvider, ControlPosition, Map, Marker, useMap, useMapsLibrary } fro
 import { api, type VenueMapItem } from "@/lib/api";
 import { mapStyles, markerIcon } from "@/lib/theme";
 import { useBrand } from "@/lib/useBrand";
+import { useUrlState } from "@/lib/useUrlState";
 import { Chevron, EmptyState, Loading, PageHeader, SearchField, VenueViewSwitch } from "@/components/ui/kit";
 
 const API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) ?? "";
@@ -197,7 +198,7 @@ function VenuePanel({ venues, selected, onCity, onVenue, onAll }: {
   onVenue: (v: VenueMapItem) => void;
   onAll: () => void;
 }) {
-  const [q, setQ] = useState("");
+  const [q, setQ] = useUrlState("q", "");
   const [openCity, setOpenCity] = useState<string | null>(null);
   // Open on desktop, a small button on phones so the map stays visible.
   const [open, setOpen] = useState(() => window.matchMedia("(min-width: 640px)").matches);
@@ -329,9 +330,17 @@ export function MapPage() {
 
   const venues = venuesQuery.data?.venues ?? [];
   const { center, zoom } = getBounds(venues);
-  const [selected, setSelected] = useState<VenueMapItem | null>(null);
+  // The chosen venue is in the URL (?venue=), so a refresh or a shared link reopens it.
+  const [venueId, setVenueId] = useUrlState("venue", "");
+  const selected = venues.find((v) => v.id === venueId) ?? null;
+  const setSelected = (v: VenueMapItem | null) => setVenueId(v?.id ?? "");
   const [focus, setFocus] = useState<Focus | null>(null);
   const focusOn = (vs: VenueMapItem[]) => setFocus((f) => ({ venues: vs, seq: (f?.seq ?? 0) + 1 }));
+  // Opened from a link or a refresh with ?venue= — fly to it once the venues load.
+  useEffect(() => {
+    if (selected && !focus) focusOn([selected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
 
   // No API key fallback
   if (!API_KEY) {

@@ -1,7 +1,7 @@
 {
-  "version": "0.11.0",
-  "commit": "a4915d3",
-  "note": "jimbo.ui 0.11.0 (a4915d3).",
+  "version": "0.13.0",
+  "commit": "d8f8660",
+  "note": "jimbo.ui 0.13.0 (d8f8660).",
   "webRoot": "apps/web",
   "auth": "admin",
   "reference": {
@@ -13,7 +13,8 @@
     "web/src/routes/config/ThemePanel.tsx": "apps/web/src/routes/config/ThemePanel.tsx (Looks, Colours, Type, Backdrop panels; TINNITUS logo in the theme tiles)",
     "web/src/routes/config/StyleGuidePanel.tsx": "apps/web/src/routes/config/StyleGuidePanel.tsx",
     "web/src/components/MapView.tsx": "apps/web/src/components/MapView.tsx (exact copy)",
-    "web/src/routes/config/UpdatesPanel.tsx": "apps/web/src/routes/config/UpdatesPanel.tsx (exact copy)"
+    "web/src/routes/config/UpdatesPanel.tsx": "apps/web/src/routes/config/UpdatesPanel.tsx (exact copy)",
+    "web/src/lib/useUrlState.ts": "apps/web/src/lib/useUrlState.ts (exact copy)"
   },
   "registry": {
     "registered": "2026-10-30",
@@ -66,7 +67,8 @@
       "background-work",
       "select-mode",
       "map-view",
-      "jimbo-config"
+      "jimbo-config",
+      "url-state"
     ],
     "local": [
       {

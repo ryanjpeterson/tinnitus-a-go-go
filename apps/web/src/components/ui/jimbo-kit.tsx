@@ -97,18 +97,19 @@ export function Chevron({ dir = "right", className }: { dir?: "left" | "right" |
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Theme dots — the circle motif
+// Theme dots — the motif
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * The theme's colours (accent, highlight, support) as flat dots side by side —
- * jimbo.ui's motif. In empty states and brand moments only; never above a page
- * title. Decorative; follows the live theme.
+ * The theme's colours (accent, highlight, support) as flat shapes side by side —
+ * jimbo.ui's motif: circles, or the shape the theme picks (`theme.motif`:
+ * triforce, sparkles, stars…). In empty states and brand moments only; never
+ * above a page title. Decorative; follows the live theme.
  */
 export function ThemeDots({ size = 8, className }: { size?: number; className?: string }) {
   return (
     <span aria-hidden="true" className={cn("inline-flex shrink-0 items-center", className)} style={{ gap: size >= 16 ? 6 : 4 }}>
-      {(["dot-accent", "dot-highlight", "dot-support"] as const).map((dot) => (
+      {(["motif-accent", "motif-highlight", "motif-support"] as const).map((dot) => (
         <span key={dot} className={dot} style={{ width: size, height: size }} />
       ))}
     </span>
@@ -164,6 +165,7 @@ export function FullBleed({ children, tone = "none", flush = false, pad = true, 
  * an abstract pattern in the theme's colours (any backdrop pattern) on a
  * gradient. Use at the top of a landing or home page; `size="lg"` fills most
  * of the first screen. Pulls up under the top bar like `Banner`.
+ * `pattern="none"` draws no layer of its own: the page's backdrop shows through.
  */
 export function HeroSection({ eyebrow, title, children, actions, pattern = "ripples", size = "md", align = "left", pullUp = true }: {
   eyebrow?: ReactNode;
@@ -183,8 +185,10 @@ export function HeroSection({ eyebrow, title, children, actions, pattern = "ripp
     <FullBleed pad={false} className={cn("isolate mb-2", pullUp && "-mt-6 sm:-mt-8")}>
       {/* The pattern fades out top and bottom (.fade-out, plus .fade-in when something sits above),
           so the opener melts into the page's backdrop instead of ending on a line. */}
-      <div aria-hidden="true" className={cn("fade-out absolute inset-0 -z-10", !pullUp && "fade-both")}
-        style={{ backgroundImage: look.image, backgroundSize: look.size, backgroundPosition: look.position, backgroundRepeat: look.repeat }} />
+      {pattern !== "none" && (
+        <div aria-hidden="true" className={cn("fade-out absolute inset-0 -z-10", !pullUp && "fade-both")}
+          style={{ backgroundImage: look.image, backgroundSize: look.size, backgroundPosition: look.position, backgroundRepeat: look.repeat }} />
+      )}
       <div className={cn("flex flex-col justify-end gap-3 py-10 sm:py-14", size === "lg" ? "min-h-[62dvh]" : "min-h-[34dvh]", align === "center" && "items-center text-center")}>
         {eyebrow && <p className="eyebrow text-support">{eyebrow}</p>}
         <h1 className="font-display text-40 leading-[1.02] text-text-base sm:text-6xl">{title}</h1>
@@ -506,7 +510,7 @@ export function EventRow({ to, onOpen, date, title, subtitle, meta, imageUrl, st
         className={cn(rowBase, "w-full text-left", selected && "bg-accent/10")}>
         <span className={cn(
           "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-          selected ? "lit-accent border-accent" : "border-border",
+          selected ? "lit-accent border-transparent" : "border-border",
         )}>
           {selected && (
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
@@ -573,7 +577,7 @@ export function SwitchRow({ label, hint, checked, onChange, disabled }: {
         <span className="block text-15 font-semibold">{label}</span>
         {hint && <span className="block text-sm text-text-muted">{hint}</span>}
       </span>
-      <span className={cn("relative h-7 w-12 shrink-0 rounded-full border transition-colors", checked ? "lit-accent border-accent" : "border-border bg-surface-2")}>
+      <span className={cn("relative h-7 w-12 shrink-0 rounded-full border transition-colors", checked ? "lit-accent border-transparent" : "border-border bg-surface-2")}>
         <span className={cn("absolute top-0.5 h-[22px] w-[22px] rounded-full shadow-sm transition-[left]", checked ? "left-[22px] bg-on-accent" : "left-0.5 bg-text-subtle")} />
       </span>
     </button>
@@ -646,13 +650,15 @@ export function Autocomplete({ label, value, onChange, options, onPick, onCreate
 }
 
 /** A named thing (person, place, group) as a row with an avatar. */
-export function EntityRow({ to, name, imageUrl, sub, meta, round = false }: {
+export function EntityRow({ to, name, imageUrl, sub, meta, round = false, avatarText }: {
   to: string;
   name: string;
   imageUrl?: string | null;
   sub?: ReactNode;
   meta?: ReactNode;
   round?: boolean;
+  /** What the placeholder avatar shows instead of the name's initials: a short code, a number, a symbol. */
+  avatarText?: string;
 }) {
   return (
     <Link to={to} className={rowBase}>
@@ -660,7 +666,7 @@ export function EntityRow({ to, name, imageUrl, sub, meta, round = false }: {
         {imageUrl ? (
           <img src={imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
         ) : (
-          <div className="dot-support flex h-full w-full items-center justify-center font-display text-base text-on-support">{initials(name)}</div>
+          <div className="dot-support flex h-full w-full items-center justify-center font-display text-base text-on-support">{avatarText ?? initials(name)}</div>
         )}
       </div>
       <div className="min-w-0 flex-1">
@@ -1220,7 +1226,7 @@ export function PillTabs<T extends string>({ value, onChange, options, scroll = 
           <button key={o.value} type="button" aria-pressed={active} onClick={() => onChange(o.value)}
             className={cn(
               "h-10 shrink-0 rounded-control border px-4 text-sm font-semibold transition-colors",
-              active ? (o.activeClass ?? "lit-accent border-accent") : "border-border text-text-muted hover:border-text-subtle hover:text-text-base",
+              active ? cn("border-transparent", o.activeClass ?? "lit-accent") : "glass text-text-muted hover:border-text-subtle hover:text-text-base",
             )}>
             {o.label}
           </button>
@@ -1254,6 +1260,102 @@ export function Pager({ page, totalPages, total, pageSize, onPage }: {
         Next <Chevron />
       </button>
     </nav>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Picks, related links and the floating bar
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ToggleOption<T extends string | number> {
+  value: T;
+  label: ReactNode;
+  /** A small second line (an alternative name, a count). */
+  sub?: ReactNode;
+  /** Spoken name, when the label is a symbol. */
+  ariaLabel?: string;
+}
+
+/**
+ * Several picks from a small fixed set (days of the week, tags, sizes), as
+ * a grid of toggle buttons 44 px tall that wraps, never a scroll strip.
+ * Picked ones are a flat accent fill and aria-pressed. For one pick, use Tabs.
+ */
+export function ToggleGrid<T extends string | number>({ options, selected, onToggle, columns = 4, smColumns, className }: {
+  options: ToggleOption<T>[];
+  selected: T[];
+  onToggle: (value: T) => void;
+  /** Columns on phones. */
+  columns?: number;
+  /** Columns from `sm:` up (defaults to the phone count). */
+  smColumns?: number;
+  className?: string;
+}) {
+  return (
+    <div className={cn("grid gap-2 [grid-template-columns:repeat(var(--tg),minmax(0,1fr))] sm:[grid-template-columns:repeat(var(--tg-sm),minmax(0,1fr))]", className)}
+      style={{ ["--tg" as string]: columns, ["--tg-sm" as string]: smColumns ?? columns }}>
+      {options.map((o) => {
+        const on = selected.includes(o.value);
+        return (
+          <button key={String(o.value)} type="button" aria-pressed={on} aria-label={o.ariaLabel} onClick={() => onToggle(o.value)}
+            className={cn(
+              "flex min-h-11 flex-col items-center justify-center rounded-control border px-1 py-1.5 text-15 font-semibold leading-tight transition-[color,background-color,border-color,transform] active:scale-95",
+              on ? "lit-accent border-transparent" : "border-border bg-surface-2 text-text-muted hover:border-text-subtle hover:text-text-base",
+            )}>
+            <span>{o.label}</span>
+            {o.sub && <span className={cn("text-11 font-medium", on ? "text-on-accent/80" : "text-text-subtle")}>{o.sub}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export interface LinkChip {
+  to: string;
+  label: ReactNode;
+  /** Muted text after the label ("relative", "3 items"). */
+  sub?: ReactNode;
+  tone?: "accent" | "highlight" | "support";
+}
+
+const CHIP_DOTS = { accent: "dot-accent", highlight: "dot-highlight", support: "dot-support" } as const;
+
+/**
+ * Related things as a wrapping row of linked chips (44 px tall), each with an
+ * optional 8 px dot in a theme colour and a short second label, so colour is
+ * never the only cue. For "see also", neighbours, tags that go somewhere.
+ */
+export function LinkChips({ items, className }: { items: LinkChip[]; className?: string }) {
+  return (
+    <div className={cn("flex flex-wrap gap-2", className)}>
+      {items.map((c, i) => (
+        <Link key={`${c.to}-${i}`} to={c.to}
+          className="chip inline-flex min-h-11 items-center gap-2 px-3 text-text-base transition-colors hover:border-accent hover:text-accent active:scale-95">
+          {c.tone && <span aria-hidden="true" className={cn(CHIP_DOTS[c.tone], "h-2 w-2 shrink-0")} />}
+          <span className="font-semibold">{c.label}</span>
+          {c.sub && <span className="text-sm text-text-subtle">{c.sub}</span>}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * A bar floating above the dock (`--above-dock`): a status line and its
+ * actions. The save bar, a select-mode action bar, a player's Start/Stop.
+ * `live` pulses an accent dot while something is running. Give the page
+ * some bottom padding (pb-20) so the bar never covers the last section.
+ */
+export function FloatingBar({ children, actions, live }: { children: ReactNode; actions: ReactNode; live?: boolean }) {
+  return (
+    <div className="fixed inset-x-0 z-40 flex justify-center px-3 bottom-[var(--above-dock)]">
+      <div className="flex w-full max-w-md items-center gap-2 rounded-2xl border border-border bg-surface/95 p-2 pl-4 shadow-2xl shadow-black/50 backdrop-blur-xl">
+        {live != null && <span aria-hidden="true" className={cn(STATUS_DOT, live ? cn("dot-accent", LIVE) : "bg-text-subtle")} />}
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold" aria-live="polite">{children}</p>
+        {actions}
+      </div>
+    </div>
   );
 }
 

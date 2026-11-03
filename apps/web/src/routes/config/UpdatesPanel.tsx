@@ -14,7 +14,7 @@ import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Section } from "@/components/ui/kit";
 import { Button } from "@/components/ui/button";
-import { JIMBO_APP, JIMBO_UI, fetchReleases, updatesFor, type ReleaseItem, type Releases } from "@/lib/jimbo";
+import { JIMBO_APP, JIMBO_UI, fetchReleases, updatesFor, type ReleaseItem, type Releases, type UpdateType } from "@/lib/jimbo";
 
 const DAY = 24 * 60 * 60 * 1000;
 export const UPDATE_REQUEST = "Update this app to the latest jimbo-ui.";
@@ -57,6 +57,10 @@ function Rows<T>({ title, hint, rows, render }: { title: string; hint: string; r
   );
 }
 
+/** A release's update type: breaking needs code changes; feature and fix are drop-in. */
+const TYPE: Record<UpdateType, { tone: "red" | "accent" | "muted"; label: string }> = {
+  breaking: { tone: "red", label: "Code changes" }, feature: { tone: "accent", label: "New" }, fix: { tone: "muted", label: "Fixes" }, first: { tone: "muted", label: "First" },
+};
 const Version = ({ v }: { v: string }) => <span className="mr-2 font-mono text-xs text-text-subtle">{v}</span>;
 const item = ({ version, item }: { version: string; item: ReleaseItem }) => <><Version v={version} /><Md text={item.text} /></>;
 
@@ -90,7 +94,7 @@ export function JimboUpdates({ releases, current = JIMBO_UI.version, uses = JIMB
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone="yellow" dot>Update available</Badge>
           <span className="text-sm text-text-muted">
-            {u.newer.length === 1 ? "1 release" : `${u.newer.length} releases`} behind
+            {u.newer.length === 1 ? "1 release" : `${u.newer.length} releases`} behind · {u.breaking ? "needs code changes" : "drop-in"}
           </span>
         </div>
         <p className="font-display text-2xl leading-tight">jimbo-ui {u.latest} is out</p>
@@ -104,7 +108,11 @@ export function JimboUpdates({ releases, current = JIMBO_UI.version, uses = JIMB
         </div>
         <ul className="space-y-2 border-t border-border pt-4">
           {u.newer.map((r) => (
-            <li key={r.version} className="text-sm text-text-muted"><Version v={r.version} /><Md text={r.summary || "Fixes and small changes."} /></li>
+            <li key={r.version} className="text-sm text-text-muted">
+              <Version v={r.version} />
+              {r.type && <Badge tone={TYPE[r.type].tone} className="mr-2 align-middle">{TYPE[r.type].label}</Badge>}
+              <Md text={r.summary || "Fixes and small changes."} />
+            </li>
           ))}
         </ul>
       </div>

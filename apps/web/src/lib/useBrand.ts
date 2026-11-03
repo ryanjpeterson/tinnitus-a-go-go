@@ -42,19 +42,19 @@ function cached(): Brand | undefined {
  * Server values over the defaults. Nothing saved → the default theme. A saved
  * theme keeps its own optional colours: a missing highlight or support stays
  * missing, so the engine infers it to suit the saved accent and background.
+ * Everything else saved (fonts, backdrop, motif, and whatever the theme gains
+ * later) passes through as is; `ownColours` drops what it doesn't know.
  */
 export function withDefaults(t: SavedTheme): Theme {
-  if (!t.accent && !t.background) return t.fonts ? ownColours({ ...DEFAULT_THEME, fonts: t.fonts }) : DEFAULT_THEME;
+  const { accent, background, highlight, support, ...rest } = t;
+  const extras = Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null)) as Partial<Theme>;
+  if (!accent && !background) return ownColours({ ...DEFAULT_THEME, ...extras });
   return ownColours({
-    accent: t.accent || DEFAULT_THEME.accent,
-    background: t.background || DEFAULT_THEME.background,
-    ...(t.highlight ? { highlight: t.highlight } : {}),
-    ...(t.support ? { support: t.support } : {}),
-    ...(t.fonts ? { fonts: t.fonts } : {}),
-    ...(t.infer ? { infer: t.infer } : {}),
-    ...(t.vibrancy ? { vibrancy: t.vibrancy } : {}),
-    ...(t.contrast ? { contrast: t.contrast } : {}),
-    ...(t.backdrop ? { backdrop: t.backdrop } : {}),
+    accent: accent || DEFAULT_THEME.accent,
+    background: background || DEFAULT_THEME.background,
+    ...(highlight ? { highlight } : {}),
+    ...(support ? { support } : {}),
+    ...extras,
   });
 }
 

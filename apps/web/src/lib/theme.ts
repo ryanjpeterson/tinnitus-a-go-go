@@ -55,6 +55,8 @@ export interface Theme {
   contrast?: number;
   /** The page's backdrop: an abstract pattern over a base, in the theme's colours (`BACKDROPS`). */
   backdrop?: Backdrop;
+  /** The brand motif: the flat shape `ThemeDots` draws in the theme's colours (`MOTIFS`; default circles). */
+  motif?: MotifKey;
   /**
    * How missing colours are inferred: `contrast` (the default) picks new hues
    * that stand apart; `tonal` uses lighter and darker versions of the accent,
@@ -65,14 +67,15 @@ export interface Theme {
 
 /** A theme as a server or cache returns it: anything may be missing or null. */
 export type SavedTheme = { [K in "accent" | "background" | "highlight" | "support"]?: string | null }
-  & { fonts?: Theme["fonts"] | null; infer?: Theme["infer"] | null; vibrancy?: number | null; contrast?: number | null; backdrop?: Backdrop | null };
+  & { fonts?: Theme["fonts"] | null; infer?: Theme["infer"] | null; vibrancy?: number | null; contrast?: number | null; backdrop?: Backdrop | null; motif?: MotifKey | null };
 
 /**
  * The fonts a theme can use. `css` is the font stack; `google` the Google Fonts
  * family query that loads it (Archivo, Inter and JetBrains Mono are in
  * index.html); `weights` the range it has; `body: false` marks display faces
- * that are for headings only (blackletter, uncial, old print — unreadable as text).
- * Nine per group; decorative faces stay dark and old-world rather than novelty.
+ * that are for headings only (blackletter, old print, poster faces — wrong for running text).
+ * Nine per group; decorative faces are blackletter and old print, plus a few
+ * modern poster faces (Bebas Neue, Unbounded, Syne) — no novelty.
  */
 export type FontDef = { label: string; group: "Sans" | "Serif" | "Mono" | "Decorative"; css: string; google: string | null; weights: [number, number]; body?: false };
 export const FONTS: Record<string, FontDef> = {
@@ -81,18 +84,18 @@ export const FONTS: Record<string, FontDef> = {
   "space-grotesk":{ label: "Space Grotesk", group: "Sans", css: "'Space Grotesk', ui-sans-serif, system-ui, sans-serif", google: "family=Space+Grotesk:wght@300..700", weights: [300, 700] },
   "dm-sans":      { label: "DM Sans", group: "Sans", css: "'DM Sans', ui-sans-serif, system-ui, sans-serif", google: "family=DM+Sans:opsz,wght@9..40,300..900", weights: [300, 900] },
   manrope:        { label: "Manrope", group: "Sans", css: "'Manrope', ui-sans-serif, system-ui, sans-serif", google: "family=Manrope:wght@300..800", weights: [300, 800] },
-  "ibm-plex-sans":{ label: "IBM Plex Sans", group: "Sans", css: "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif", google: "family=IBM+Plex+Sans:wght@300;400;500;600;700", weights: [300, 700] },
-  "work-sans":    { label: "Work Sans", group: "Sans", css: "'Work Sans', ui-sans-serif, system-ui, sans-serif", google: "family=Work+Sans:wght@300..900", weights: [300, 900] },
+  geist:          { label: "Geist", group: "Sans", css: "'Geist', ui-sans-serif, system-ui, sans-serif", google: "family=Geist:wght@300..900", weights: [300, 900] },
+  "plus-jakarta": { label: "Plus Jakarta", group: "Sans", css: "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif", google: "family=Plus+Jakarta+Sans:wght@300..800", weights: [300, 800] },
   // Avenir Next / Avenir where the device has them (Apple), Nunito Sans (the nearest Google font) elsewhere.
   avenir:         { label: "Avenir", group: "Sans", css: "'Avenir Next', 'Avenir', 'Nunito Sans', ui-sans-serif, system-ui, sans-serif", google: "family=Nunito+Sans:wght@300..900", weights: [300, 900] },
   figtree:        { label: "Figtree", group: "Sans", css: "'Figtree', ui-sans-serif, system-ui, sans-serif", google: "family=Figtree:wght@300..900", weights: [300, 900] },
-  fraunces:       { label: "Fraunces", group: "Serif", css: "'Fraunces', ui-serif, Georgia, serif", google: "family=Fraunces:opsz,wght@9..144,300..900", weights: [300, 900] },
+  newsreader:     { label: "Newsreader", group: "Serif", css: "'Newsreader', ui-serif, Georgia, serif", google: "family=Newsreader:opsz,wght@6..72,300..800", weights: [300, 800] },
   "source-serif": { label: "Source Serif", group: "Serif", css: "'Source Serif 4', ui-serif, Georgia, serif", google: "family=Source+Serif+4:opsz,wght@8..60,300..900", weights: [300, 900] },
   playfair:       { label: "Playfair", group: "Serif", css: "'Playfair Display', ui-serif, Georgia, serif", google: "family=Playfair+Display:wght@400..900", weights: [400, 900] },
   "eb-garamond":  { label: "EB Garamond", group: "Serif", css: "'EB Garamond', ui-serif, Georgia, serif", google: "family=EB+Garamond:wght@400..800", weights: [400, 800] },
-  marcellus:      { label: "Marcellus", group: "Serif", css: "'Marcellus', ui-serif, Georgia, serif", google: "family=Marcellus", weights: [400, 400] },
+  literata:       { label: "Literata", group: "Serif", css: "'Literata', ui-serif, Georgia, serif", google: "family=Literata:opsz,wght@7..72,300..900", weights: [300, 900] },
   "libre-baskerville": { label: "Baskerville", group: "Serif", css: "'Libre Baskerville', ui-serif, Georgia, serif", google: "family=Libre+Baskerville:wght@400;700", weights: [400, 700] },
-  cormorant:      { label: "Cormorant", group: "Serif", css: "'Cormorant Garamond', ui-serif, Georgia, serif", google: "family=Cormorant+Garamond:wght@300;400;500;600;700", weights: [300, 700] },
+  "instrument-serif": { label: "Instrument Serif", group: "Serif", css: "'Instrument Serif', ui-serif, Georgia, serif", google: "family=Instrument+Serif", weights: [400, 400], body: false },
   lora:           { label: "Lora", group: "Serif", css: "'Lora', ui-serif, Georgia, serif", google: "family=Lora:wght@400..700", weights: [400, 700] },
   "dm-serif":     { label: "DM Serif", group: "Serif", css: "'DM Serif Display', ui-serif, Georgia, serif", google: "family=DM+Serif+Display", weights: [400, 400], body: false },
   "jetbrains-mono": { label: "JetBrains Mono", group: "Mono", css: "'JetBrains Mono', ui-monospace, SFMono-Regular, monospace", google: "family=JetBrains+Mono:wght@300..800", weights: [300, 800] },
@@ -108,18 +111,24 @@ export const FONTS: Record<string, FontDef> = {
   "old-german":   { label: "Old German", group: "Decorative", css: "'UnifrakturMaguntia', serif", google: "family=UnifrakturMaguntia", weights: [400, 400], body: false },
   gothic:         { label: "Gothic", group: "Decorative", css: "'Grenze Gotisch', serif", google: "family=Grenze+Gotisch:wght@300..900", weights: [300, 900], body: false },
   pirate:         { label: "Pirate", group: "Decorative", css: "'Pirata One', serif", google: "family=Pirata+One", weights: [400, 400], body: false },
-  rocker:         { label: "Rocker", group: "Decorative", css: "'New Rocker', serif", google: "family=New+Rocker", weights: [400, 400], body: false },
+  bebas:          { label: "Bebas Neue", group: "Decorative", css: "'Bebas Neue', ui-sans-serif, system-ui, sans-serif", google: "family=Bebas+Neue", weights: [400, 400], body: false },
   typewriter:     { label: "Typewriter", group: "Decorative", css: "'Special Elite', ui-monospace, monospace", google: "family=Special+Elite", weights: [400, 400], body: false },
   "old-print":    { label: "Old print", group: "Decorative", css: "'IM Fell English', ui-serif, Georgia, serif", google: "family=IM+Fell+English", weights: [400, 400], body: false },
-  uncial:         { label: "Uncial", group: "Decorative", css: "'Uncial Antiqua', ui-serif, Georgia, serif", google: "family=Uncial+Antiqua", weights: [400, 400], body: false },
-  carved:         { label: "Carved caps", group: "Decorative", css: "'Cinzel', ui-serif, Georgia, serif", google: "family=Cinzel:wght@400..900", weights: [400, 900], body: false },
+  unbounded:      { label: "Unbounded", group: "Decorative", css: "'Unbounded', ui-sans-serif, system-ui, sans-serif", google: "family=Unbounded:wght@300..900", weights: [300, 900], body: false },
+  syne:           { label: "Syne", group: "Decorative", css: "'Syne', ui-sans-serif, system-ui, sans-serif", google: "family=Syne:wght@400..800", weights: [400, 800], body: false },
 };
 export const FONT_GROUPS = ["Sans", "Serif", "Mono", "Decorative"] as const;
 
+/** Fonts taken out of `FONTS`, and the nearest one still in it, so a saved theme keeps a similar face. */
+export const RETIRED_FONTS: Record<string, FontKey> = {
+  "ibm-plex-sans": "geist", "work-sans": "plus-jakarta", fraunces: "newsreader", marcellus: "literata", cormorant: "eb-garamond",
+  rocker: "gothic", uncial: "old-print", carved: "instrument-serif",
+};
+
 /** A font key, with the older style names ("sans", "mono", "serif") turned into fonts. */
 export function fontFor(key: FontKey | undefined, part: "headings" | "body"): string {
-  const legacy: Record<string, [string, string]> = { sans: ["archivo", "inter"], mono: ["jetbrains-mono", "jetbrains-mono"], serif: ["fraunces", "source-serif"] };
-  const k = key && legacy[key] ? legacy[key]![part === "headings" ? 0 : 1] : key;
+  const legacy: Record<string, [string, string]> = { sans: ["archivo", "inter"], mono: ["jetbrains-mono", "jetbrains-mono"], serif: ["newsreader", "source-serif"] };
+  const k = key && legacy[key] ? legacy[key]![part === "headings" ? 0 : 1] : key && RETIRED_FONTS[key] ? RETIRED_FONTS[key] : key;
   if (k && FONTS[k] && (part === "headings" || FONTS[k]!.body !== false)) return k;
   return part === "headings" ? "archivo" : "inter";
 }
@@ -148,7 +157,70 @@ export type Backdrop = {
   contrast?: number;
   /** 0–1.6, default 1: the pattern's and base's colour — 0 is greys, above 1 more vivid. */
   saturation?: number;
+  /**
+   * How the backdrop moves (`BACKDROP_MOTIONS`): none (the default); alive
+   * (each pattern its own way: rain falls, ripples spread, lines sway on their
+   * own); pulse (every line and shape fades on its own beat); or drift, breathe
+   * or sway (the whole layer). Off when the device asks for reduced motion.
+   */
+  motion?: BackdropMotion;
+  /** 0.5–2, default 1: how fast it moves. */
+  speed?: number;
 };
+export type BackdropMotion = "none" | "alive" | "pulse" | "drift" | "breathe" | "sway";
+/**
+ * Backdrop motions. `layer`: the whole backdrop moves (a keyframe set in
+ * globals.css, `jimbo-bg-<key>`, `seconds` a cycle at speed 1); otherwise the
+ * pattern's own lines and shapes move, each on its own timing, as animation
+ * inside its SVG (`seconds` the typical cycle). Always slow.
+ */
+export const BACKDROP_MOTIONS: { key: BackdropMotion; label: string; hint: string; seconds: number; layer: boolean }[] = [
+  { key: "none", label: "Still", hint: "No movement", seconds: 0, layer: false },
+  { key: "alive", label: "Alive", hint: "Each pattern moves its own way: rain falls, ripples spread, lines sway on their own", seconds: 10, layer: false },
+  { key: "pulse", label: "Pulse", hint: "Every line and shape fades and returns on its own beat", seconds: 7, layer: false },
+  { key: "drift", label: "Drift", hint: "The whole backdrop glides slowly from corner to corner", seconds: 48, layer: true },
+  { key: "breathe", label: "Breathe", hint: "The whole backdrop slowly grows and settles", seconds: 22, layer: true },
+  { key: "sway", label: "Sway", hint: "The whole backdrop turns gently back and forth", seconds: 36, layer: true },
+];
+
+/** The CSS animation for a theme's backdrop motion when it moves the whole layer, or "none". */
+export function backdropAnimation(theme: Theme): string {
+  const b = fullTheme(theme).backdrop;
+  const m = BACKDROP_MOTIONS.find((x) => x.key === b.motion);
+  if (!m || !m.seconds || !m.layer || b.pattern === "none" && b.base === "solid") return "none";
+  const s = Math.round((m.seconds / Math.max(0.5, Math.min(2, b.speed!))) * 10) / 10;
+  return `jimbo-bg-${m.key} ${s}s ease-in-out infinite alternate`;
+}
+
+/**
+ * The brand motif: flat shapes side by side in the accent, highlight and
+ * support (`ThemeDots`). `path` is the shape in a 24 × 24 box, drawn as a
+ * mask (black = shape); circles need none. Flat fills only, no outlines or
+ * gloss, at fixed sizes like the circles they replace.
+ */
+export type MotifKey = "dots" | "triforce" | "sparkles" | "stars" | "hearts" | "diamonds" | "triangles" | "squares" | "crosses" | "bolts" | "flowers" | "moons" | "squiggles";
+export const MOTIFS: { key: MotifKey; label: string; path: string | null }[] = [
+  { key: "dots", label: "Circles", path: null },
+  { key: "triforce", label: "Triforce", path: "<path d='M12 1.5 18 11.9H6zM6 12.1 12 22.5H0zM18 12.1 24 22.5H12z'/>" },
+  { key: "sparkles", label: "Sparkles", path: "<path d='M12 0c.9 7.6 3.6 10.9 12 12-8.4 1.1-11.1 4.4-12 12-.9-7.6-3.6-10.9-12-12 8.4-1.1 11.1-4.4 12-12z'/>" },
+  { key: "stars", label: "Stars", path: "<path d='m12 1 3.2 7 7.6.8-5.7 5.1 1.6 7.5L12 17.6l-6.7 3.8 1.6-7.5-5.7-5.1 7.6-.8z'/>" },
+  { key: "hearts", label: "Hearts", path: "<path d='M12 22 2.6 12.9A5.9 5.9 0 0 1 12 5.4a5.9 5.9 0 0 1 9.4 7.5z'/>" },
+  { key: "diamonds", label: "Diamonds", path: "<path d='M12 0 22 12 12 24 2 12z'/>" },
+  { key: "triangles", label: "Triangles", path: "<path d='M12 2.5 23 21.5H1z'/>" },
+  { key: "squares", label: "Squares", path: "<rect x='2' y='2' width='20' height='20' rx='5'/>" },
+  { key: "crosses", label: "Crosses", path: "<path d='M8.5 1h7v7.5H23v7h-7.5V23h-7v-7.5H1v-7h7.5z'/>" },
+  { key: "bolts", label: "Bolts", path: "<path d='M14.5 0 3 13.5h7.5L8.5 24 21 9.5h-7.5z'/>" },
+  { key: "flowers", label: "Flowers", path: "<circle cx='12' cy='6' r='5.5'/><circle cx='18' cy='12' r='5.5'/><circle cx='12' cy='18' r='5.5'/><circle cx='6' cy='12' r='5.5'/>" },
+  { key: "moons", label: "Moons", path: "<path d='M15.5 1A11 11 0 1 0 23 17.6 9 9 0 0 1 15.5 1z'/>" },
+  { key: "squiggles", label: "Squiggles", path: "<path d='M1 15c3-8 6-8 7.5 0s5 8 7.5 0 5-8 7 0' fill='none' stroke='black' stroke-width='4' stroke-linecap='round'/>" },
+];
+
+/** The motif's mask (a CSS url) or "none" for circles. */
+export function motifMask(theme: Theme): string {
+  const m = MOTIFS.find((x) => x.key === theme.motif);
+  if (!m?.path) return "none";
+  return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>${m.path}</svg>`)}")`;
+}
 export type BackdropPattern =
   | "none" | "ripples" | "waves" | "contours" | "shapes" | "blobs" | "flow" | "confetti" | "burst"
   | "swirl" | "ribbons" | "scribble" | "rain"
@@ -393,7 +465,8 @@ export function fullTheme(theme: Theme): FullTheme {
     vibrancy: theme.vibrancy ?? 1,
     contrast: theme.contrast ?? 1,
     backdrop: { pattern: theme.backdrop?.pattern ?? "none", base: theme.backdrop?.base ?? "glow", intensity: theme.backdrop?.intensity ?? 0.5, scale: theme.backdrop?.scale ?? 1,
-      contrast: theme.backdrop?.contrast ?? 1, saturation: theme.backdrop?.saturation ?? 1 },
+      contrast: theme.backdrop?.contrast ?? 1, saturation: theme.backdrop?.saturation ?? 1, motion: theme.backdrop?.motion ?? "none", speed: theme.backdrop?.speed ?? 1 },
+    motif: MOTIFS.some((m) => m.key === theme.motif) ? theme.motif! : "dots",
     infer: theme.infer ?? "contrast",
   };
 }
@@ -408,6 +481,8 @@ function ownBackdrop(b: Backdrop | undefined): Backdrop | undefined {
     ...(b.scale !== undefined && b.scale !== 1 ? { scale: b.scale } : {}),
     ...(b.contrast !== undefined && b.contrast !== 1 ? { contrast: b.contrast } : {}),
     ...(b.saturation !== undefined && b.saturation !== 1 ? { saturation: b.saturation } : {}),
+    ...(b.motion && b.motion !== "none" ? { motion: b.motion } : {}),
+    ...(b.speed !== undefined && b.speed !== 1 ? { speed: b.speed } : {}),
   };
   return Object.keys(out).length ? out : undefined;
 }
@@ -434,6 +509,7 @@ export function ownColours(theme: Theme): Theme {
     ...(theme.vibrancy !== undefined && theme.vibrancy !== 1 ? { vibrancy: theme.vibrancy } : {}),
     ...(theme.contrast !== undefined && theme.contrast !== 1 ? { contrast: theme.contrast } : {}),
     ...(ownBackdrop(theme.backdrop) ? { backdrop: ownBackdrop(theme.backdrop) } : {}),
+    ...(theme.motif && theme.motif !== "dots" && MOTIFS.some((m) => m.key === theme.motif) ? { motif: theme.motif } : {}),
   };
 }
 
@@ -538,6 +614,69 @@ export function mapStyles(theme: Theme): MapStyle[] {
   ];
 }
 
+// Tiled patterns that travel (seamlessly, a tile at a time) when alive: the direction and a cycle's share of the motion's seconds.
+const TRAVEL: Partial<Record<BackdropPattern, [number, number, number]>> = {
+  rain: [0, 1, 0.14], confetti: [0, 1, 1.2], arrows: [0, -1, 0.7], zigzag: [1, 0, 1], pinstripe: [1, 0, 1.6], twill: [1, 0, 1.4], speckle: [1, 1, 3],
+};
+// A repeatable "random" number in 0–1 for element i, so a pattern looks the same on every load.
+const jitter = (i: number, salt: number) => { const x = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453; return x - Math.floor(x); };
+// Few enough animated elements to stay smooth; above this, every nth element moves.
+const MAX_MOVING = 220;
+
+/**
+ * Animation inside a backdrop pattern's SVG (SMIL, which runs in a CSS
+ * background image without script), so its own lines and shapes move:
+ * - pulse: every element fades and returns on its own beat;
+ * - alive: tiled rain falls, confetti drifts down, arrows rise and stripes
+ *   slide (the tile moves by a whole tile, so the loop never jumps);
+ *   ripples spread outward; every other line or shape sways a little on its
+ *   own path and timing; textures (noise) and the rest of the tiles twinkle.
+ */
+function animatePattern(body: string, pattern: BackdropPattern, mode: BackdropMotion, seconds: number, w: number, h: number, tiled: boolean, sc: number): string {
+  const noise = body.includes("<filter");
+  const travel = TRAVEL[pattern];
+  if (mode === "alive" && tiled && travel) {
+    const [dx, dy, share] = [travel[0] * w, travel[1] * h, travel[2]];
+    const copies = [[0, 0], [-dx, 0], [0, -dy], [-dx, -dy]].filter(([x, y], i, all) => all.findIndex(([a, c]) => a === x && c === y) === i);
+    return `<g><animateTransform attributeName='transform' type='translate' from='0 0' to='${dx} ${dy}' dur='${(seconds * share).toFixed(2)}s' repeatCount='indefinite'/>`
+      + copies.map(([x, y]) => `<g transform='translate(${x} ${y})'>${body}</g>`).join("") + "</g>";
+  }
+  if (noise) {
+    // One layer of noise: it can only breathe as a whole.
+    return mode === "pulse" || mode === "alive"
+      ? body.replace(/<rect([^>]*)\/>/, `<rect$1><animate attributeName='opacity' values='1;0.55;1' dur='${(seconds * 1.4).toFixed(2)}s' repeatCount='indefinite'/></rect>`)
+      : body;
+  }
+  const shapes = body.match(/<(circle|ellipse|rect|path|line|polygon|polyline)\b[^>]*\/>/g)?.length ?? 0;
+  const every = Math.max(1, Math.ceil(shapes / MAX_MOVING));
+  // Waves draw a fill and its line as a pair: they move together.
+  const pair = pattern === "waves" ? 2 : 1;
+  let i = -1;
+  return body.replace(/<(circle|ellipse|rect|path|line|polygon|polyline)\b([^>]*)\/>/g, (all, tag: string, attrs: string) => {
+    i++;
+    if (i % every) return all;
+    const id = Math.floor(i / pair);
+    const dur = seconds * (0.7 + jitter(id, 1) * 0.8);
+    const begin = `-${(jitter(id, 2) * dur).toFixed(2)}s`;
+    const timing = `dur='${dur.toFixed(2)}s' begin='${begin}' repeatCount='indefinite'`;
+    let anim: string;
+    if (mode === "pulse" || tiled) {
+      const low = mode === "pulse" ? 0.25 : 0.45;
+      anim = `<animate attributeName='opacity' values='1;${low};1' ${timing} calcMode='spline' keyTimes='0;0.5;1' keySplines='0.4 0 0.6 1;0.4 0 0.6 1'/>`;
+    } else if (pattern === "ripples" && tag === "circle") {
+      // Each ring grows by one step and gives way to the next, so the rings keep spreading.
+      const rad = Number(/\br='([\d.]+)'/.exec(attrs)?.[1] ?? 0);
+      anim = `<animate attributeName='r' from='${rad}' to='${(rad + 44 * sc).toFixed(1)}' dur='${(seconds * 0.6).toFixed(2)}s' repeatCount='indefinite'/>`;
+    } else {
+      const reach = Math.max(w, h) * (0.008 + jitter(id, 3) * 0.012);
+      const ang = jitter(id, 4) * Math.PI * 2;
+      const [x, y] = [Math.cos(ang) * reach, Math.sin(ang) * reach].map((v) => v.toFixed(1));
+      anim = `<animateTransform attributeName='transform' type='translate' additive='sum' values='0 0;${x} ${y};0 0' ${timing} calcMode='spline' keyTimes='0;0.5;1' keySplines='0.4 0 0.6 1;0.4 0 0.6 1'/>`;
+    }
+    return `<${tag}${attrs}>${anim}</${tag}>`;
+  });
+}
+
 /** CSS background layers for a theme's backdrop, ready for `background-image` and friends. */
 export type BackdropLayers = { image: string; size: string; position: string; repeat: string };
 
@@ -558,8 +697,12 @@ export function backdropCss(input: Theme): BackdropLayers {
   const k = bk * Math.max(0.3, Math.min(2, b.contrast!));   // the pattern
   const sc = Math.max(0.5, Math.min(2, b.scale!));
   const rgba = (hex: string, a: number) => { const [r, g, bl] = hexToRgb(hex); return `rgb(${r} ${g} ${bl} / ${Math.max(0, Math.min(1, a)).toFixed(3)})`; };
+  const motion = BACKDROP_MOTIONS.find((m) => m.key === b.motion && !m.layer && m.seconds);
+  // Reduced motion: draw the still pattern (an SVG's own animation doesn't see the page's media queries).
+  const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const svg = (body: string, w: number, h: number, ar = "xMidYMid slice") =>
-    `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${w} ${h}' width='${w}' height='${h}' preserveAspectRatio='${ar}'>${body}</svg>`)}")`;
+    `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${w} ${h}' width='${w}' height='${h}' preserveAspectRatio='${ar}'>${
+      motion && !still ? animatePattern(body, b.pattern!, motion.key, motion.seconds / Math.max(0.5, Math.min(2, b.speed!)), w, h, ar === "none", sc) : body}</svg>`)}")`;
   const n = (v: number) => Math.round(v * 10) / 10;
   const layers: BackdropLayers[] = [];
   const add = (image: string, size = "auto", position = "0 0", repeat = "no-repeat") => layers.push({ image, size, position, repeat });
@@ -719,11 +862,15 @@ export function backdropCss(input: Theme): BackdropLayers {
     case "paper": {
       const [r, g, bl] = hexToRgb(c.text!).map((v) => (v / 255).toFixed(3));
       const fine = b.pattern === "grain";
-      const a = (fine ? 0.22 : 0.14) * k;
-      const body = `<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='${fine ? 0.85 : 0.035}' numOctaves='${fine ? 2 : 4}' stitchTiles='stitch'/>`
-        + `<feColorMatrix values='0 0 0 0 ${r} 0 0 0 0 ${g} 0 0 0 0 ${bl} 0 0 0 ${a.toFixed(3)} 0'/></filter><rect width='100%' height='100%' filter='url(#n)'/>`;
-      const size = fine ? 180 : 420;
-      add(svg(body, size, size, "none"), `${n(size * sc)}px ${n(size * sc)}px`, "0 0", "repeat");
+      const noise = (alpha: number, size: number, seed: number) => {
+        const body = `<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='${fine ? 0.85 : 0.035}' numOctaves='${fine ? 2 : 4}' seed='${seed}' stitchTiles='stitch'/>`
+          + `<feColorMatrix values='0 0 0 0 ${r} 0 0 0 0 ${g} 0 0 0 0 ${bl} 0 0 0 ${alpha.toFixed(3)} 0'/></filter><rect width='100%' height='100%' filter='url(#n)'/>`;
+        add(svg(body, size, size, "none"), `${n(size * sc)}px ${n(size * sc)}px`, "0 0", "repeat");
+      };
+      // Grain is fine enough that its tile never shows. Paper's mottles are big, so one tile
+      // repeats as a visible grid: two seeds at sizes that don't line up only meet again far apart.
+      if (fine) noise(0.22 * k, 180, 0);
+      else { noise(0.09 * k, 1100, 3); noise(0.08 * k, 737, 11); }
       break;
     }
     case "linen": {
@@ -941,6 +1088,7 @@ export function tokensCss(theme: Theme): string {
   if (f.bodyTracking !== 0) lines.push(`  --font-body-tracking: ${f.bodyTracking}em;`);
   if (f.headingsSize !== 1) lines.push(`  --font-display-size: ${f.headingsSize};`);
   if (f.bodySize !== 1) lines.push(`  --font-body-size: ${f.bodySize};`);
+  if (motifMask(theme) !== "none") lines.push(`  --motif-mask: ${motifMask(theme)};`, "  --motif-radius: 0px;");
   return [
     `/* This app's default theme tokens ("R G B" channels), so the page looks right`,
     `   before any script runs. Owned by the app; generate from BRAND.defaultTheme`,
@@ -1000,8 +1148,10 @@ export function importTheme(text: string): { theme: Theme; name?: string } {
       const bd = (raw.backdrop ?? {}) as Record<string, unknown>;
       const pattern = BACKDROPS.find((x) => x.key === bd.pattern)?.key;
       const base = BACKDROP_BASES.find((x) => x === bd.base);
-      return { pattern, base, intensity: num(bd.intensity, 0, 1), scale: num(bd.scale, 0.5, 2), contrast: num(bd.contrast, 0.3, 2), saturation: num(bd.saturation, 0, 1.6) };
+      const motion = BACKDROP_MOTIONS.find((x) => x.key === bd.motion)?.key;
+      return { pattern, base, intensity: num(bd.intensity, 0, 1), scale: num(bd.scale, 0.5, 2), contrast: num(bd.contrast, 0.3, 2), saturation: num(bd.saturation, 0, 1.6), motion, speed: num(bd.speed, 0.5, 2) };
     })(),
+    motif: MOTIFS.find((x) => x.key === raw.motif)?.key,
   };
   const name = typeof obj.name === "string" ? obj.name.slice(0, 80) : undefined;
   return { theme: ownColours(theme), ...(name ? { name } : {}) };
@@ -1028,6 +1178,9 @@ export function themeVars(theme: Theme): Record<string, string> {
   vars["--bg-size"] = bd.size;
   vars["--bg-position"] = bd.position;
   vars["--bg-repeat"] = bd.repeat;
+  vars["--bg-animation"] = backdropAnimation(theme);
+  vars["--motif-mask"] = motifMask(theme);
+  vars["--motif-radius"] = motifMask(theme) === "none" ? "9999px" : "0px";
   return vars;
 }
 
@@ -1047,10 +1200,22 @@ export function applyTheme(theme: Theme): void {
   } catch { /* storage unavailable */ }
 }
 
-let faviconTemplate: string | null = null;
 let touchIconKey = "";
 
-/** The built-in favicon recoloured to a theme: #0B0B0C → background, #A8FF3E → accent, #FF3D6E → highlight, #2EC5FF → support. */
+/**
+ * The built-in favicon: one of the theme's motif shape (a circle by default)
+ * in the accent on the page colour, softly rounded — drawn from the theme, so
+ * it needs no file and follows every change of colour or motif.
+ */
+export function motifFavicon(input: Theme): string {
+  const t = fullTheme(input);
+  const m = MOTIFS.find((x) => x.key === t.motif);
+  const shape = m?.path ? m.path.replace(/stroke='black'/g, `stroke='${t.accent}'`) : "<circle cx='12' cy='12' r='11'/>";
+  return `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'><rect width='32' height='32' rx='7' fill='${t.background}'/>`
+    + `<g transform='translate(5 5) scale(0.9167)' fill='${t.accent}'>${shape}</g></svg>`;
+}
+
+/** An older app favicon template recoloured to a theme: #0B0B0C → background, #A8FF3E → accent, #FF3D6E → highlight, #2EC5FF → support. Deprecated: the built-in favicon is `motifFavicon`. */
 export function themedFavicon(template: string, input: Theme): string {
   const theme = fullTheme(input);
   return template
@@ -1084,23 +1249,19 @@ export function iconPng(src: string, background: string, size = 180): Promise<st
 }
 
 /**
- * Point the tab icon at an uploaded favicon, or recolour the built-in one to
- * match the theme — and make the iOS home-screen icon (`apple-touch-icon`)
+ * Point the tab icon at an uploaded favicon, or the built-in one — the theme's
+ * motif in its accent (`motifFavicon`), adding the icon link if the page has
+ * none — and make the iOS home-screen icon (`apple-touch-icon`)
  * from the same picture, so adding the app to a Home Screen gets the current
  * look. iOS keeps an icon from when the app was added: after a theme change,
  * it shows on phones that add the app from then on (or remove and re-add it).
  */
 export async function applyFavicon(theme: Theme, customUrl: string | null): Promise<void> {
-  const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-  let src = customUrl;
-  if (!src) {
-    try {
-      const template: string = faviconTemplate ?? (await fetch("/favicon.svg").then((r) => r.text()));
-      faviconTemplate = template;
-      src = `data:image/svg+xml,${encodeURIComponent(themedFavicon(template, theme))}`;
-    } catch { return; /* keep the static icons */ }
-  }
-  if (link) link.href = src;
+  let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+  if (!link) link = document.head.appendChild(Object.assign(document.createElement("link"), { rel: "icon" }));
+  const src = customUrl ?? `data:image/svg+xml,${encodeURIComponent(motifFavicon(theme))}`;
+  link.type = customUrl ? "" : "image/svg+xml";
+  link.href = src;
 
   const touch = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
   const key = `${src}|${theme.background}`;

@@ -1,10 +1,11 @@
 /**
  * Brand theme — the colours the whole UI is derived from (accent and
  * background; highlight and support optional), type, backdrop and look
- * settings, plus an optional uploaded logo and favicon. Admin routes use requireAdmin. Stored in site_copy (section "theme").
+ * settings, plus an optional uploaded logo and favicon. Admin routes use requireAdmin. Stored in site_copy (section "theme";
+ * the theme itself as one JSON value, theme.json).
  *
  *   GET    /public/theme              colours + logo/favicon URLs (no auth; every page needs it)
- *   PUT    /admin/theme               set the theme (requireAdmin): colours, fonts, backdrop, infer, vibrancy, contrast
+ *   PUT    /admin/theme               set the theme (requireAdmin): the whole theme object, stored as sent
  *   DELETE /admin/theme               back to the default colours
  *   POST   /admin/theme/:asset        upload a logo or favicon (asset = logo | favicon)
  *   DELETE /admin/theme/:asset        remove it (back to the built-in one)
@@ -20,45 +21,25 @@ import { requireAdmin } from "../auth/middleware.js";
 import { s3, bucket, mediaUrl } from "../lib/s3.js";
 
 const COLOR_KEYS = { accent: "theme.accent", highlight: "theme.highlight", background: "theme.background", support: "theme.support" } as const;
-/** Colours the theme used to have — cleared on save and reset. */
-const RETIRED_KEYS = ["theme.logo"];
+/**
+ * The whole theme as sent, as JSON (jimbo.ui 0.13): colours, fonts, backdrop
+ * (with its motion), motif, and whatever the theme gains later, so a new
+ * option saves without a change here. The app's `withDefaults` and
+ * `ownColours` drop what they don't know.
+ */
+const THEME_KEY = "theme.json";
+/** Per-field keys from before the theme was stored whole — read when there's no theme.json yet, cleared on save and reset. */
+const FONTS_KEY = "theme.fonts";
+const BACKDROP_KEY = "theme.backdrop";
+const OPTION_KEYS = { infer: "theme.infer", vibrancy: "theme.vibrancy", contrast: "theme.contrast" } as const;
+const LEGACY_KEYS = [...Object.values(COLOR_KEYS), FONTS_KEY, BACKDROP_KEY, ...Object.values(OPTION_KEYS), "theme.logo"];
 const ASSET_KEYS = { logo: "theme.logo_file", favicon: "theme.favicon_file" } as const;
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Colours are #RRGGBB");
-/** Fonts (jimbo.ui): a font key for headings and body (the app's FONTS; old "sans" / "mono" / "serif" still work), with weights and letter spacing; stored as JSON. */
-const FONTS_KEY = "theme.fonts";
-const fontKey = z.string().regex(/^[a-z0-9-]{1,40}$/);
-const fonts = z.object({
-  headings: fontKey.optional(),
-  body: fontKey.optional(),
-  headingsWeight: z.number().int().min(100).max(900).optional(),
-  bodyWeight: z.number().int().min(100).max(900).optional(),
-  headingsTracking: z.number().min(-0.1).max(0.3).optional(),
-  bodyTracking: z.number().min(-0.1).max(0.3).optional(),
-  headingsSize: z.number().min(0.8).max(1.3).optional(),
-  bodySize: z.number().min(0.8).max(1.3).optional(),
-});
-/** Page backdrop (jimbo.ui): a pattern over a base, with strength, size, contrast and saturation; stored as JSON. */
-const BACKDROP_KEY = "theme.backdrop";
-const backdrop = z.object({
-  pattern: z.enum([
-    "none", "ripples", "waves", "contours", "shapes", "blobs", "flow", "confetti", "burst", "swirl", "ribbons", "scribble", "rain",
-    "geometry", "hexagons", "diamonds", "grid", "arrows", "squares", "zigzag", "rings", "crosses", "scales", "cubes", "checks",
-    "halftone", "stripes", "sunburst", "deco", "pinstripe", "gingham", "polka", "plaid", "argyle", "racing", "trellis", "bauhaus",
-    "dots", "grain", "paper", "linen", "concrete", "brushed", "sand", "speckle", "crosshatch", "twill", "carbon", "ribbed",
-  ]).optional(),
-  base: z.enum(["solid", "gradient", "glow"]).optional(),
-  intensity: z.number().min(0).max(1).optional(),
-  scale: z.number().min(0.5).max(2).optional(),
-  contrast: z.number().min(0.3).max(2).optional(),
-  saturation: z.number().min(0).max(1.6).optional(),
-});
-/** Look settings (jimbo.ui): how missing colours are inferred, colour vibrancy and layer contrast. */
-const OPTION_KEYS = { infer: "theme.infer", vibrancy: "theme.vibrancy", contrast: "theme.contrast" } as const;
-const options = {
-  infer: z.enum(["contrast", "tonal"]).optional(),
-  vibrancy: z.number().min(0.4).max(1.5).optional(),
-  contrast: z.number().min(0.8).max(1.6).optional(),
-};
+/** Colours are checked; everything else passes through, kept to a small JSON object. */
+const themeBody = z
+  .object({ accent: hex, background: hex, highlight: hex.optional(), support: hex.optional() })
+  .passthrough()
+  .refine((t) => JSON.stringify(t).length <= 16_000, "Theme is too large");
 
 const ASSET_TYPES: Record<string, string> = {
   "image/svg+xml": ".svg",
@@ -74,14 +55,9 @@ async function setValue(key: string, value: string, description: string): Promis
     .onConflictDoUpdate({ target: schema.siteCopy.key, set: { value, updatedAt: new Date() } });
 }
 
-function parseFonts(raw: string | null): z.infer<typeof fonts> | null {
+function parseJson(raw: string | null): Record<string, unknown> | null {
   if (!raw) return null;
-  try { const f = fonts.safeParse(JSON.parse(raw)); return f.success ? f.data : null; } catch { return null; }
-}
-
-function parseBackdrop(raw: string | null): z.infer<typeof backdrop> | null {
-  if (!raw) return null;
-  try { const b = backdrop.safeParse(JSON.parse(raw)); return b.success ? b.data : null; } catch { return null; }
+  try { const v = JSON.parse(raw); return v && typeof v === "object" && !Array.isArray(v) ? v : null; } catch { return null; }
 }
 
 const num = (v: string | null): number | null => (v != null && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null);
@@ -89,15 +65,16 @@ const num = (v: string | null): number | null => (v != null && v !== "" && Numbe
 async function readTheme() {
   const rows = await db.select().from(schema.siteCopy).where(sql`${schema.siteCopy.section} = 'theme'`);
   const get = (k: string) => rows.find((r) => r.key === k)?.value || null;
+  const whole = parseJson(get(THEME_KEY));
   return {
-    colors: {
+    colors: whole ?? {
       accent: get(COLOR_KEYS.accent),
       highlight: get(COLOR_KEYS.highlight),
       background: get(COLOR_KEYS.background),
       support: get(COLOR_KEYS.support),
-      fonts: parseFonts(get(FONTS_KEY)),
-      backdrop: parseBackdrop(get(BACKDROP_KEY)),
-      infer: get(OPTION_KEYS.infer) === "tonal" ? "tonal" : get(OPTION_KEYS.infer) === "contrast" ? "contrast" : null,
+      fonts: parseJson(get(FONTS_KEY)),
+      backdrop: parseJson(get(BACKDROP_KEY)),
+      infer: get(OPTION_KEYS.infer),
       vibrancy: num(get(OPTION_KEYS.vibrancy)),
       contrast: num(get(OPTION_KEYS.contrast)),
     },
@@ -127,37 +104,19 @@ export async function themeRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.put("/admin/theme", { preHandler: [requireAdmin] }, async (req, reply) => {
-    // Highlight and support are optional (jimbo.ui 0.5–0.6): what's left out, the app infers from the
-    // accent and background. Store only what's sent; fonts default to sans.
-    const parsed = z.object({ accent: hex, background: hex, highlight: hex.optional(), support: hex.optional(), fonts: fonts.optional(), backdrop: backdrop.optional(), ...options }).safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: "accent and background must be #RRGGBB colours (highlight and support too, if given); fonts, backdrop, vibrancy (0.4–1.5) and contrast (0.8–1.6) must be in range." });
-    const labels = { accent: "Accent colour", highlight: "Highlight colour", background: "Background colour", support: "Support colour" };
-    for (const k of Object.keys(COLOR_KEYS) as (keyof typeof COLOR_KEYS)[]) {
-      const v = parsed.data[k];
-      if (v) await setValue(COLOR_KEYS[k], v.toUpperCase(), labels[k]);
-    }
-    const cleared: string[] = [
-      ...(parsed.data.highlight ? [] : [COLOR_KEYS.highlight]),
-      ...(parsed.data.support ? [] : [COLOR_KEYS.support]),
-    ];
-    const f = parsed.data.fonts;
-    if (f && Object.keys(f).length > 0) await setValue(FONTS_KEY, JSON.stringify(f), "Fonts");
-    else cleared.push(FONTS_KEY);
-    const bd = parsed.data.backdrop;
-    if (bd && Object.keys(bd).length > 0) await setValue(BACKDROP_KEY, JSON.stringify(bd), "Page backdrop");
-    else cleared.push(BACKDROP_KEY);
-    const optionLabels = { infer: "Inferred colours", vibrancy: "Colour vibrancy", contrast: "Layer contrast" };
-    for (const k of Object.keys(OPTION_KEYS) as (keyof typeof OPTION_KEYS)[]) {
-      const v = parsed.data[k];
-      if (v != null) await setValue(OPTION_KEYS[k], String(v), optionLabels[k]);
-      else cleared.push(OPTION_KEYS[k]);
-    }
-    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, [...RETIRED_KEYS, ...cleared]));
-    return reply.send({ theme: parsed.data });
+    // Stored whole (jimbo.ui 0.13): highlight and support may be left out (the app infers them),
+    // and every other field — fonts, backdrop and its motion, motif — is kept as sent.
+    const parsed = themeBody.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "accent and background must be #RRGGBB colours (highlight and support too, if given), and the theme must be a small JSON object." });
+    const theme = { ...parsed.data } as Record<string, unknown>;
+    for (const k of Object.keys(COLOR_KEYS)) if (typeof theme[k] === "string") theme[k] = (theme[k] as string).toUpperCase();
+    await setValue(THEME_KEY, JSON.stringify(theme), "Theme");
+    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, LEGACY_KEYS));
+    return reply.send({ theme });
   });
 
   app.delete("/admin/theme", { preHandler: [requireAdmin] }, async (_req, reply) => {
-    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, [...Object.values(COLOR_KEYS), FONTS_KEY, BACKDROP_KEY, ...Object.values(OPTION_KEYS), ...RETIRED_KEYS]));
+    await db.delete(schema.siteCopy).where(inArray(schema.siteCopy.key, [THEME_KEY, ...LEGACY_KEYS]));
     return reply.send({ ok: true });
   });
 

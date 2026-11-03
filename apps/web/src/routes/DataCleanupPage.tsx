@@ -10,6 +10,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUrlState } from "@/lib/useUrlState";
 import { api, type DataEntityType, type DupGroup, type FestivalSuggestion, type HealthCheck, type MergePreview } from "@/lib/api";
 import { FestivalPicker } from "@/components/FestivalPicker";
 import { fmtDate, plural } from "@/lib/format";
@@ -126,7 +127,7 @@ function DuplicateGroup({ type, group }: { type: DataEntityType; group: DupGroup
 }
 
 function Duplicates() {
-  const [type, setType] = useState<DataEntityType>("venue");
+  const [type, setType] = useUrlState<DataEntityType>("type", "venue", ["venue", "artist"]);
   const q = useQuery({ queryKey: ["admin/data", "duplicates", type], queryFn: () => api.dataDuplicates(type) });
 
   return (

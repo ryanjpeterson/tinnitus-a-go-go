@@ -1,7 +1,7 @@
 // Part of jimbo-ui (foundation — don't edit here; change jimbo-ui and update).
 /** Which jimbo-ui this app's foundation files came from, and where to see and look things up. */
 export const JIMBO_UI = {
-  version: "0.11.0",
+  version: "0.13.0",
   showcase: "https://claude.ai/artifact/F4KAFYCkxZGZB7zKdaWjWC",
   repo: "https://github.com/ryanjpeterson/jimbo-ui",
   registry: "https://github.com/ryanjpeterson/jimbo-ui/blob/main/registry/apps.json",
@@ -35,7 +35,13 @@ export type ReleaseItem = {
   /** Only touches files every app copies as they are. */
   foundation?: true;
 };
-export type Release = { version: string; date: string | null; summary: string; items: ReleaseItem[]; appsMust: string[] };
+/**
+ * What updating to a release takes — the number says it too (Semantic
+ * Versioning, read for 0.x): breaking = a new 0.MINOR (apps change their own
+ * code), feature and fix = a 0.x.PATCH (drop-in: copy the foundation files).
+ */
+export type UpdateType = "breaking" | "feature" | "fix" | "first";
+export type Release = { version: string; date: string | null; type?: UpdateType | null; summary: string; items: ReleaseItem[]; appsMust: string[] };
 export type Releases = { latest: string | null; releases: Release[] };
 
 const parts = (v: string) => v.split(".").map(Number);
@@ -74,6 +80,8 @@ export async function fetchReleases(url: string = JIMBO_UI.releases): Promise<Re
 export type Updates = {
   current: string;
   latest: string;
+  /** Any newer release that's breaking: the update needs code changes in the app. */
+  breaking: boolean;
   /** Newer releases, newest first. */
   newer: Release[];
   /** Steps to carry out in the app's own code, oldest release first. */
@@ -97,7 +105,9 @@ export function updatesFor(data: Releases, current: string, uses?: string[]): Up
   const newer = data.releases.filter((r) => compareVersions(r.version, current) > 0);
   if (!newer.length) return null;
   const mine = (item: ReleaseItem) => !uses || item.affects.some((id) => uses.includes(id));
-  const u: Updates = { current, latest: newer[0]!.version, newer, toDo: [], yours: [], included: [], optional: [], elsewhere: 0 };
+  // A release without a type (an older releases.json) counts as breaking if it has steps for the app.
+  const breaking = newer.some((r) => r.type === "breaking" || (!r.type && r.appsMust.length > 0));
+  const u: Updates = { current, latest: newer[0]!.version, breaking, newer, toDo: [], yours: [], included: [], optional: [], elsewhere: 0 };
   for (const r of [...newer].reverse()) {
     for (const step of r.appsMust) u.toDo.push({ version: r.version, step });
     const added = new Set(r.items.filter((i) => i.kind === "added").flatMap((i) => i.affects));

@@ -842,6 +842,20 @@ Reminders and the weekly recap are sent by the worker. Each channel is off until
 
 Stop the old Mailpit container once: `docker compose stop mailpit && docker compose rm -f mailpit`.
 
+### iOS app
+
+`native/` is an iOS app (a Capacitor wrapper made with the jimbo-deploy iOS shell). It doesn't contain the app itself: it opens `http://macmini:4444`, so **every deploy reaches the phone the next time the app opens** and there's nothing to rebuild for web changes. Settings live in the `ios` block of [`deploy.json`](./deploy.json): name "tinnitus a-go-go", bundle id `com.ryanjpeterson.tinnitusagogo` (Capacitor doesn't allow dashes), live updates, free Apple ID. The phone needs Tailscale on. If the mini can't be reached, the app shows an offline page with **Try again**.
+
+```bash
+npm --prefix native install && npm --prefix native run sync   # after a fresh clone
+npm --prefix native run build:sim                             # simulator build (no signing needed)
+npm --prefix native run open                                  # Xcode: pick the iPhone, Run (⌘R)
+```
+
+- **Signing (one time):** in Xcode → target **App** → **Signing & Capabilities**, tick *Automatically manage signing* and set Team to your Apple ID's Personal Team, then commit the project change. On the phone, the first time: Settings → General → VPN & Device Management → trust the developer.
+- **Free Apple ID:** the install expires after 7 days (the app stops opening). Run it from Xcode again to fix that; nothing else changes.
+- **Rebuild only for shell changes:** the name, icon (`native/assets/icon.png`, 1024 px with no transparency, then `npm --prefix native run icons`), bundle id, URL or native plugins.
+
 ### Tailscale Funnel (public internet access)
 
 Funnel exposes the app at `https://macmini.stingray-octatonic.ts.net` on the public internet. Media is proxied through the Vite dev server (`/tagg-media/` path), so only port 4444 needs to be tunnelled — MinIO port 9000 stays private.

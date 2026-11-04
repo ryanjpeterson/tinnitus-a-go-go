@@ -1,0 +1,21 @@
+{
+  "name": "tinnitus-a-go-go-native",
+  "private": true,
+  "description": "iOS shell for tinnitus-a-go-go: a Capacitor wrapper around the web app (jimbo-deploy templates/ios-shell).",
+  "scripts": {
+    "sync": "cap sync ios",
+    "open": "cap open ios",
+    "icons": "capacitor-assets generate --ios",
+    "build:sim": "cap sync ios && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build build",
+    "build:device": "cap sync ios && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath build -allowProvisioningUpdates build"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "typescript": "^5.6.0"
+  }
+}

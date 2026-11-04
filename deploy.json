@@ -4,7 +4,18 @@
   "server": "/Volumes/jimbos-sloppydrive/tinnitus-a-go-go",
   "github": "ryanjpeterson/tinnitus-a-go-go",
   "forgejo": "ryanjpeterson/tinnitus-a-go-go",
-  "compose": ["docker-compose.yml", "docker-compose.tailscale.yml"],
+  "compose": [
+    "docker-compose.yml",
+    "docker-compose.tailscale.yml"
+  ],
   "port": 4444,
-  "service": "web"
+  "service": "web",
+  "ios": {
+    "dir": "native",
+    "appId": "com.ryanjpeterson.tinnitusagogo",
+    "name": "tinnitus a-go-go",
+    "url": "http://macmini:4444",
+    "updates": "live",
+    "signing": "free"
+  }
 }

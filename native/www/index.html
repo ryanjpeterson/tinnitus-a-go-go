@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Can't reach the server</title>
+    <style>
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: grid; place-items: center; padding: 2rem;
+        font: 16px/1.5 ui-sans-serif, system-ui, sans-serif;
+        background: #141416; color: #f2f2f2; text-align: center;
+      }
+      @media (prefers-color-scheme: light) { body { background: #f6f5f2; color: #1a1a1c; } }
+      h1 { font-size: 1.25rem; margin: 0 0 .5rem; }
+      p { margin: 0 0 1.5rem; opacity: .75; }
+      button {
+        font: inherit; font-weight: 600; padding: .7rem 1.4rem; border-radius: .6rem;
+        border: 1px solid currentColor; background: transparent; color: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Can't reach the server</h1>
+      <p>Check that Tailscale is on, then try again.</p>
+      <button onclick="location.replace(window.__jimboUrl || '/')">Try again</button>
+    </main>
+    <script>
+      // The server URL, filled in by setup (ios-shell.sh) from deploy.json.
+      window.__jimboUrl = "http://macmini:4444";
+    </script>
+  </body>
+</html>

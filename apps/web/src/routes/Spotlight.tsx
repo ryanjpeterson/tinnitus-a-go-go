@@ -275,17 +275,23 @@ function ShowPreview({ show }: { show: Show }) {
   );
 }
 
-/** The palette's preview pane has no padding of its own, so it's here. */
+/**
+ * The palette's preview pane has no padding of its own, so it's here. On
+ * narrower screens (tablets, a phone on its side) the image is a small
+ * thumbnail beside the text; from lg up it's the full flyer above it.
+ */
 function Preview({ image, round, title, lines, children }: {
   image?: string | null; round?: boolean; title: string; lines: string[]; children?: React.ReactNode;
 }) {
   return (
-    <div className="space-y-4 p-4">
+    <div className="flex items-start gap-3 p-4 lg:block lg:space-y-4">
       {image && (
         <img src={image} alt="" loading="lazy"
-          className={round ? "mx-auto aspect-square w-40 rounded-full object-cover" : "aspect-4/5 w-full rounded-lg object-cover"} />
+          className={round
+            ? "aspect-square w-16 shrink-0 rounded-full object-cover lg:mx-auto lg:w-40"
+            : "aspect-4/5 w-16 shrink-0 rounded-lg object-cover lg:w-full"} />
       )}
-      <div className="space-y-1">
+      <div className="min-w-0 space-y-1">
         <p className="font-display text-lg leading-tight">{title}</p>
         {lines.filter(Boolean).map((l) => <p key={l} className="text-sm text-text-muted">{l}</p>)}
         {children}

@@ -18,7 +18,7 @@ import {
   PillTabs, RankedList, SearchField, Section, SelectField, Sheet, Sparkline, StatGrid, StatTile, StatusBadge, Tabs, ThemeDots, TrendChart, useListLayout, VenueViewSwitch, type Tone,
 } from "@/components/ui/kit";
 import { DateField, FileDrop, TextArea, TextField } from "@/components/ui/forms";
-import { Menu, Popover, Tooltip } from "@/components/ui/overlays";
+import { Menu, Popover, SearchTrigger, Tooltip } from "@/components/ui/overlays";
 import { OfflineBanner, ProgressBar, Stepper, toast, UpdateBanner, useConfirm } from "@/components/ui/feedback";
 import { Accordion, DataTable, type Column, type TableSort } from "@/components/ui/data";
 import { FONTS, MOTIFS, THEME_KEYS, themeHex } from "@/lib/theme";
@@ -471,10 +471,10 @@ function OverlayBlocks() {
           <p className="meta">Hover or tab to the icons.</p>
         </div>
       </Block>
-      <Block section="overlays" title="CommandPalette" note="⌘K or Ctrl+K anywhere in the showcase: go to a page or run an action by typing. A top-bar button opens it on phones.">
-        <div className="card flex flex-wrap items-center gap-3 p-5">
-          <Button variant="secondary" onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}>Open the palette</Button>
-          <kbd className="rounded-md border border-border px-1.5 py-0.5 font-mono text-xs text-text-subtle">⌘K</kbd>
+      <Block section="overlays" title="CommandPalette" note="Spotlight for the app, on ⌘K or Ctrl+K, the top-bar search button on phones, or a SearchTrigger on a page. Results come live from shows, artists, festivals, venues and photos, grouped, with thumbnails and a preview pane on wide screens. key:value filters become chips (try year:2019 status:attended). Empty, it shows recent picks, suggestions and the filters; commands follow the results.">
+        <div className="card space-y-3 p-5">
+          <SearchTrigger label="Search" onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))} />
+          <p className="meta">The search and its filters stay in the URL (<code>?find=</code>), so a refresh or a shared link reopens it.</p>
         </div>
       </Block>
       {confirmSheet}

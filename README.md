@@ -320,7 +320,7 @@ curl -H "Cookie: tagg_session=<value>" http://localhost:3000/auth/me
 │   │       │   ├── MapPage.tsx           full-screen venue map with a by-city panel
 │   │       │   ├── FestivalsPage.tsx / FestivalDetailPage.tsx  festivals and their days, other years
 │   │       │   ├── AddFestivalModal.tsx  new festival with its lineup
-│   │       │   ├── SearchSheet.tsx       search across shows, artists, festivals, venues, songs
+│   │       │   ├── Spotlight.tsx         ⌘K search: shows, artists, festivals, venues, songs; filters, pages, actions
 │   │       │   ├── TicketsPage.tsx       ticket stub wall
 │   │       │   ├── FollowUpPrompt.tsx    daily prompt to resolve past shows still marked attending/interested
 │   │       │   ├── AccountPage.tsx       profile, password, calendar feed, admin links (Notifications, jimbo-ui config)
@@ -607,7 +607,7 @@ A festival is a container of day shows (`concerts.type = 'festival_day'`). Each 
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
-| `GET`  | `/search/index` | Everything searchable in one compact response — artists, venues, festivals, shows, and setlist songs (as `[song, artist, show index]`). The app filters it on the device |
+| `GET`  | `/search/index` | Everything searchable in one compact response — artists, venues, festivals (with flyers), shows (with your status and flyer), and setlist songs (as `[song, artist, show index]`). The app filters it on the device in Spotlight (⌘K): `year:`, `status:` and `city:` filters |
 | `GET`  | `/calendar/token` | Signed in. Your private calendar-feed token (created on first request) |
 | `POST` | `/calendar/token/reset` | Signed in. New token; the old feed link stops working |
 | `GET`  | `/calendar/:token.ics` | The feed (no sign-in; the token is the key): shows you're attending or interested in, plus the last year attended, as all-day events |

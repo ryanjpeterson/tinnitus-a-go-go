@@ -258,11 +258,17 @@
   * {
     -webkit-tap-highlight-color: transparent;
   }
-  /* Smooth scrolling */
+  /* Smooth scrolling. No double-tap zoom anywhere (taps are instant);
+     pinch-zoom stays in a browser tab. */
   html {
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
+    touch-action: manipulation;
   }
+  /* The installed app doesn't zoom at all, like a native app (viewport.ts
+     lockAppZoom sets data-installed). Elements that pinch in JS (maps,
+     image viewers) set touch-action: none on themselves. */
+  html[data-installed] { touch-action: pan-x pan-y; }
   ::selection { background: rgb(var(--c-accent)); color: rgb(var(--c-on-accent)); }
 }
 
@@ -408,8 +414,8 @@
   }
 }
 
-/* Pinch-zoom is allowed again, so stop iOS Safari auto-zooming into form
-   fields on focus: it does that for any input under 16px. */
+/* Stop iOS Safari auto-zooming into form fields on focus: it does that for
+   any input under 16px (in a browser tab, where pinch-zoom is allowed). */
 @media (max-width: 639px) {
   input, select, textarea {
     font-size: 16px !important;

@@ -1226,8 +1226,13 @@ export interface DeepStatsResponse {
 export interface SearchIndex {
   artists: { name: string; slug: string; imageUrl: string | null; shows: number }[];
   venues: { name: string; slug: string; city: string | null; shows: number }[];
-  festivals: { name: string; slug: string; year: number | null; startDate: string | null }[];
-  shows: { slug: string; date: string; festival: string | null; venue: string | null; city: string | null; lineup: string | null }[];
+  festivals: { name: string; slug: string; year: number | null; startDate: string | null; flyerUrl: string | null }[];
+  shows: {
+    slug: string; date: string; festival: string | null; venue: string | null; city: string | null; lineup: string | null;
+    /** Your attendance: attended, attending, interested, missed, cancelled (null if none). */
+    status: string | null;
+    flyerUrl: string | null;
+  }[];
   /** [song, artist, index into `shows`] */
   songs: [string, string | null, number][];
 }

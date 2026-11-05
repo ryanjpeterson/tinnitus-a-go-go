@@ -28,10 +28,13 @@ export async function searchRoutes(app: FastifyInstance): Promise<void> {
         select v.name, v.slug, v.city, count(c.id)::int as shows
         from venues v left join concerts c on c.venue_id = v.id
         group by v.id order by shows desc, v.name`),
-      rows<{ name: string; slug: string; year: number | null; start_date: string | null }>(sql`
-        select name, slug, year, start_date::text from event_series order by start_date desc nulls last`),
-      rows<{ slug: string; date: string; festival: string | null; venue: string | null; city: string | null; lineup: string | null }>(sql`
+      rows<{ name: string; slug: string; year: number | null; start_date: string | null; flyer_key: string | null }>(sql`
+        select name, slug, year, start_date::text, flyer_key from event_series order by start_date desc nulls last`),
+      rows<{ slug: string; date: string; festival: string | null; venue: string | null; city: string | null; lineup: string | null; status: string | null; flyer_key: string | null }>(sql`
         select c.slug, c.date::text as date, es.name as festival, v.name as venue, v.city,
+          (select att.status::text from concert_attendees att where att.concert_id = c.id
+             order by (att.status = 'attended') desc limit 1) as status,
+          coalesce(c.flyer_key, es.flyer_key) as flyer_key,
           (select string_agg(a.name, ' / ' order by ${BILLING_ORDER_SQL})
              from concert_artists ca join artists a on a.id = ca.artist_id where ca.concert_id = c.id) as lineup
         from concerts c
@@ -51,8 +54,9 @@ export async function searchRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({
       artists: artists.map((a) => ({ name: a.name, slug: a.slug, imageUrl: a.image_key ? mediaUrl(a.image_key) : null, shows: a.shows })),
       venues: venues.map((v) => ({ name: v.name, slug: v.slug, city: v.city, shows: v.shows })),
-      festivals: festivals.map((f) => ({ name: f.name, slug: f.slug, year: f.year, startDate: f.start_date })),
-      shows: shows.map((s) => ({ slug: s.slug, date: s.date, festival: s.festival, venue: s.venue, city: s.city, lineup: s.lineup })),
+      festivals: festivals.map((f) => ({ name: f.name, slug: f.slug, year: f.year, startDate: f.start_date, flyerUrl: f.flyer_key ? mediaUrl(f.flyer_key) : null })),
+      shows: shows.map((s) => ({ slug: s.slug, date: s.date, festival: s.festival, venue: s.venue, city: s.city, lineup: s.lineup,
+        status: s.status, flyerUrl: s.flyer_key ? mediaUrl(s.flyer_key) : null })),
       // Compact: [song, artist, index into shows] — thousands of rows, so no repeated show details.
       songs: songs.map((s) => [s.song, s.artist, showIndex.get(s.slug) ?? -1]).filter((s) => s[2] !== -1),
     });

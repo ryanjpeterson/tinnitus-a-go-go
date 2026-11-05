@@ -27,7 +27,8 @@ import { DataCleanupPage } from "./DataCleanupPage";
 import { RequireAdmin } from "./RequireAdmin";
 import { RequireAuth } from "./RequireAuth";
 import { YearReviewIndex, YearReviewPage } from "./YearReviewPage";
-import { SearchSheet } from "./SearchSheet";
+import { Spotlight } from "./Spotlight";
+import { SearchIcon, useSpotlight } from "@/components/ui/overlays";
 import { TicketsPage } from "./TicketsPage";
 import { JimboConfigPage } from "./JimboConfigPage";
 import { NotificationsPage } from "./NotificationsPage";
@@ -82,7 +83,9 @@ export function AppShell() {
     const under = (base: string) => p === base || p.startsWith(base + "/");
     return link.to === "/" ? p === "/" || link.also.some(under) : under(link.to) || link.also.some(under);
   };
-  const [searchOpen, setSearchOpen] = useState(false);
+  // App-wide search (⌘K / Ctrl+K, "/"), its query held in the URL as ?find=.
+  const spotlight = useSpotlight();
+  const setSearchOpen = spotlight.setOpen;
 
   // Pull down at the top of any page to refresh what's on screen.
   const qc = useQueryClient();
@@ -108,7 +111,7 @@ export function AppShell() {
       {/* Global "Add show" modal — triggered by N shortcut from any page (admin only) */}
       {isAdmin && globalAddOpen && <AddConcertModal onClose={() => setGlobalAddOpen(false)} />}
 
-      {searchOpen && <SearchSheet onClose={() => setSearchOpen(false)} />}
+      <Spotlight {...spotlight.bind} onAddShow={isAdmin ? () => setGlobalAddOpen(true) : undefined} />
 
       {/* Daily follow-up prompt — floats over all pages, shown once per day (admin only) */}
       {isAdmin && <FollowUpPrompt />}
@@ -152,12 +155,10 @@ export function AppShell() {
             <button
               onClick={() => setSearchOpen(true)}
               aria-label="Search"
-              title="Search ( / )"
+              title="Search ( / or ⌘K )"
               className="glass flex h-10 w-10 items-center justify-center rounded-full text-text-muted transition-[color,border-color,transform] hover:border-accent hover:text-text-base active:scale-95"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
-                <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
-              </svg>
+              <SearchIcon />
             </button>
             {isAdmin && (
               <button

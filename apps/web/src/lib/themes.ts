@@ -3,7 +3,9 @@
  * Everyday, Holidays, Countries (by region), Provinces, Sports (NHL, NBA,
  * MLB, NFL, and city tabs for Toronto, Ottawa and Chicago) and Games (Zelda,
  * Mario, Donkey Kong, more Nintendo, Sly Cooper, Tony Hawk's Underground,
- * Consoles), Apocalypse (Nuclear, Undead, Wasteland, Cosmic, Collapse). Each
+ * Consoles), Apocalypse (Nuclear, Undead, Wasteland, Cosmic, Collapse), Space
+ * (Nebulae, Stars, Planets, Deep sky, Aurora), Halloween (Vampire, Haunted,
+ * Witching, Graveyard, Harvest). Each
  * look comes once, as a family with a light, a mid and a dark page
  * (`FAMILY_SETS`, `familyLook`): the tones it was written in, and the rest
  * made from its own colours by `atTone`. Every one passes
@@ -71,6 +73,46 @@ const END: Record<string, TemplateStyle> = {
   drowned:  { fonts: { headings: "dm-sans", headingsWeight: 600 }, backdrop: { pattern: "waves", base: "gradient", motion: "alive" }, motif: "dots" },
   wildfire: { fonts: { headings: "archivo", headingsWeight: 800 }, backdrop: { pattern: "smog", base: "glow", motion: "alive" }, motif: "flames" },
   signal:   { fonts: { headings: "space-mono", headingsWeight: 700 }, backdrop: { pattern: "static", base: "solid", motion: "alive" }, motif: "squares" },
+};
+
+/** Each space look's feel: a heading font, a Cosmos backdrop that moves on its own, and a motif. */
+const SPACE: Record<string, TemplateStyle> = {
+  nursery:   { fonts: { headings: "syne", headingsWeight: 700 }, backdrop: { pattern: "nebula", base: "glow", motion: "alive" }, motif: "sparkles" },
+  pillars:   { fonts: { headings: "instrument-serif", headingsWeight: 400 }, backdrop: { pattern: "nebula", base: "gradient", motion: "alive" }, motif: "stars" },
+  veil:      { fonts: { headings: "manrope", headingsWeight: 300, headingsTracking: 0.04 }, backdrop: { pattern: "milkyway", base: "glow", motion: "alive" }, motif: "sparkles" },
+  giant:     { fonts: { headings: "unbounded", headingsWeight: 700 }, backdrop: { pattern: "eclipse", base: "glow", motion: "alive" }, motif: "suns" },
+  blue:      { fonts: { headings: "geist", headingsWeight: 300, headingsTracking: 0.03 }, backdrop: { pattern: "starfield", base: "glow", motion: "alive" }, motif: "stars" },
+  dwarf:     { fonts: { headings: "space-grotesk", headingsWeight: 500 }, backdrop: { pattern: "constellations", base: "solid", motion: "alive" }, motif: "sparkles" },
+  gasgiant:  { fonts: { headings: "archivo", headingsWeight: 800 }, backdrop: { pattern: "planetrise", base: "gradient", motion: "alive" }, motif: "planets" },
+  ringed:    { fonts: { headings: "syne", headingsWeight: 600 }, backdrop: { pattern: "orbits", base: "glow", motion: "alive" }, motif: "planets" },
+  ice:       { fonts: { headings: "dm-sans", headingsWeight: 500 }, backdrop: { pattern: "planetrise", base: "glow", motion: "alive" }, motif: "dots" },
+  paleblue:  { fonts: { headings: "newsreader", headingsWeight: 500 }, backdrop: { pattern: "orbits", base: "solid", motion: "alive" }, motif: "dots" },
+  horizon:   { fonts: { headings: "unbounded", headingsWeight: 500 }, backdrop: { pattern: "galaxy", base: "glow", motion: "alive" }, motif: "spirals" },
+  core:      { fonts: { headings: "space-mono", headingsWeight: 700 }, backdrop: { pattern: "galaxy", base: "gradient", motion: "alive" }, motif: "spirals" },
+  launch:    { fonts: { headings: "bebas" }, backdrop: { pattern: "comets", base: "glow", motion: "alive" }, motif: "rockets" },
+  aurora:    { fonts: { headings: "manrope", headingsWeight: 300, headingsTracking: 0.03 }, backdrop: { pattern: "aurora", base: "glow", motion: "alive" }, motif: "dots" },
+  wind:      { fonts: { headings: "syne", headingsWeight: 700 }, backdrop: { pattern: "comets", base: "gradient", motion: "alive" }, motif: "comets" },
+  midnight:  { fonts: { headings: "eb-garamond", headingsWeight: 500 }, backdrop: { pattern: "aurora", base: "gradient", motion: "alive" }, motif: "suns" },
+};
+
+/** Each Halloween look's mood: a heading font, a Haunt backdrop and a motif. */
+const HAUNT: Record<string, TemplateStyle> = {
+  velvet:    { fonts: { headings: "old-english" }, backdrop: { pattern: "damask", base: "glow", motion: "alive" }, motif: "fangs" },
+  bloodmoon: { fonts: { headings: "gothic", headingsWeight: 700 }, backdrop: { pattern: "moonlit", base: "glow", motion: "alive" }, motif: "bats" },
+  court:     { fonts: { headings: "playfair", headingsWeight: 700 }, backdrop: { pattern: "candles", base: "glow", motion: "alive" }, motif: "coffins" },
+  crypt:     { fonts: { headings: "old-german" }, backdrop: { pattern: "drips", base: "solid", motion: "alive" }, motif: "drops" },
+  daybreak:  { fonts: { headings: "dm-serif" }, backdrop: { pattern: "arches", base: "gradient", motion: "alive" }, motif: "fangs" },
+  manor:     { fonts: { headings: "pirate" }, backdrop: { pattern: "webs", base: "glow", motion: "alive" }, motif: "ghosts" },
+  seance:    { fonts: { headings: "old-print" }, backdrop: { pattern: "candles", base: "gradient", motion: "alive" }, motif: "moons" },
+  ecto:      { fonts: { headings: "unbounded", headingsWeight: 600 }, backdrop: { pattern: "mist", base: "glow", motion: "alive" }, motif: "ghosts" },
+  witching:  { fonts: { headings: "gothic", headingsWeight: 600 }, backdrop: { pattern: "moonlit", base: "gradient", motion: "alive" }, motif: "moons" },
+  cauldron:  { fonts: { headings: "pirate" }, backdrop: { pattern: "mist", base: "gradient", motion: "alive" }, motif: "spiders" },
+  hex:       { fonts: { headings: "old-print" }, backdrop: { pattern: "briars", base: "solid", motion: "alive" }, motif: "stars" },
+  graveyard: { fonts: { headings: "typewriter" }, backdrop: { pattern: "graveyard", base: "glow", motion: "alive" }, motif: "crosses" },
+  moonmist:  { fonts: { headings: "eb-garamond", headingsWeight: 600 }, backdrop: { pattern: "graveyard", base: "gradient", motion: "alive" }, motif: "moons" },
+  lantern:   { fonts: { headings: "bebas" }, backdrop: { pattern: "bats", base: "glow", motion: "alive" }, motif: "pumpkins" },
+  candycorn: { fonts: { headings: "figtree", headingsWeight: 800 }, backdrop: { pattern: "bats", base: "solid", motion: "alive" }, motif: "pumpkins" },
+  harvest:   { fonts: { headings: "lora", headingsWeight: 700 }, backdrop: { pattern: "briars", base: "glow", motion: "alive" }, motif: "pumpkins" },
 };
 
 // Sports: team colours, not team artwork — each theme uses only a team's own colours
@@ -584,6 +626,66 @@ const SETS: TemplateSet[] = [
       t("Drowned world", "Flood teal, algae, a warning flare", "#3FC1C9", "#F2B134", "#07161A", "#9ED8A0", { style: END.drowned }),
       t("Wildfire smoke", "Orange haze, ash cream, ember", "#FFB347", "#F2E3C6", "#4A2414", "#FF8C5A", { style: END.wildfire }),
       t("Signal lost", "Phosphor green, alarm pink, dead-channel blue", "#38F28A", "#F23859", "#0C0F0D", "#9AA7F0", { style: END.signal }),
+    ] },
+  ] },
+  // Space: invented palettes from the sky (no mission or film's artwork), each with a Cosmos
+  // backdrop that keeps moving on its own — stars twinkle, nebulae breathe, galaxies turn.
+  { label: "Space", tabs: true, groups: [
+    { label: "Nebulae", templates: [
+      t("Stellar nursery", "Newborn pink, starlight gold, oxygen teal", "#FF85B8", "#FFC857", "#0D0718", "#6FE3D6", { style: SPACE.nursery }),
+      t("Pillars of dust", "Dust gold, hydrogen rose, deep teal", "#E8B04B", "#F29CB4", "#0B0E14", "#4FD1C5", { style: SPACE.pillars }),
+      t("Veil", "Filament blue and rose on ink", "#7AA2FF", "#FF7AC8", "#080A16", "#B8F2E6", { style: SPACE.veil }),
+    ] },
+    { label: "Stars", templates: [
+      t("Red giant", "A swollen ember sun, amber, flare", "#FF8259", "#FFB547", "#140806", "#F7C6A3", { style: SPACE.giant }),
+      t("Blue supergiant", "Blue-white fire, a hot gold edge", "#5CA8FF", "#B9E2FF", "#060B18", "#FFD27A", { style: SPACE.blue }),
+      t("White dwarf", "A small bright star on pale sky", "#2B4FB3", "#7A3FB8", "#F4F6FB", "#1D2A44", { style: SPACE.dwarf }),
+    ] },
+    { label: "Planets", templates: [
+      t("Gas giant", "Storm bands of cream, rust and amber", "#E39B5B", "#F2D3A2", "#1A120C", "#E8846B", { style: SPACE.gasgiant }),
+      t("Ringed world", "Pale gold rings, ice blue, dusk", "#E6C77A", "#9FB7D9", "#14131A", "#D49A6A", { style: SPACE.ringed }),
+      t("Ice giant", "Methane blue, cyan cloud, frost", "#6CB0FF", "#7FE0E6", "#060E1F", "#B6C8FF", { style: SPACE.ice }),
+      t("Pale blue dot", "Ocean blue, land green, sunlit dust", "#1F5FAD", "#8A5A00", "#EEF5FB", "#2F6B3A", { style: SPACE.paleblue }),
+    ] },
+    { label: "Deep sky", templates: [
+      t("Event horizon", "Accretion amber round a black hole", "#FF9F1C", "#FFD27A", "#050505", "#7F8CFF", { style: SPACE.horizon }),
+      t("Galaxy core", "Old-star gold, rose, a blue rim", "#FFCF6E", "#FF7EB6", "#0A0714", "#8BA6FF", { style: SPACE.core }),
+      t("Launch window", "Plume orange, sky blue, night", "#FF8A3D", "#7CC4FF", "#0B1020", "#F2E28B", { style: SPACE.launch }),
+    ] },
+    { label: "Aurora", templates: [
+      t("Aurora", "Curtain green and violet over the pole", "#4CFFB0", "#B07CFF", "#06111A", "#7FD4FF", { style: SPACE.aurora }),
+      t("Solar wind", "Gold, cyan and rose streaming past", "#FFD166", "#5CE1E6", "#0E0B1F", "#FF8FAB", { style: SPACE.wind }),
+      t("Midnight sun", "A low sun on a white night", "#B5401E", "#1F6F8B", "#F7F1E3", "#3A2E6B", { style: SPACE.midnight }),
+    ] },
+  ] },
+  // Halloween: invented palettes (no film or game's artwork), each with a Haunt backdrop,
+  // a motif and a heading font.
+  { label: "Halloween", tabs: true, groups: [
+    { label: "Vampire", templates: [
+      t("Velvet coffin", "Blood red, gilt, black velvet", "#D7263D", "#E8B44A", "#0E0709", "#C9A3B8", { style: HAUNT.velvet }),
+      t("Blood moon", "A red moon, ember, old rose", "#D92323", "#FF9A5A", "#120406", "#E39FB0", { style: HAUNT.bloodmoon }),
+      t("Count's court", "Gold candlelight, claret, lilac", "#F2C14E", "#FF6B7A", "#3B0D1A", "#D9B8FF", { style: HAUNT.court }),
+      t("Crypt", "Fresh blood on cold stone", "#E0243C", "#B58CFF", "#0B0A10", "#9FB0C8", { style: HAUNT.crypt }),
+      t("Daybreak", "Parchment, blood and violet at dawn", "#9E1B2F", "#6B3FA0", "#F6EFE6", "#2B1B24", { style: HAUNT.daybreak }),
+    ] },
+    { label: "Haunted", templates: [
+      t("Haunted manor", "Ghost violet, ectoplasm, lamplight", "#B98CFF", "#7CFFB2", "#0E0B14", "#FFB86B", { style: HAUNT.manor }),
+      t("Séance", "Candle amber, rose, spirit lilac", "#FFB54A", "#E86A92", "#160E12", "#B7A4E8", { style: HAUNT.seance }),
+      t("Ectoplasm", "Glowing mint, slime, a cold blue", "#8CFFDA", "#C6FF5C", "#08130F", "#9AB8FF", { style: HAUNT.ecto }),
+    ] },
+    { label: "Witching", templates: [
+      t("Witching hour", "Potion violet, toad green, flame", "#8642F0", "#56F0A0", "#0C0814", "#FF9F45", { style: HAUNT.witching }),
+      t("Cauldron", "Bubbling green, nightshade, brass", "#7BE34A", "#C77DFF", "#0D120A", "#FFD15C", { style: HAUNT.cauldron }),
+      t("Hex", "Ink violet, verdigris, rust on vellum", "#5B21B6", "#0F766E", "#F2EEF8", "#7C2D12", { style: HAUNT.hex }),
+    ] },
+    { label: "Graveyard", templates: [
+      t("Graveyard", "Moss, lichen lilac, bone", "#9CC46B", "#C8B6FF", "#0F1312", "#D8C7A3", { style: HAUNT.graveyard }),
+      t("Moonlit mist", "Moon yellow, fog blue, heather", "#F2E6A0", "#9FD0FF", "#1F2A3A", "#C7B8E8", { style: HAUNT.moonmist }),
+    ] },
+    { label: "Harvest", templates: [
+      t("Jack-o'-lantern", "Pumpkin, candle gold, vine green", "#FF7A00", "#FFC233", "#120A04", "#7ED957", { style: HAUNT.lantern }),
+      t("Candy corn", "Orange, butter yellow, cream", "#C2410C", "#A16207", "#FFF6E5", "#3F2A14", { style: HAUNT.candycorn }),
+      t("Harvest moon", "Amber moon, straw, russet", "#FFA94D", "#E8D25A", "#1C120A", "#E39A7A", { style: HAUNT.harvest }),
     ] },
   ] },
   { label: "Brands", groups: [

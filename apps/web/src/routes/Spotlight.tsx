@@ -265,26 +265,31 @@ export function Spotlight({ open, onClose, query, onQueryChange, onAddShow }: {
 function ShowPreview({ show }: { show: Show }) {
   const status = show.status as AttendanceStatus | null;
   return (
-    <div className="space-y-3">
-      <Preview
-        image={show.flyerUrl}
-        title={showTitle(show)}
-        lines={[prettyDate(show.date), show.festival ? show.lineup ?? "" : "", [show.venue, show.city].filter(Boolean).join(", ")]}
-      />
-      {status && STATUS[status] && <StatusBadge status={status} />}
-    </div>
+    <Preview
+      image={show.flyerUrl}
+      title={showTitle(show)}
+      lines={[prettyDate(show.date), show.festival ? show.lineup ?? "" : "", [show.venue, show.city].filter(Boolean).join(", ")]}
+    >
+      {status && STATUS[status] && <StatusBadge status={status} className="mt-1" />}
+    </Preview>
   );
 }
 
-function Preview({ image, round, title, lines }: { image?: string | null; round?: boolean; title: string; lines: string[] }) {
+/** The palette's preview pane has no padding of its own, so it's here. */
+function Preview({ image, round, title, lines, children }: {
+  image?: string | null; round?: boolean; title: string; lines: string[]; children?: React.ReactNode;
+}) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 p-4">
       {image && (
         <img src={image} alt="" loading="lazy"
-          className={round ? "mx-auto h-40 w-40 rounded-full object-cover" : "max-h-72 w-full rounded-lg object-contain"} />
+          className={round ? "mx-auto aspect-square w-40 rounded-full object-cover" : "aspect-4/5 w-full rounded-lg object-cover"} />
       )}
-      <p className="font-display text-lg leading-tight">{title}</p>
-      {lines.filter(Boolean).map((l) => <p key={l} className="text-sm text-text-muted">{l}</p>)}
+      <div className="space-y-1">
+        <p className="font-display text-lg leading-tight">{title}</p>
+        {lines.filter(Boolean).map((l) => <p key={l} className="text-sm text-text-muted">{l}</p>)}
+        {children}
+      </div>
     </div>
   );
 }

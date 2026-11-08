@@ -1,7 +1,7 @@
 {
   "version": "0.1.0",
   "docs": "docs/explain",
-  "synced": { "commit": "0bf92b0", "date": "2026-11-08" },
+  "synced": { "commit": "306913e", "date": "2026-11-08" },
   "facts": {
     "name": "tinnitus-a-go-go",
     "tagline": "Personal concert log: shows, festivals, media, setlists, stats, reminders",

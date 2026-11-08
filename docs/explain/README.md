@@ -13,7 +13,7 @@ tinnitus a-go-go is a personal concert log: every show attended, coming up or mi
 | Built with | TypeScript: Fastify 5 API, BullMQ worker, React 18 + Vite 5 + Tailwind 4 on jimbo-ui 0.14.4; Postgres 16, Redis 7, MinIO |
 | Leans on | setlist.fm, Last.fm, Deezer / Wikidata, Google Maps, ntfy, Gmail, Tailscale |
 | Started | 2026-05-27 |
-| Docs checked | 2026-11-08 at 0bf92b0 |
+| Docs checked | 2026-11-08 at 306913e |
 
 ## The docs
 

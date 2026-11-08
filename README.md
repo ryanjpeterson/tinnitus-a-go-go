@@ -3,6 +3,8 @@
 A personal concert log for people who still believe the next show is worth the ringing.
 Self-hosted with a single account, served from a personal Mac over Tailscale. To use it yourself, clone it and run your own.
 
+How and why it works: [docs/explain](docs/explain/README.md)
+
 > **Current status:** Phase 14 complete — PWA support for iOS/desktop (installable, splash screens), Last.fm artist enrichment (auto-fetch bio, genre, MusicBrainz ID; scheduled worker enriches 50 artists/hour), URL import for venue/artist photos.
 
 ---
